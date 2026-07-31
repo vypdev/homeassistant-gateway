@@ -210,6 +210,43 @@ def test_client_identity_rejects_invalid_bearer_token() -> None:
     assert response.json() == {"detail": "invalid_client_token"}
 
 
+def test_mcp_discovery_returns_only_client_scoped_metadata() -> None:
+    app = make_app()
+    create_response = request(
+        app,
+        "POST",
+        "/api/clients",
+        headers=ingress_headers(),
+        json={
+            "client_id": "observer",
+            "display_name": "Observer",
+            "profile": "observer",
+            "capabilities": ["ha.read.diagnostics"],
+        },
+    )
+    token = create_response.json()["token"]
+
+    response = request(
+        app,
+        "GET",
+        "/api/mcp/discovery",
+        headers={**ingress_headers(), "Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["endpoint"] == "/mcp/"
+    assert response.json()["tools"] == ["gateway_diagnostics"]
+    assert "token" not in response.json()
+    assert "token_digest" not in response.json()
+
+
+def test_mcp_discovery_rejects_missing_client_token() -> None:
+    response = request(make_app(), "GET", "/api/mcp/discovery", headers=ingress_headers())
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "invalid_client_token"}
+
+
 def test_api_requires_supervisor_ingress_identity() -> None:
     response = request(make_app(), "GET", "/api/clients")
 

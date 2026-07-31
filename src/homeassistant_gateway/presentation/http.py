@@ -74,6 +74,16 @@ class PolicyDecisionResponse(BaseModel):
     reason: str
 
 
+class MCPDiscoveryResponse(BaseModel):
+    server_name: str
+    transport: str
+    endpoint: str
+    client_id: str
+    profile: Profile
+    capabilities: frozenset[str]
+    tools: tuple[str, ...]
+
+
 def parse_bearer_token(header: str | None) -> str | None:
     if not header:
         return None
@@ -156,6 +166,22 @@ def create_app(
     @app.get("/api/clients", response_model=list[ClientResponse])
     def list_client_resources() -> list[ClientResponse]:
         return [ClientResponse.from_domain(client) for client in list_clients.execute()]
+
+    @app.get("/api/mcp/discovery", response_model=MCPDiscoveryResponse)
+    def mcp_discovery_resource(request: Request) -> MCPDiscoveryResponse:
+        token = parse_bearer_token(request.headers.get("authorization"))
+        client = authenticate_client.execute(token or "")
+        if client is None:
+            raise HTTPException(status_code=401, detail="invalid_client_token")
+        return MCPDiscoveryResponse(
+            server_name="homeassistant-gateway-observer",
+            transport="streamable-http",
+            endpoint="/mcp/",
+            client_id=client.client_id,
+            profile=client.profile,
+            capabilities=client.capabilities,
+            tools=("gateway_diagnostics",),
+        )
 
     @app.get("/api/client/me", response_model=ClientResponse)
     def client_identity_resource(request: Request) -> ClientResponse:
