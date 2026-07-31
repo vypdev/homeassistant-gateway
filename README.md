@@ -42,7 +42,7 @@ OpenClaw / Hermes
     └── operator profile only when explicitly provisioned
 ```
 
-The first implementation target is a Supervisor-managed Home Assistant App installed from this GitHub repository. It starts with Home Assistant and serves its management UI through Ingress. A companion custom integration may be added later for native entities/services, but it is not the primary MCP server boundary.
+The first implementation target is a Supervisor-managed Home Assistant App installed from this GitHub repository. It starts with Home Assistant and serves its management UI through Ingress. The management UI will use Lit + TypeScript and a small Vite build, with a visual system documented in `DESIGN.md`. A companion custom integration may be added later for native entities/services, but it is not the primary MCP server boundary.
 
 ## Security posture
 

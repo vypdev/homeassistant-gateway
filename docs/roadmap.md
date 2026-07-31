@@ -8,6 +8,7 @@
 - [x] Define observer/operator profiles.
 - [x] Define credential, audit, and MCP boundaries.
 - [x] Add initial Supervisor App manifest and frontend contract.
+- [x] Define Lit + TypeScript visual direction and accessibility rules.
 - [x] Add CI and repository contract tests.
 
 ## Milestone 1 — runnable App and observer control plane
