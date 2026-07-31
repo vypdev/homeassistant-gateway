@@ -27,8 +27,9 @@ composition
 
 Dependency direction points inward. Domain and application code must not import Home Assistant, HTTP, MCP, subprocess, filesystem, or vendor-specific modules.
 
-- Domain code contains policies, capabilities, identifiers, and decisions.
-- The first implemented domain slice is `src/homeassistant_gateway/domain/policy.py`; it has no Home Assistant, MCP, HTTP, filesystem, or environment dependencies.
+- Domain code contains policies, capabilities, identifiers, and decisions. The first domain slice is `src/homeassistant_gateway/domain/policy.py`.
+- The first implemented application slice is `src/homeassistant_gateway/application/clients.py`: issue, list, and revoke client use cases through injected repository/token/clock ports.
+- Plaintext tokens are returned only in the one-time `IssuedClient` result; the application persists only a token digest through the injected repository boundary.
 
 ## Home Assistant deployment shape
 
