@@ -32,6 +32,8 @@ Dependency direction points inward. Domain and application code must not import 
 - Plaintext tokens are returned only in the one-time `IssuedClient` result; the application persists only a token digest through the injected repository boundary.
 - Infrastructure now provides `SecureTokenIssuer` and `SQLiteClientRepository`; both are adapters behind application ports.
 - SQLite lives in the App's private data directory, creates its parent with mode `0700`, and keeps the database at mode `0600`.
+- Composition root: `src/homeassistant_gateway/composition.py` constructs the graph explicitly from `AppSettings`.
+- Runtime entrypoint: `python -m homeassistant_gateway.main` or the installed `homeassistant-gateway` command. Environment variables are read only at this executable boundary.
 
 ## HTTP presentation boundary
 
