@@ -27,6 +27,9 @@ composition
 
 Dependency direction points inward. Domain and application code must not import Home Assistant, HTTP, MCP, subprocess, filesystem, or vendor-specific modules.
 
+- Domain code contains policies, capabilities, identifiers, and decisions.
+- The first implemented domain slice is `src/homeassistant_gateway/domain/policy.py`; it has no Home Assistant, MCP, HTTP, filesystem, or environment dependencies.
+
 ## Home Assistant deployment shape
 
 ### Primary: Home Assistant App (formerly add-on)
