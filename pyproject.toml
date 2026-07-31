@@ -5,10 +5,13 @@ description = "Home Assistant-native MCP gateway with observer/operator security
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
-dependencies = []
+dependencies = [
+    "fastapi>=0.115,<1.0",
+    "uvicorn[standard]>=0.34,<1.0",
+]
 
 [project.optional-dependencies]
-test = ["pytest>=8.0"]
+test = ["pytest>=8.0", "httpx>=0.27,<1.0"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

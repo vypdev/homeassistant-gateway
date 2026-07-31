@@ -33,6 +33,17 @@ Dependency direction points inward. Domain and application code must not import 
 - Infrastructure now provides `SecureTokenIssuer` and `SQLiteClientRepository`; both are adapters behind application ports.
 - SQLite lives in the App's private data directory, creates its parent with mode `0700`, and keeps the database at mode `0600`.
 
+## HTTP presentation boundary
+
+The current HTTP adapter is a thin FastAPI presentation layer around injected application use cases. Its tested contract is:
+
+- `GET /health` for a safe liveness response;
+- `GET /api/clients` without token digests;
+- `POST /api/clients` returning the plaintext token only once;
+- `POST /api/clients/{client_id}/revoke` with idempotent revocation.
+
+This is an internal/local contract for the App and Ingress boundary. Before a production runtime is exposed, the composition root must bind it to the private interface and add Home Assistant Ingress/session authorization. The API must not be published as a public unauthenticated port.
+
 ## Home Assistant deployment shape
 
 ### Primary: Home Assistant App (formerly add-on)
