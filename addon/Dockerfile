@@ -1,0 +1,31 @@
+# syntax=docker/dockerfile:1
+ARG BUILD_FROM=python:3.12-slim
+
+FROM python:3.12-slim AS builder
+ARG GATEWAY_REPOSITORY=https://github.com/vypdev/homeassistant-gateway.git
+ARG GATEWAY_REF=main
+
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y git \
+    && rm -rf /var/lib/apt/lists/*
+RUN git clone --depth 1 --branch "${GATEWAY_REF}" "${GATEWAY_REPOSITORY}" /src
+RUN python -m pip wheel --no-cache-dir --no-deps --wheel-dir /wheels /src
+
+FROM ${BUILD_FROM}
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    GATEWAY_DATA_DIR=/data \
+    GATEWAY_HOST=0.0.0.0 \
+    GATEWAY_PORT=8099 \
+    GATEWAY_OPERATOR_ENABLED=false
+
+COPY --from=builder /wheels /wheels
+RUN python -m pip install --no-cache-dir /wheels/*.whl \
+    && rm -rf /wheels
+COPY run.sh /run.sh
+RUN chmod 0755 /run.sh
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8099/health', timeout=3)"
+
+ENTRYPOINT ["/run.sh"]

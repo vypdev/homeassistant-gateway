@@ -16,7 +16,11 @@ panel_icon: mdi:shield-home
 panel_title: Gateway
 homeassistant_api: true
 hassio_api: true
+map:
+  - data:rw
 options:
   log_level: info
+  operator_enabled: false
 schema:
   log_level: list(trace|debug|info|warning|error|fatal)
+  operator_enabled: bool
