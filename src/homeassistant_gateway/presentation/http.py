@@ -24,6 +24,12 @@ class HealthResponse(BaseModel):
     status: str
 
 
+class ReadinessResponse(BaseModel):
+    status: str
+    storage: str
+    mcp: str
+
+
 class CreateClientRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -137,7 +143,7 @@ def create_app(
         )
         request.state.request_id = request_id
 
-        if request.url.path != "/health":
+        if request.url.path not in {"/health", "/ready"}:
             remote_user_id = request.headers.get("x-remote-user-id")
             if not remote_user_id:
                 response = JSONResponse(
@@ -162,6 +168,14 @@ def create_app(
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:
         return HealthResponse(status="ok")
+
+    @app.get("/ready", response_model=ReadinessResponse)
+    def readiness() -> ReadinessResponse:
+        return ReadinessResponse(
+            status="ready",
+            storage="ready",
+            mcp="ready" if mcp_app is not None else "disabled",
+        )
 
     @app.get("/api/clients", response_model=list[ClientResponse])
     def list_client_resources() -> list[ClientResponse]:

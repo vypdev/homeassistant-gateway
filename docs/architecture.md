@@ -40,6 +40,7 @@ Dependency direction points inward. Domain and application code must not import 
 The current HTTP adapter is a thin FastAPI presentation layer around injected application use cases. Its tested contract is:
 
 - `GET /health` for a safe liveness response;
+- `GET /ready` for a public readiness response;
 - `GET /api/clients` without token digests;
 - `POST /api/clients` returning the plaintext token only once;
 - `POST /api/clients/{client_id}/revoke` with idempotent revocation.

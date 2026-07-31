@@ -75,6 +75,13 @@ def test_health_endpoint_is_publicly_safe() -> None:
     assert re.fullmatch(r"[a-f0-9]{32}", response.headers["x-request-id"])
 
 
+def test_readiness_endpoint_is_public_and_reports_composition_state() -> None:
+    response = request(make_app(), "GET", "/ready")
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "ready", "storage": "ready", "mcp": "disabled"}
+
+
 def test_request_id_is_bounded_and_returned_for_ingress_requests() -> None:
     response = request(
         make_app(),
