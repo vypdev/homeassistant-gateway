@@ -10,7 +10,16 @@ def load_settings() -> AppSettings:
     """Load process settings at the executable boundary, never during import."""
     operator_enabled = os.getenv("GATEWAY_OPERATOR_ENABLED", "false").lower() == "true"
     data_dir = Path(os.getenv("GATEWAY_DATA_DIR", "/data"))
-    return AppSettings(data_dir=data_dir, operator_enabled=operator_enabled)
+    allowed_hosts = tuple(
+        host.strip()
+        for host in os.getenv("GATEWAY_MCP_ALLOWED_HOSTS", "").split(",")
+        if host.strip()
+    )
+    return AppSettings(
+        data_dir=data_dir,
+        operator_enabled=operator_enabled,
+        mcp_allowed_hosts=allowed_hosts or AppSettings(data_dir).mcp_allowed_hosts,
+    )
 
 
 def main() -> None:

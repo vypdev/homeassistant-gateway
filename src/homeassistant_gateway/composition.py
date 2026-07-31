@@ -19,6 +19,13 @@ from homeassistant_gateway.presentation.mcp import create_mcp_app
 class AppSettings:
     data_dir: Path
     operator_enabled: bool = False
+    mcp_allowed_hosts: tuple[str, ...] = (
+        "localhost",
+        "127.0.0.1",
+        "[::1]",
+        "homeassistant",
+        "homeassistant.local",
+    )
 
 
 def build_app(settings: AppSettings) -> FastAPI:
@@ -32,7 +39,11 @@ def build_app(settings: AppSettings) -> FastAPI:
     authenticate_client = AuthenticateClient(repository, token_issuer)
     authorize_request = AuthorizeRequest(repository, settings.operator_enabled)
     observer_diagnostics = ObserverDiagnostics(authenticate_client, authorize_request)
-    mcp_bundle = create_mcp_app(observer_diagnostics, authenticate_client.execute)
+    mcp_bundle = create_mcp_app(
+        observer_diagnostics,
+        authenticate_client.execute,
+        allowed_hosts=settings.mcp_allowed_hosts,
+    )
 
     return create_app(
         issue_client=IssueClient(
