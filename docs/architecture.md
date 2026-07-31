@@ -30,6 +30,8 @@ Dependency direction points inward. Domain and application code must not import 
 - Domain code contains policies, capabilities, identifiers, and decisions. The first domain slice is `src/homeassistant_gateway/domain/policy.py`.
 - The first implemented application slice is `src/homeassistant_gateway/application/clients.py`: issue, list, and revoke client use cases through injected repository/token/clock ports.
 - Plaintext tokens are returned only in the one-time `IssuedClient` result; the application persists only a token digest through the injected repository boundary.
+- Infrastructure now provides `SecureTokenIssuer` and `SQLiteClientRepository`; both are adapters behind application ports.
+- SQLite lives in the App's private data directory, creates its parent with mode `0700`, and keeps the database at mode `0600`.
 
 ## Home Assistant deployment shape
 
