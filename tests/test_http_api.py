@@ -33,13 +33,17 @@ def make_app():
     )
 
 
-def request(app, method: str, url: str, json=None) -> httpx.Response:
+def request(app, method: str, url: str, json=None, headers=None) -> httpx.Response:
     async def perform() -> httpx.Response:
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            return await client.request(method, url, json=json)
+            return await client.request(method, url, json=json, headers=headers)
 
     return asyncio.run(perform())
+
+
+def ingress_headers() -> dict[str, str]:
+    return {"X-Remote-User-Id": "test-user"}
 
 
 def test_health_endpoint_is_publicly_safe() -> None:
@@ -49,12 +53,20 @@ def test_health_endpoint_is_publicly_safe() -> None:
     assert response.json() == {"status": "ok"}
 
 
+def test_api_requires_supervisor_ingress_identity() -> None:
+    response = request(make_app(), "GET", "/api/clients")
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "ingress_identity_required"}
+
+
 def test_client_creation_returns_plaintext_token_once_without_digest() -> None:
     app = make_app()
     response = request(
         app,
         "POST",
         "/api/clients",
+        headers=ingress_headers(),
         json={
             "client_id": "observer",
             "display_name": "Observer",
@@ -69,7 +81,7 @@ def test_client_creation_returns_plaintext_token_once_without_digest() -> None:
     assert body["token"].startswith("hgw_")
     assert "token_digest" not in body
 
-    listed = request(app, "GET", "/api/clients")
+    listed = request(app, "GET", "/api/clients", headers=ingress_headers())
     assert listed.status_code == 200
     assert listed.json()[0]["status"] == "active"
     assert "token_digest" not in listed.json()[0]
@@ -83,9 +95,9 @@ def test_duplicate_client_is_conflict_and_revoke_is_idempotent() -> None:
         "profile": "observer",
         "capabilities": ["ha.read.states"],
     }
-    assert request(app, "POST", "/api/clients", json=payload).status_code == 201
-    assert request(app, "POST", "/api/clients", json=payload).status_code == 409
+    assert request(app, "POST", "/api/clients", headers=ingress_headers(), json=payload).status_code == 201
+    assert request(app, "POST", "/api/clients", headers=ingress_headers(), json=payload).status_code == 409
 
-    assert request(app, "POST", "/api/clients/observer/revoke").status_code == 204
-    assert request(app, "POST", "/api/clients/observer/revoke").status_code == 204
-    assert request(app, "GET", "/api/clients").json()[0]["status"] == "revoked"
+    assert request(app, "POST", "/api/clients/observer/revoke", headers=ingress_headers()).status_code == 204
+    assert request(app, "POST", "/api/clients/observer/revoke", headers=ingress_headers()).status_code == 204
+    assert request(app, "GET", "/api/clients", headers=ingress_headers()).json()[0]["status"] == "revoked"

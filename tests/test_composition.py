@@ -10,7 +10,12 @@ def request(app, method: str, url: str, json=None) -> httpx.Response:
     async def perform() -> httpx.Response:
         transport = httpx.ASGITransport(app=app)
         async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
-            return await client.request(method, url, json=json)
+            return await client.request(
+                method,
+                url,
+                json=json,
+                headers={"X-Remote-User-Id": "test-user"},
+            )
 
     return asyncio.run(perform())
 

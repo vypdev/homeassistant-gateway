@@ -1,6 +1,8 @@
+from collections.abc import Awaitable, Callable
 from datetime import datetime
 
-from fastapi import FastAPI, HTTPException, Response, status
+from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from homeassistant_gateway.application.clients import (
@@ -60,6 +62,21 @@ def create_app(
 ) -> FastAPI:
     """Build the HTTP adapter around already-wired application use cases."""
     app = FastAPI(title="Home Assistant Gateway", version="0.1.0")
+
+    @app.middleware("http")
+    async def require_ingress_identity(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        if request.url.path != "/health":
+            remote_user_id = request.headers.get("x-remote-user-id")
+            if not remote_user_id:
+                return JSONResponse(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    content={"detail": "ingress_identity_required"},
+                )
+            request.state.remote_user_id = remote_user_id
+        return await call_next(request)
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:

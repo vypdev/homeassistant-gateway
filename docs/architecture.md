@@ -44,7 +44,7 @@ The current HTTP adapter is a thin FastAPI presentation layer around injected ap
 - `POST /api/clients` returning the plaintext token only once;
 - `POST /api/clients/{client_id}/revoke` with idempotent revocation.
 
-This is an internal/local contract for the App and Ingress boundary. Before a production runtime is exposed, the composition root must bind it to the private interface and add Home Assistant Ingress/session authorization. The API must not be published as a public unauthenticated port.
+This is an internal/local contract for the App and Ingress boundary. Supervisor Ingress authenticates the Home Assistant user and forwards `X-Remote-User-Id` (with the associated name/display-name headers). The middleware requires the user ID for every non-health route. Before a production runtime is exposed, the composition root must bind it to the private interface and keep the Supervisor Ingress boundary intact. The API must not be published as a public unauthenticated port. See the [official App security contract](https://developers.home-assistant.io/docs/apps/security/).
 
 ## Home Assistant deployment shape
 
