@@ -24,7 +24,10 @@ def test_architecture_keeps_home_assistant_as_first_deployment_target() -> None:
 def test_app_does_not_map_the_raw_home_assistant_config_directory() -> None:
     text = (ROOT / "addon" / "config.yaml").read_text()
     assert "homeassistant_api: true" in text
-    assert "map:" not in text
+    assert "- data:rw" in text
+    assert "/config" not in text
+    assert "secrets.yaml" not in text
+    assert ".storage" not in text
 
 
 def test_automation_mutation_is_explicitly_not_assumed() -> None:
