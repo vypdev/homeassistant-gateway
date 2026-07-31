@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from homeassistant_gateway.application.audit import AuditEvent, AuditSink, NoopAuditSink
+from homeassistant_gateway.application.authentication import AuthenticateClient
 from homeassistant_gateway.application.authorization import AuthorizeRequest
 from homeassistant_gateway.application.clients import (
     IssueClient,
@@ -72,10 +73,22 @@ class PolicyDecisionResponse(BaseModel):
     reason: str
 
 
+def parse_bearer_token(header: str | None) -> str | None:
+    if not header:
+        return None
+    scheme, separator, credentials = header.partition(" ")
+    if scheme.lower() != "bearer" or not separator or not credentials:
+        return None
+    if credentials != credentials.strip() or " " in credentials:
+        return None
+    return credentials
+
+
 def create_app(
     issue_client: IssueClient,
     list_clients: ListClients,
     revoke_client: RevokeClient,
+    authenticate_client: AuthenticateClient,
     authorize_request: AuthorizeRequest,
     audit_sink: AuditSink | None = None,
 ) -> FastAPI:
@@ -140,6 +153,14 @@ def create_app(
     @app.get("/api/clients", response_model=list[ClientResponse])
     def list_client_resources() -> list[ClientResponse]:
         return [ClientResponse.from_domain(client) for client in list_clients.execute()]
+
+    @app.get("/api/client/me", response_model=ClientResponse)
+    def client_identity_resource(request: Request) -> ClientResponse:
+        token = parse_bearer_token(request.headers.get("authorization"))
+        client = authenticate_client.execute(token or "")
+        if client is None:
+            raise HTTPException(status_code=401, detail="invalid_client_token")
+        return ClientResponse.from_domain(client)
 
     @app.post("/api/policy/evaluate", response_model=PolicyDecisionResponse)
     def evaluate_policy_resource(request: EvaluatePolicyRequest) -> PolicyDecisionResponse:

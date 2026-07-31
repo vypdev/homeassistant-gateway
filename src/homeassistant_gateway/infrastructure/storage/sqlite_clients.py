@@ -46,6 +46,13 @@ class SQLiteClientRepository:
             ).fetchone()
         return self._from_row(row) if row is not None else None
 
+    def find_by_token_digest(self, token_digest: str) -> Client | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM clients WHERE token_digest = ?", (token_digest,)
+            ).fetchone()
+        return self._from_row(row) if row is not None else None
+
     def save(self, client: Client) -> None:
         with self._connect() as connection:
             connection.execute(

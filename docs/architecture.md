@@ -44,6 +44,7 @@ The current HTTP adapter is a thin FastAPI presentation layer around injected ap
 - `POST /api/clients` returning the plaintext token only once;
 - `POST /api/clients/{client_id}/revoke` with idempotent revocation.
 - `POST /api/policy/evaluate` returning a typed allow/deny/approval-required decision without executing any Home Assistant operation.
+- `GET /api/client/me` requiring a client `Authorization: Bearer` token and returning only non-secret client metadata.
 
 Capability policy is evaluated from the persisted client's profile and granted capabilities. Observer clients remain read-only; operator mutations can only produce `approval_required` when globally enabled, and are never executed by this endpoint.
 

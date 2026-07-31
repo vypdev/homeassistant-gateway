@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 import httpx
 
 from homeassistant_gateway.application.audit import AuditEvent
+from homeassistant_gateway.application.authentication import AuthenticateClient
 from homeassistant_gateway.application.authorization import AuthorizeRequest
 from homeassistant_gateway.application.clients import IssueClient, ListClients, RevokeClient
 from homeassistant_gateway.infrastructure.security.tokens import SecureTokenIssuer
@@ -20,6 +21,12 @@ class InMemoryClientRepository:
 
     def get(self, client_id):
         return self.items.get(client_id)
+
+    def find_by_token_digest(self, token_digest):
+        return next(
+            (client for client in self.items.values() if client.token_digest == token_digest),
+            None,
+        )
 
     def save(self, client):
         self.items[client.client_id] = client
@@ -41,6 +48,7 @@ def make_app(audit_sink=None):
         issue_client=IssueClient(repository, tokens, clock, operator_enabled=False),
         list_clients=ListClients(repository),
         revoke_client=RevokeClient(repository, clock),
+        authenticate_client=AuthenticateClient(repository, tokens),
         authorize_request=AuthorizeRequest(repository, operator_enabled=False),
         audit_sink=audit_sink,
     )
@@ -160,6 +168,46 @@ def test_observer_mutation_is_denied_by_capability_policy() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"decision": "denied", "reason": "observer_is_read_only"}
+
+
+def test_client_identity_requires_and_resolves_bearer_token() -> None:
+    app = make_app()
+    create_response = request(
+        app,
+        "POST",
+        "/api/clients",
+        headers=ingress_headers(),
+        json={
+            "client_id": "observer",
+            "display_name": "Observer",
+            "profile": "observer",
+            "capabilities": ["ha.read.states"],
+        },
+    )
+    token = create_response.json()["token"]
+
+    response = request(
+        app,
+        "GET",
+        "/api/client/me",
+        headers={**ingress_headers(), "Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["client_id"] == "observer"
+    assert "token_digest" not in response.json()
+
+
+def test_client_identity_rejects_invalid_bearer_token() -> None:
+    response = request(
+        make_app(),
+        "GET",
+        "/api/client/me",
+        headers={**ingress_headers(), "Authorization": "Bearer hgw_invalid"},
+    )
+
+    assert response.status_code == 401
+    assert response.json() == {"detail": "invalid_client_token"}
 
 
 def test_api_requires_supervisor_ingress_identity() -> None:
