@@ -8,13 +8,14 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from homeassistant_gateway.application.audit import AuditEvent, AuditSink, NoopAuditSink
+from homeassistant_gateway.application.authorization import AuthorizeRequest
 from homeassistant_gateway.application.clients import (
     IssueClient,
     ListClients,
     RevokeClient,
 )
 from homeassistant_gateway.domain.clients import Client
-from homeassistant_gateway.domain.policy import Profile
+from homeassistant_gateway.domain.policy import Decision, Profile
 
 
 class HealthResponse(BaseModel):
@@ -58,10 +59,24 @@ class IssuedClientResponse(ClientResponse):
     token: str
 
 
+class EvaluatePolicyRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    client_id: str = Field(min_length=1, max_length=128)
+    capability: str = Field(min_length=1, max_length=128)
+    mutation: bool = False
+
+
+class PolicyDecisionResponse(BaseModel):
+    decision: Decision
+    reason: str
+
+
 def create_app(
     issue_client: IssueClient,
     list_clients: ListClients,
     revoke_client: RevokeClient,
+    authorize_request: AuthorizeRequest,
     audit_sink: AuditSink | None = None,
 ) -> FastAPI:
     """Build the HTTP adapter around already-wired application use cases."""
@@ -125,6 +140,18 @@ def create_app(
     @app.get("/api/clients", response_model=list[ClientResponse])
     def list_client_resources() -> list[ClientResponse]:
         return [ClientResponse.from_domain(client) for client in list_clients.execute()]
+
+    @app.post("/api/policy/evaluate", response_model=PolicyDecisionResponse)
+    def evaluate_policy_resource(request: EvaluatePolicyRequest) -> PolicyDecisionResponse:
+        decision = authorize_request.execute(
+            client_id=request.client_id,
+            capability=request.capability,
+            mutation=request.mutation,
+        )
+        return PolicyDecisionResponse(
+            decision=decision.decision,
+            reason=decision.reason,
+        )
 
     @app.post(
         "/api/clients",

@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 import httpx
 
 from homeassistant_gateway.application.audit import AuditEvent
+from homeassistant_gateway.application.authorization import AuthorizeRequest
 from homeassistant_gateway.application.clients import IssueClient, ListClients, RevokeClient
 from homeassistant_gateway.infrastructure.security.tokens import SecureTokenIssuer
 from homeassistant_gateway.presentation.http import create_app
@@ -40,6 +41,7 @@ def make_app(audit_sink=None):
         issue_client=IssueClient(repository, tokens, clock, operator_enabled=False),
         list_clients=ListClients(repository),
         revoke_client=RevokeClient(repository, clock),
+        authorize_request=AuthorizeRequest(repository, operator_enabled=False),
         audit_sink=audit_sink,
     )
 
@@ -94,6 +96,70 @@ def test_http_request_is_audited_without_payload_or_secret() -> None:
     assert event.target == "/api/clients"
     assert event.decision == "allowed"
     assert event.outcome == "success"
+
+
+def test_policy_evaluation_returns_decision_without_executing_operation() -> None:
+    app = make_app()
+    create_response = request(
+        app,
+        "POST",
+        "/api/clients",
+        headers=ingress_headers(),
+        json={
+            "client_id": "observer",
+            "display_name": "Observer",
+            "profile": "observer",
+            "capabilities": ["ha.read.states"],
+        },
+    )
+    assert create_response.status_code == 201
+
+    response = request(
+        app,
+        "POST",
+        "/api/policy/evaluate",
+        headers=ingress_headers(),
+        json={
+            "client_id": "observer",
+            "capability": "ha.read.states",
+            "mutation": False,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"decision": "allowed", "reason": "read_allowed"}
+
+
+def test_observer_mutation_is_denied_by_capability_policy() -> None:
+    app = make_app()
+    create_response = request(
+        app,
+        "POST",
+        "/api/clients",
+        headers=ingress_headers(),
+        json={
+            "client_id": "observer",
+            "display_name": "Observer",
+            "profile": "observer",
+            "capabilities": ["ha.read.states"],
+        },
+    )
+    assert create_response.status_code == 201
+
+    response = request(
+        app,
+        "POST",
+        "/api/policy/evaluate",
+        headers=ingress_headers(),
+        json={
+            "client_id": "observer",
+            "capability": "ha.read.states",
+            "mutation": True,
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"decision": "denied", "reason": "observer_is_read_only"}
 
 
 def test_api_requires_supervisor_ingress_identity() -> None:

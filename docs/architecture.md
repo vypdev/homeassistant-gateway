@@ -43,6 +43,9 @@ The current HTTP adapter is a thin FastAPI presentation layer around injected ap
 - `GET /api/clients` without token digests;
 - `POST /api/clients` returning the plaintext token only once;
 - `POST /api/clients/{client_id}/revoke` with idempotent revocation.
+- `POST /api/policy/evaluate` returning a typed allow/deny/approval-required decision without executing any Home Assistant operation.
+
+Capability policy is evaluated from the persisted client's profile and granted capabilities. Observer clients remain read-only; operator mutations can only produce `approval_required` when globally enabled, and are never executed by this endpoint.
 
 Every HTTP request also receives a bounded `X-Request-ID` and emits a sanitized audit event containing only identity, method, path, decision, outcome, status code, and timestamp. Request bodies, query strings, tokens, and digests are excluded.
 
