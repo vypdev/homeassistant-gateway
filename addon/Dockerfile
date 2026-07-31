@@ -1,5 +1,4 @@
 # syntax=docker/dockerfile:1
-ARG BUILD_FROM=python:3.12-slim
 
 FROM python:3.12-slim AS builder
 ARG GATEWAY_REPOSITORY=https://github.com/vypdev/homeassistant-gateway.git
@@ -11,7 +10,7 @@ RUN apt-get update \
 RUN git clone --depth 1 --branch "${GATEWAY_REF}" "${GATEWAY_REPOSITORY}" /src
 RUN python -m pip wheel --no-cache-dir --no-deps --wheel-dir /wheels /src
 
-FROM ${BUILD_FROM}
+FROM python:3.12-slim
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     GATEWAY_DATA_DIR=/data \
