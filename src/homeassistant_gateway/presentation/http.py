@@ -1,10 +1,13 @@
+import re
+import uuid
 from collections.abc import Awaitable, Callable
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
+from homeassistant_gateway.application.audit import AuditEvent, AuditSink, NoopAuditSink
 from homeassistant_gateway.application.clients import (
     IssueClient,
     ListClients,
@@ -59,24 +62,61 @@ def create_app(
     issue_client: IssueClient,
     list_clients: ListClients,
     revoke_client: RevokeClient,
+    audit_sink: AuditSink | None = None,
 ) -> FastAPI:
     """Build the HTTP adapter around already-wired application use cases."""
     app = FastAPI(title="Home Assistant Gateway", version="0.1.0")
+    sink = audit_sink or NoopAuditSink()
+
+    def record_audit(request: Request, response: Response, decision: str, outcome: str) -> None:
+        sink.record(
+            AuditEvent(
+                event_id=uuid.uuid4().hex,
+                occurred_at=datetime.now(UTC),
+                request_id=request.state.request_id,
+                remote_user_id=getattr(request.state, "remote_user_id", None),
+                action=f"http.{request.method.lower()}",
+                target=request.url.path,
+                decision=decision,
+                outcome=outcome,
+                status_code=response.status_code,
+            )
+        )
 
     @app.middleware("http")
     async def require_ingress_identity(
         request: Request,
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
+        candidate_request_id = request.headers.get("x-request-id", "")
+        request_id = (
+            candidate_request_id
+            if re.fullmatch(r"[A-Za-z0-9._-]{1,64}", candidate_request_id)
+            else uuid.uuid4().hex
+        )
+        request.state.request_id = request_id
+
         if request.url.path != "/health":
             remote_user_id = request.headers.get("x-remote-user-id")
             if not remote_user_id:
-                return JSONResponse(
+                response = JSONResponse(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     content={"detail": "ingress_identity_required"},
                 )
+                response.headers["X-Request-ID"] = request_id
+                record_audit(request, response, "denied", "rejected")
+                return response
             request.state.remote_user_id = remote_user_id
-        return await call_next(request)
+
+        response = await call_next(request)
+        response.headers["X-Request-ID"] = request_id
+        record_audit(
+            request,
+            response,
+            "allowed" if response.status_code < 400 else "denied",
+            "success" if response.status_code < 400 else "error",
+        )
+        return response
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:

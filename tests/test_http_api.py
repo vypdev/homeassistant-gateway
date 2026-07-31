@@ -1,8 +1,10 @@
 import asyncio
+import re
 from datetime import UTC, datetime
 
 import httpx
 
+from homeassistant_gateway.application.audit import AuditEvent
 from homeassistant_gateway.application.clients import IssueClient, ListClients, RevokeClient
 from homeassistant_gateway.infrastructure.security.tokens import SecureTokenIssuer
 from homeassistant_gateway.presentation.http import create_app
@@ -22,7 +24,15 @@ class InMemoryClientRepository:
         self.items[client.client_id] = client
 
 
-def make_app():
+class AuditRecorder:
+    def __init__(self) -> None:
+        self.events: list[AuditEvent] = []
+
+    def record(self, event: AuditEvent) -> None:
+        self.events.append(event)
+
+
+def make_app(audit_sink=None):
     repository = InMemoryClientRepository()
     tokens = SecureTokenIssuer()
     clock = lambda: datetime(2026, 7, 31, tzinfo=UTC)
@@ -30,6 +40,7 @@ def make_app():
         issue_client=IssueClient(repository, tokens, clock, operator_enabled=False),
         list_clients=ListClients(repository),
         revoke_client=RevokeClient(repository, clock),
+        audit_sink=audit_sink,
     )
 
 
@@ -51,6 +62,38 @@ def test_health_endpoint_is_publicly_safe() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+    assert re.fullmatch(r"[a-f0-9]{32}", response.headers["x-request-id"])
+
+
+def test_request_id_is_bounded_and_returned_for_ingress_requests() -> None:
+    response = request(
+        make_app(),
+        "GET",
+        "/api/clients",
+        headers={**ingress_headers(), "X-Request-ID": "external-42"},
+    )
+
+    assert response.status_code == 200
+    assert response.headers["x-request-id"] == "external-42"
+
+
+def test_http_request_is_audited_without_payload_or_secret() -> None:
+    recorder = AuditRecorder()
+    response = request(
+        make_app(recorder),
+        "GET",
+        "/api/clients",
+        headers={**ingress_headers(), "X-Request-ID": "audit-42"},
+    )
+
+    assert response.status_code == 200
+    assert len(recorder.events) == 1
+    event = recorder.events[0]
+    assert event.request_id == "audit-42"
+    assert event.remote_user_id == "test-user"
+    assert event.target == "/api/clients"
+    assert event.decision == "allowed"
+    assert event.outcome == "success"
 
 
 def test_api_requires_supervisor_ingress_identity() -> None:

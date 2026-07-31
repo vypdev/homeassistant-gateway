@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 from homeassistant_gateway.application.clients import IssueClient, ListClients, RevokeClient
 from homeassistant_gateway.infrastructure.security.tokens import SecureTokenIssuer
+from homeassistant_gateway.infrastructure.storage.sqlite_audit import SQLiteAuditRepository
 from homeassistant_gateway.infrastructure.storage.sqlite_clients import SQLiteClientRepository
 from homeassistant_gateway.presentation.http import create_app
 
@@ -18,7 +19,9 @@ class AppSettings:
 
 def build_app(settings: AppSettings) -> FastAPI:
     """Construct the application graph without reading process-global configuration."""
-    repository = SQLiteClientRepository(settings.data_dir / "gateway.sqlite3")
+    database = settings.data_dir / "gateway.sqlite3"
+    repository = SQLiteClientRepository(database)
+    audit_repository = SQLiteAuditRepository(database)
     token_issuer = SecureTokenIssuer()
     clock = lambda: datetime.now(UTC)
 
@@ -31,4 +34,5 @@ def build_app(settings: AppSettings) -> FastAPI:
         ),
         list_clients=ListClients(repository),
         revoke_client=RevokeClient(repository, clock),
+        audit_sink=audit_repository,
     )
