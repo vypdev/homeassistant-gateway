@@ -29,21 +29,28 @@ Dependency direction points inward. Domain and application code must not import 
 
 ## Home Assistant deployment shape
 
-### Phase 1: custom integration
+### Primary: Home Assistant App (formerly add-on)
 
-A custom integration runs in the Home Assistant process and provides:
+The primary distribution is a Home Assistant App installed from the project's GitHub repository through Supervisor. This is the correct boundary for a long-running MCP server that must start with Home Assistant and expose its own web UI.
 
-- config flow for initial setup;
-- options flow for policy and client management;
-- a sidebar panel for connection status, profiles, capabilities, audit events, and safe diagnostics;
-- an internal service boundary for reading state/configuration and invoking approved services;
-- an MCP transport adapter bound to the configured local/protected boundary.
+The App provides:
 
-The integration must not start a publicly reachable unauthenticated listener by default.
+- automatic startup and Supervisor lifecycle management;
+- an Ingress-protected web UI;
+- MCP transport bound to a local/protected interface;
+- client identities, token issuance, revocation, profiles, capabilities, and audit storage;
+- a narrow Home Assistant API/WebSocket adapter using the Supervisor-provided Home Assistant access boundary;
+- health/readiness endpoints and safe diagnostics.
 
-### Phase 2: optional add-on transport
+The App must not expose a public unauthenticated port by default. No Docker socket access is required.
 
-If the Home Assistant process cannot host a suitable MCP transport, an add-on may run a separate process on the same host. It must communicate through a narrow authenticated local API or supervisor boundary, not Docker socket access. The add-on remains an infrastructure adapter; policy and domain behavior stay shared.
+### Optional: companion custom integration
+
+A companion custom integration may be added later for native Home Assistant registration, entities, services, config flow/options flow, and a sidebar panel. It is not the primary credential or MCP server boundary. Keeping the long-running server in an App avoids embedding an HTTP/MCP server lifecycle inside Home Assistant Core.
+
+### Configuration and raw files
+
+The supported read model uses Home Assistant's authenticated REST/WebSocket APIs first. Raw `/config` access is not enabled by default because it can expose `secrets.yaml`, `.storage`, tokens, and private topology. A future narrowly scoped configuration-inspection capability may read selected files through an explicit allowlist, redaction pipeline, and separate policy gate; it must never expose the raw configuration directory.
 
 ## Capability model
 

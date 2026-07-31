@@ -3,20 +3,25 @@
 ## Milestone 0 — contract and skeleton
 
 - [x] Create repository and public project contract.
-- [x] Define Home Assistant-native deployment shape.
+- [x] Define Home Assistant App as the primary deployment shape.
+- [x] Define optional companion custom integration boundary.
 - [x] Define observer/operator profiles.
 - [x] Define credential, audit, and MCP boundaries.
-- [ ] Add CI, packaging, and a minimal custom integration skeleton.
+- [x] Add initial Supervisor App manifest and frontend contract.
+- [x] Add CI and repository contract tests.
 
-## Milestone 1 — observer integration
+## Milestone 1 — runnable App and observer control plane
 
-- [ ] Config flow and options flow.
-- [ ] Secure credential adapter with rotation status.
-- [ ] Native panel for status, capabilities, and safe diagnostics.
+- [ ] Build pinned multi-architecture App images.
+- [ ] Ingress-aware web server and health/readiness endpoints.
+- [ ] Secure client/token store with migration and rotation.
+- [ ] Client/profile/capability management UI.
 - [ ] Complete read-only inventory tools.
 - [ ] Automation/script/scene/configuration readers.
+- [ ] Document versioned automation mutation contracts; return explicit unsupported-operation results where Home Assistant has no supported update API.
 - [ ] Stable redaction, pagination, timeout, and size-limit contracts.
 - [ ] Snapshot-based analysis context.
+- [ ] Disposable Home Assistant integration tests.
 
 ## Milestone 2 — MCP transport and clients
 

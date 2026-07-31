@@ -42,7 +42,7 @@ OpenClaw / Hermes
     └── operator profile only when explicitly provisioned
 ```
 
-The first implementation target is a Home Assistant custom integration. An optional add-on/container transport may be added later only if the Home Assistant process cannot safely host the MCP listener.
+The first implementation target is a Supervisor-managed Home Assistant App installed from this GitHub repository. It starts with Home Assistant and serves its management UI through Ingress. A companion custom integration may be added later for native entities/services, but it is not the primary MCP server boundary.
 
 ## Security posture
 

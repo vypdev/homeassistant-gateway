@@ -1,0 +1,22 @@
+name: Home Assistant Gateway
+version: "0.1.0"
+slug: homeassistant_gateway
+description: Secure MCP gateway with observer/operator profiles for Home Assistant
+url: https://github.com/vypdev/homeassistant-gateway
+arch:
+  - amd64
+  - aarch64
+  - armv7
+startup: application
+boot: auto
+init: false
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:shield-home
+panel_title: Gateway
+homeassistant_api: true
+hassio_api: true
+options:
+  log_level: info
+schema:
+  log_level: list(trace|debug|info|warning|error|fatal)

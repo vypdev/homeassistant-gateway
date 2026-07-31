@@ -9,7 +9,7 @@ The existing Home Assistant MCP exposes useful read-only state and entity data, 
 
 ## Decision
 
-Build `homeassistant-gateway` first as a Home Assistant-native custom integration with a config flow, options flow, and frontend panel. Keep MCP transport and external clients behind an authenticated boundary. Add an optional add-on only if the native process cannot safely host the transport.
+Build `homeassistant-gateway` first as a Supervisor-managed Home Assistant App installed from the GitHub repository. The App starts with Home Assistant, exposes its management UI through Ingress, owns the MCP transport, and uses authenticated Home Assistant/Supervisor boundaries. Add a companion custom integration only when native entities/services or a native sidebar panel provide clear value.
 
 Use two explicit security profiles:
 
