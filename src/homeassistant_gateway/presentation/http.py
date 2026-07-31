@@ -2,6 +2,7 @@ import re
 import uuid
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.responses import JSONResponse
@@ -91,9 +92,11 @@ def create_app(
     authenticate_client: AuthenticateClient,
     authorize_request: AuthorizeRequest,
     audit_sink: AuditSink | None = None,
+    mcp_app: Any | None = None,
+    lifespan: Any | None = None,
 ) -> FastAPI:
     """Build the HTTP adapter around already-wired application use cases."""
-    app = FastAPI(title="Home Assistant Gateway", version="0.1.0")
+    app = FastAPI(title="Home Assistant Gateway", version="0.1.0", lifespan=lifespan)
     sink = audit_sink or NoopAuditSink()
 
     def record_audit(request: Request, response: Response, decision: str, outcome: str) -> None:
@@ -203,4 +206,6 @@ def create_app(
         revoke_client.execute(client_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
+    if mcp_app is not None:
+        app.mount("/mcp", mcp_app)
     return app

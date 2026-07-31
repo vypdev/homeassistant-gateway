@@ -105,12 +105,14 @@ The MCP layer exposes bounded tools grouped by intent rather than raw Home Assis
 3. `ha_automations`: automation definitions, triggers, conditions, actions, mode, and enabled state.
 4. `ha_configuration`: safe configuration metadata and integration diagnostics without secrets.
 5. `ha_analysis_context`: a consistent read snapshot for analysis workflows.
-6. Operator tools are added only after the observer contract and approval model are verified.
+6. `gateway_diagnostics`: initial Streamable HTTP observer tool, authenticated with a client bearer token and gated by `ha.read.diagnostics`.
+7. Operator tools are added only after the observer contract and approval model are verified.
 
 Every tool has a schema, capability requirement, timeout, output-size limit, redaction rule, and audit classification.
 
-## Credential flow
+The MCP transport is Streamable HTTP at `/mcp/`. It uses the official Python MCP SDK, stateless sessions, bearer authentication resolved against the gateway's client digest store, and DNS-rebinding protection with an explicit host allowlist.
 
+## Credential flow
 1. User opens Home Assistant's integration UI.
 2. Config flow validates the target/authentication method without printing secret material.
 3. Credentials are stored through a dedicated Home Assistant storage adapter.

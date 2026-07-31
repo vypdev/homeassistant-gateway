@@ -1,0 +1,84 @@
+import contextvars
+import json
+from collections.abc import Awaitable, Callable
+from dataclasses import asdict, dataclass
+from typing import Any
+
+from mcp.server.fastmcp import FastMCP
+from mcp.server.transport_security import TransportSecuritySettings
+
+from homeassistant_gateway.application.observer import ObserverDiagnostics
+from homeassistant_gateway.presentation.http import parse_bearer_token
+
+_current_token: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "gateway_mcp_token", default=None
+)
+
+@dataclass(frozen=True)
+class MCPApp:
+    application: Any
+    lifespan: Callable[..., Any]
+
+
+class BearerMCPMiddleware:
+    """Reject unauthenticated MCP HTTP requests before the MCP handshake."""
+
+    def __init__(self, app: Callable[..., Awaitable[Any]], authenticate: Callable[[str], Any]) -> None:
+        self._app = app
+        self._authenticate = authenticate
+
+    async def __call__(self, scope: dict[str, Any], receive: Any, send: Any) -> None:
+        if scope.get("type") != "http":
+            await self._app(scope, receive, send)
+            return
+
+        headers = {
+            key.decode("latin-1").lower(): value.decode("latin-1")
+            for key, value in scope.get("headers", [])
+        }
+        token = parse_bearer_token(headers.get("authorization"))
+        if token is None or self._authenticate(token) is None:
+            body = json.dumps({"detail": "invalid_client_token"}).encode("utf-8")
+            await send(
+                {"type": "http.response.start", "status": 401, "headers": [(b"content-type", b"application/json")]}
+            )
+            await send({"type": "http.response.body", "body": body})
+            return
+
+        marker = _current_token.set(token)
+        try:
+            await self._app(scope, receive, send)
+        finally:
+            _current_token.reset(marker)
+
+
+def create_mcp_app(
+    diagnostics: ObserverDiagnostics,
+    authenticate: Callable[[str], Any],
+    allowed_hosts: tuple[str, ...] = ("localhost", "127.0.0.1", "[::1]"),
+) -> MCPApp:
+    server = FastMCP(
+        "homeassistant-gateway-observer",
+        instructions="Read-only Home Assistant gateway diagnostics.",
+        stateless_http=True,
+        json_response=True,
+        streamable_http_path="/",
+        transport_security=TransportSecuritySettings(allowed_hosts=list(allowed_hosts)),
+    )
+
+    @server.tool(
+        name="gateway_diagnostics",
+        description="Return bounded, read-only diagnostics for the authenticated gateway client.",
+    )
+    def gateway_diagnostics() -> dict[str, Any]:
+        token = _current_token.get()
+        if token is None:
+            return {"status": "denied", "reason": "invalid_client_token"}
+        try:
+            return asdict(diagnostics.execute(token))
+        except PermissionError as error:
+            return {"status": "denied", "reason": str(error)}
+
+    server_app = server.streamable_http_app()
+    application = BearerMCPMiddleware(server_app, authenticate)
+    return MCPApp(application=application, lifespan=server_app.router.lifespan_context)
