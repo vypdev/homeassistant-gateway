@@ -2,7 +2,7 @@
 
 FROM python:3.12-slim AS builder
 ARG GATEWAY_REPOSITORY=https://github.com/vypdev/homeassistant-gateway.git
-ARG GATEWAY_REF=63599bcbbf47add636cbf3ee92f8419821baa71b
+ARG GATEWAY_REF=9e69322bc496fc6683641aece432aff2dac3e2ef
 
 RUN apt-get update \
     && apt-get install --no-install-recommends -y git \

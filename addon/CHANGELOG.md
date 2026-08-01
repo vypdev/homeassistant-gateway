@@ -2,6 +2,11 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.1.1
+
+- Added an Ingress landing shell with gateway readiness feedback.
+- Added the first animated dark observatory visual layer.
+
 ## 0.1.0
 
 - Initial Home Assistant App packaging.

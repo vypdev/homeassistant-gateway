@@ -113,7 +113,7 @@ def create_app(
     lifespan: Any | None = None,
 ) -> FastAPI:
     """Build the HTTP adapter around already-wired application use cases."""
-    app = FastAPI(title="Home Assistant Gateway", version="0.1.0", lifespan=lifespan)
+    app = FastAPI(title="Home Assistant Gateway", version="0.1.1", lifespan=lifespan)
     sink = audit_sink or NoopAuditSink()
 
     def record_audit(request: Request, response: Response, decision: str, outcome: str) -> None:
