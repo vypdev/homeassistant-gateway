@@ -46,6 +46,26 @@ def test_missing_optional_configuration_endpoint_is_reported_as_empty() -> None:
     assert make_client(handler).configuration() == {"core": {"location_name": "Home"}, "entity_registry": [], "area_registry": []}
 
 
+def test_history_and_logbook_use_bounded_query_parameters() -> None:
+    paths: list[tuple[str, dict[str, str] | None]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        paths.append((request.url.path, dict(request.url.params)))
+        return httpx.Response(200, json=[])
+
+    client = make_client(handler)
+    assert client.services() == []
+    assert client.events() == []
+    assert client.history("light.kitchen", "2026-08-01T00:00:00Z") == []
+    assert client.logbook("light.kitchen", "2026-08-01T00:00:00Z") == []
+    assert paths == [
+        ("/core/api/services", {}),
+        ("/core/api/events", {}),
+        ("/core/api/history/period", {"filter_entity_id": "light.kitchen", "start_time": "2026-08-01T00:00:00Z"}),
+        ("/core/api/logbook", {"entity": "light.kitchen", "start_time": "2026-08-01T00:00:00Z"}),
+    ]
+
+
 def test_upstream_error_is_sanitized_and_explicit() -> None:
     client = make_client(lambda request: httpx.Response(503))
 

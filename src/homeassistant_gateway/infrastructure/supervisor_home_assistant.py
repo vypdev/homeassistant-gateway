@@ -59,12 +59,26 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
         # The stable REST contract exposes automation entities through /states.
         return [item for item in self.states() if str(item.get("entity_id", "")).startswith("automation.")]
 
+    def services(self) -> list[dict[str, Any]]:
+        return self._bounded_list(self._get_json("/services", default=[]))
+
+    def events(self) -> list[dict[str, Any]]:
+        return self._bounded_list(self._get_json("/events", default=[]))
+
+    def history(self, entity_id: str | None = None, start_time: str | None = None) -> list[dict[str, Any]]:
+        params = {key: value for key, value in {"filter_entity_id": entity_id, "start_time": start_time}.items() if value}
+        return self._bounded_list(self._get_json("/history/period", default=[], params=params))
+
+    def logbook(self, entity_id: str | None = None, start_time: str | None = None) -> list[dict[str, Any]]:
+        params = {key: value for key, value in {"entity": entity_id, "start_time": start_time}.items() if value}
+        return self._bounded_list(self._get_json("/logbook", default=[], params=params))
+
     def configuration(self) -> dict[str, Any]:
         config = self._get_json("/config", default={})
         return {"core": config, "entity_registry": self._get_json("/config/entity_registry/list", default=[]), "area_registry": self._get_json("/config/area_registry/list", default=[])}
 
-    def _get_json(self, path: str, default: Any) -> Any:
-        response = self._request(path)
+    def _get_json(self, path: str, default: Any, params: dict[str, str] | None = None) -> Any:
+        response = self._request(path, params=params)
         if response.status_code == 404:
             return default
         if response.status_code >= 400:
@@ -74,10 +88,10 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
         except ValueError as error:
             raise HomeAssistantUnavailable("home_assistant_invalid_json") from error
 
-    def _request(self, path: str) -> httpx.Response:
+    def _request(self, path: str, params: dict[str, str] | None = None) -> httpx.Response:
         try:
             with httpx.Client(headers=self._headers, timeout=self._timeout, trust_env=False, transport=self._transport) as client:
-                response = client.get(f"{self._base_url}{path}")
+                response = client.get(f"{self._base_url}{path}", params=params)
         except httpx.HTTPError as error:
             raise HomeAssistantUnavailable("home_assistant_transport_unavailable") from error
         return response

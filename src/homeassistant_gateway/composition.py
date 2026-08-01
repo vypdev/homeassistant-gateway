@@ -12,6 +12,7 @@ from homeassistant_gateway.application.clients import (
     RevokeClient,
     RotateClient,
 )
+from homeassistant_gateway.application.development import DevelopmentToolRunner
 from homeassistant_gateway.application.observer import ObserverDiagnostics
 from homeassistant_gateway.infrastructure.security.tokens import SecureTokenIssuer
 from homeassistant_gateway.infrastructure.storage.sqlite_audit import SQLiteAuditRepository
@@ -29,6 +30,7 @@ class AppSettings:
     operator_enabled: bool = False
     supervisor_token: str | None = None
     supervisor_url: str = "http://supervisor/core/api"
+    development_console_enabled: bool = True
     mcp_allowed_hosts: tuple[str, ...] = (
         "localhost",
         "127.0.0.1",
@@ -78,5 +80,7 @@ def build_app(settings: AppSettings) -> FastAPI:
         audit_reader=audit_repository,
         mcp_app=mcp_bundle.application,
         home_assistant=home_assistant,
+        development_runner=DevelopmentToolRunner(home_assistant) if home_assistant else None,
+        development_console_enabled=settings.development_console_enabled,
         lifespan=mcp_bundle.lifespan,
     )

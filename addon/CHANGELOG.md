@@ -2,6 +2,14 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.1.5
+
+- Added first-level Ingress-only Development Console.
+- Added bounded probes for inventory, states, automations, configuration, services, events, history and logbook.
+- Added `Run all` evidence with status, count, latency and sanitized payloads.
+- Added App option `development_console_enabled`.
+- Kept mutation probes approval-gated and disabled by default.
+
 ## 0.1.4
 
 - Added sanitized audit API and UI with decision filters.

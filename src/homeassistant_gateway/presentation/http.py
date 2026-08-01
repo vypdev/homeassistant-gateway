@@ -1,6 +1,7 @@
 import re
 import uuid
 from collections.abc import Awaitable, Callable
+from dataclasses import asdict
 from datetime import UTC, datetime
 from typing import Any
 
@@ -23,7 +24,15 @@ from homeassistant_gateway.application.clients import (
     RevokeClient,
     RotateClient,
 )
-from homeassistant_gateway.application.home_assistant import HomeAssistantReadPort
+from homeassistant_gateway.application.development import (
+    DevelopmentResult,
+    DevelopmentToolRunner,
+    development_catalog,
+)
+from homeassistant_gateway.application.home_assistant import (
+    HomeAssistantReadPort,
+    HomeAssistantUnavailable,
+)
 from homeassistant_gateway.domain.clients import Client
 from homeassistant_gateway.domain.policy import Decision, Profile
 from homeassistant_gateway.presentation.ui import UI_DIST, index_response
@@ -108,6 +117,30 @@ class AuditEventResponse(BaseModel):
 
 
 
+class DevelopmentOperationResponse(BaseModel):
+    name: str
+    label: str
+    description: str
+    kind: str
+    supports_entity_id: bool
+    supports_start_time: bool
+
+
+class DevelopmentRunRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: str = Field(min_length=1, max_length=64)
+    parameters: dict[str, str] = Field(default_factory=dict)
+
+
+class DevelopmentResultResponse(BaseModel):
+    status: str
+    operation: str
+    duration_ms: int
+    count: int
+    data: Any = None
+    reason: str | None = None
+
 class MCPDiscoveryResponse(BaseModel):
     server_name: str
     transport: str
@@ -140,10 +173,12 @@ def create_app(
     audit_reader: AuditReader | None = None,
     mcp_app: Any | None = None,
     home_assistant: HomeAssistantReadPort | None = None,
+    development_runner: DevelopmentToolRunner | None = None,
+    development_console_enabled: bool = True,
     lifespan: Any | None = None,
 ) -> FastAPI:
     """Build the HTTP adapter around already-wired application use cases."""
-    app = FastAPI(title="Home Assistant Gateway", version="0.1.4", lifespan=lifespan)
+    app = FastAPI(title="Home Assistant Gateway", version="0.1.5", lifespan=lifespan)
     sink = audit_sink or NoopAuditSink()
     if UI_DIST.is_dir():
         app.mount("/assets", StaticFiles(directory=UI_DIST / "assets"), name="assets")
@@ -215,6 +250,36 @@ def create_app(
             mcp="ready" if mcp_app is not None else "disabled",
             home_assistant=upstream,
         )
+
+    @app.get("/api/development/catalog")
+    def development_catalog_resource() -> dict[str, Any]:
+        upstream = "disabled" if home_assistant is None else ("ready" if home_assistant.health() else "unavailable")
+        return {
+            "enabled": development_console_enabled,
+            "upstream": upstream,
+            "operations": [asdict(item) for item in development_catalog()],
+            "mutations": {
+                "status": "disabled",
+                "reason": "operator_mutations_not_implemented",
+                "approval_required": True,
+            },
+        }
+
+    @app.post("/api/development/run")
+    def development_run_resource(request: DevelopmentRunRequest) -> dict[str, Any]:
+        if not development_console_enabled:
+            raise HTTPException(status_code=403, detail="development_console_disabled")
+        if development_runner is None:
+            raise HTTPException(status_code=503, detail="home_assistant_not_configured")
+        try:
+            if request.operation == "all":
+                results = development_runner.run_all()
+                return {"status": "ok", "operation": "all", "results": [asdict(item) for item in results]}
+            return asdict(development_runner.run(request.operation, request.parameters))
+        except HomeAssistantUnavailable as error:
+            return asdict(DevelopmentResult(status="unavailable", operation=request.operation, duration_ms=0, count=0, reason=str(error)))
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
 
     @app.get("/api/audit", response_model=list[AuditEventResponse])
     def audit_events(

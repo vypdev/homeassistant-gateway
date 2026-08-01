@@ -14,8 +14,11 @@ type Client = {
 type Ready = { status: string; storage: string; mcp: string; home_assistant: string };
 type AuditEvent = { event_id: string; occurred_at: string; request_id: string; remote_user_id: string | null; action: string; target: string; decision: string; outcome: string; status_code: number };
 type Discovery = { server_name: string; transport: string; endpoint: string; client_id: string; profile: Profile; capabilities: string[]; tools: string[] };
+type DevelopmentOperation = { name: string; label: string; description: string; kind: string; supports_entity_id: boolean; supports_start_time: boolean };
+type DevelopmentResult = { status: string; operation: string; duration_ms: number; count: number; data?: unknown; reason?: string | null };
+type DevelopmentCatalog = { enabled: boolean; upstream: string; operations: DevelopmentOperation[]; mutations: { status: string; reason: string; approval_required: boolean } };
 
-type View = 'overview' | 'clients' | 'policy' | 'mcp' | 'audit';
+type View = 'overview' | 'clients' | 'policy' | 'mcp' | 'audit' | 'development';
 
 const api = async <T>(path: string, init?: RequestInit): Promise<T> => {
   const response = await fetch(new URL(`./api${path}`, document.baseURI), {
@@ -39,6 +42,7 @@ export class GatewayApp extends LitElement {
     issuedToken: { state: true },
     discovery: { state: true },
     audit: { state: true },
+    development: { state: true },
   };
 
   @property({ type: String }) view: View = 'overview';
@@ -49,6 +53,11 @@ export class GatewayApp extends LitElement {
   @state() issuedToken = '';
   @state() discovery: Discovery | null = null;
   @state() audit: AuditEvent[] = [];
+  @state() development: DevelopmentCatalog | null = null;
+  @state() developmentResults: DevelopmentResult[] = [];
+  @state() developmentOutput: unknown = null;
+  @state() developmentEntity = '';
+  @state() developmentStartTime = '';
 
   static styles = css`
     :host { display: block; color: #e7f0fb; min-height: 100vh; font: 14px/1.5 Inter, ui-sans-serif, system-ui, sans-serif; }
@@ -105,6 +114,11 @@ export class GatewayApp extends LitElement {
     .modal-backdrop { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; padding: 20px; background: #020812aa; backdrop-filter: blur(6px); }
     .modal { width: min(560px, 100%); border: 1px solid #3b7796; border-radius: 18px; background: #0b1b2c; padding: 22px; box-shadow: 0 30px 100px #0009; }
     .empty { padding: 28px 10px; text-align: center; color: #8ea5bd; }
+    .dev-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 14px; }
+    .dev-output { max-height: 420px; overflow: auto; white-space: pre-wrap; word-break: break-word; border: 1px solid #23415e; border-radius: 10px; padding: 14px; background: #06101b; color: #b8ecff; font: 12px/1.5 "JetBrains Mono", ui-monospace, monospace; }
+    .result-list { display: grid; gap: 8px; margin-top: 14px; }
+    .result-row { display: flex; justify-content: space-between; gap: 10px; align-items: center; border: 1px solid #1b3550; border-radius: 9px; padding: 9px 10px; }
+    .blocked { border-color: #805d35; background: #3a281233; }
     @keyframes drift { from { transform: translate3d(-1%, -1%, 0) scale(1); } to { transform: translate3d(2%, 2%, 0) scale(1.04); } }
     @media (max-width: 1000px) { .cards { grid-template-columns: repeat(2, 1fr); } .split { grid-template-columns: 1fr; } }
     @media (max-width: 720px) { .layout { width: min(100% - 24px, 600px); display: block; padding-top: 12px; } aside { height: auto; position: static; margin-bottom: 18px; } nav { grid-template-columns: repeat(4, 1fr); } nav button { text-align: center; padding: 9px 4px; font-size: 12px; } .side-foot { display: none; } .cards { grid-template-columns: 1fr 1fr; } .topline { display: block; } .status-pill { margin-top: 16px; } }
@@ -115,7 +129,7 @@ export class GatewayApp extends LitElement {
 
   async refresh() {
     this.busy = true; this.error = '';
-    try { [this.ready, this.clients, this.audit] = await Promise.all([api<Ready>('/../ready'), api<Client[]>('/clients'), api<AuditEvent[]>('/audit')]); }
+    try { [this.ready, this.clients, this.audit, this.development] = await Promise.all([api<Ready>('/../ready'), api<Client[]>('/clients'), api<AuditEvent[]>('/audit'), api<DevelopmentCatalog>('/development/catalog')]); }
     catch (error) { this.error = error instanceof Error ? error.message : 'Unable to load gateway state'; }
     finally { this.busy = false; }
   }
@@ -158,32 +172,76 @@ export class GatewayApp extends LitElement {
     finally { this.busy = false; }
   }
 
+  async runDevelopment(operation: string) {
+    this.busy = true; this.error = '';
+    const parameters: Record<string, string> = {};
+    const definition = this.development?.operations.find((item) => item.name === operation);
+    if (definition?.supports_entity_id && this.developmentEntity) parameters.entity_id = this.developmentEntity;
+    if (definition?.supports_start_time && this.developmentStartTime) parameters.start_time = this.developmentStartTime;
+    try {
+      const result = await api<DevelopmentResult>('/development/run', { method: 'POST', body: JSON.stringify({ operation, parameters }) });
+      this.developmentResults = [result]; this.developmentOutput = result.data ?? result;
+    } catch (error) { this.error = error instanceof Error ? error.message : 'Unable to run development probe'; }
+    finally { this.busy = false; }
+  }
+
+  async runAllDevelopment() {
+    this.busy = true; this.error = '';
+    try {
+      const result = await api<{ status: string; operation: string; results: DevelopmentResult[] }>('/development/run', { method: 'POST', body: JSON.stringify({ operation: 'all', parameters: {} }) });
+      this.developmentResults = result.results; this.developmentOutput = result.results;
+    } catch (error) { this.error = error instanceof Error ? error.message : 'Unable to run development probes'; }
+    finally { this.busy = false; }
+  }
+
   render() {
     const active = this.view;
     return html`<div class="shell"><div class="grid"></div><div class="layout">
       <aside>
         <div class="brand"><div class="brand-mark">⌁</div><div><strong>Gateway</strong><small> control plane</small></div></div>
         <nav aria-label="Gateway navigation">
-          ${this.nav('overview', '◈', 'Overview')}${this.nav('clients', '◎', 'Clients')}${this.nav('policy', '◇', 'Policy')}${this.nav('mcp', '⌁', 'MCP')}${this.nav('audit', '◌', 'Audit')}
+          ${this.nav('overview', '◈', 'Overview')}${this.nav('development', '⚗', 'Dev Console')}${this.nav('clients', '◎', 'Clients')}${this.nav('policy', '◇', 'Policy')}${this.nav('mcp', '⌁', 'MCP')}${this.nav('audit', '◌', 'Audit')}
         </nav>
         <div class="side-foot"><div class="ok">● observer-first</div><div>Operator capabilities disabled</div></div>
       </aside>
       <main>
         <div class="topline"><div><div class="eyebrow">Home Assistant App · MCP Gateway</div><h1>${this.pageTitle()}</h1><p>${this.subtitle()}</p></div><div class="status-pill ${this.ready?.status === 'ready' ? '' : 'warn'}"><span class="dot"></span>${this.ready?.status === 'ready' ? 'Gateway ready' : 'Checking gateway'}</div></div>
         ${this.error ? html`<div class="alert" role="alert">${this.error}</div>` : ''}
-        ${active === 'overview' ? this.overview() : active === 'clients' ? this.clientsView() : active === 'policy' ? this.policyView() : active === 'mcp' ? this.mcpView() : this.auditView()}
+        ${active === 'overview' ? this.overview() : active === 'development' ? this.developmentView() : active === 'clients' ? this.clientsView() : active === 'policy' ? this.policyView() : active === 'mcp' ? this.mcpView() : this.auditView()}
       </main>
     </div>${this.issuedToken ? this.tokenModal() : ''}</div>`;
   }
 
   nav(view: View, icon: string, label: string) { return html`<button class=${this.view === view ? 'active' : ''} @click=${() => this.setView(view)}><span aria-hidden="true">${icon}</span> ${label}</button>`; }
-  pageTitle() { return ({ overview: 'Secure gateway control plane.', clients: 'Clients & tokens', policy: 'Profiles & policy', mcp: 'MCP transport', audit: 'Sanitized audit trail' } as Record<View, string>)[this.view]; }
-  subtitle() { return ({ overview: 'A quiet observatory for identity, readiness and read-only access.', clients: 'Issue independent credentials and revoke them without exposing stored secrets.', policy: 'Review the capability boundaries enforced before any MCP operation.', mcp: 'Inspect the authenticated Streamable HTTP surface exposed to observer clients.', audit: 'Trace decisions and outcomes without exposing request secrets.' } as Record<View, string>)[this.view]; }
+  pageTitle() { return ({ overview: 'Secure gateway control plane.', development: 'Development Console', clients: 'Clients & tokens', policy: 'Profiles & policy', mcp: 'MCP transport', audit: 'Sanitized audit trail' } as Record<View, string>)[this.view]; }
+  subtitle() { return ({ overview: 'A quiet observatory for identity, readiness and read-only access.', development: 'Run every observer probe internally and see exactly where retrieval succeeds or fails.', clients: 'Issue independent credentials and revoke them without exposing stored secrets.', policy: 'Review the capability boundaries enforced before any MCP operation.', mcp: 'Inspect the authenticated Streamable HTTP surface exposed to observer clients.', audit: 'Trace decisions and outcomes without exposing request secrets.' } as Record<View, string>)[this.view]; }
 
   overview() { const active = this.clients.filter((client) => client.status === 'active').length; return html`<section class="cards"><div class="card"><span class="card-label">Storage</span><strong class="metric ok">${this.ready?.storage ?? '—'}</strong><p>Private SQLite state</p></div><div class="card"><span class="card-label">Home Assistant</span><strong class="metric ${this.ready?.home_assistant === 'ready' ? 'ok' : 'warn'}">${this.ready?.home_assistant ?? '—'}</strong><p>Supervisor upstream</p></div><div class="card"><span class="card-label">Active clients</span><strong class="metric">${active}</strong><p>Bearer identities</p></div><div class="card"><span class="card-label">Audit events</span><strong class="metric">${this.audit.length}</strong><p>Sanitized records</p></div></section><div class="split"><div class="card wide"><h2>System posture</h2><p>All management requests are protected by Supervisor Ingress identity. Client tokens are hashed at rest and displayed only once during issuance.</p><div style="margin-top:22px"><span class="tag">Ingress trusted identity</span><span class="tag">SHA-256 token digests</span><span class="tag">read-only MCP</span></div></div><div class="card wide"><h2>Quick actions</h2><div class="form-actions" style="justify-content:flex-start; margin-top:24px"><button class="primary" @click=${() => this.setView('clients')}>Manage clients</button><button class="secondary" @click=${() => this.setView('audit')}>View audit</button></div></div></div>`; }
 
+  developmentView() {
+    const catalog = this.development;
+    return html`<div class="dev-grid">
+      <div class="card">
+        <div class="toolbar"><div><h2>Observer probes</h2><p>Internal Ingress-only verification surface.</p></div><button class="primary" @click=${() => void this.runAllDevelopment()} ?disabled=${this.busy || !catalog?.enabled}>Run all</button></div>
+        <p>Upstream: <span class=${catalog?.upstream === 'ready' ? 'ok' : 'warn'}>${catalog?.upstream ?? 'loading'}</span>. Each probe uses the same read adapter that MCP clients use.</p>
+        <div class="form" style="margin-top:16px">
+          <label>Entity filter<input .value=${this.developmentEntity} @input=${(event: Event) => { this.developmentEntity = (event.target as HTMLInputElement).value; }} placeholder="light.kitchen (optional)" /></label>
+          <label>Start time<input .value=${this.developmentStartTime} @input=${(event: Event) => { this.developmentStartTime = (event.target as HTMLInputElement).value; }} placeholder="2026-08-01T00:00:00Z (optional)" /></label>
+        </div>
+        <div class="result-list">${catalog?.operations.map((operation) => html`<div class="result-row"><div><strong>${operation.label}</strong><br><span class="muted">${operation.description}</span></div><button class="secondary" @click=${() => void this.runDevelopment(operation.name)} ?disabled=${this.busy || !catalog.enabled}>Run</button></div>`)}</div>
+      </div>
+      <div class="card">
+        <div class="toolbar"><div><h2>Execution evidence</h2><p>Count, latency, status and sanitized payload.</p></div>${this.developmentResults.length ? html`<span class="tag">${this.developmentResults.length} result(s)</span>` : ''}</div>
+        ${this.developmentResults.length ? html`<div class="result-list">${this.developmentResults.map((result) => html`<div class="result-row"><span><strong>${result.operation}</strong> <span class=${result.status === 'ok' ? 'ok' : 'bad'}>${result.status}</span></span><span class="mono">${result.count} items · ${result.duration_ms} ms</span></div>`)}</div><pre class="dev-output">${JSON.stringify(this.developmentOutput, null, 2)}</pre>` : html`<div class="empty">Run a probe to inspect the exact adapter response.</div>`}
+        <div class="card blocked" style="margin-top:14px"><h3>Mutation probes</h3><p><span class="warn">Blocked by design.</span> Configuration writes, automation changes and service calls require the future approval/idempotency/rollback flow.</p><div style="margin-top:10px"><span class="tag">approval required</span><span class="tag">operator disabled</span><span class="tag">no MCP mutation</span></div></div>
+      </div>
+    </div>`;
+  }
+
   clientsView() { return html`<div class="split"><div class="card"><div class="toolbar"><div><h2>Registered clients</h2><p>Tokens never appear in this list.</p></div><button class="secondary" @click=${() => void this.refresh()} ?disabled=${this.busy}>Refresh</button></div>${this.clients.length ? html`<div class="table-wrap"><table><thead><tr><th>Identity</th><th>Profile</th><th>Capabilities</th><th>Status</th><th></th></tr></thead><tbody>${this.clients.map((client) => html`<tr><td><strong>${client.display_name}</strong><br><span class="mono">${client.client_id}</span></td><td><span class="tag">${client.profile}</span></td><td>${client.capabilities.map((capability) => html`<span class="tag">${capability}</span>`)}</td><td class=${client.status === 'active' ? 'ok' : 'bad'}>${client.status}</td><td>${client.status === 'active' ? html`<button class="danger" @click=${() => void this.revoke(client.client_id)} ?disabled=${this.busy}>Revoke</button><button class="secondary" @click=${() => void this.rotate(client.client_id)} ?disabled=${this.busy}>Rotate</button>` : ''}</td></tr>`)}</tbody></table></div>` : html`<div class="empty">No clients issued yet.</div>`}</div><div class="card"><h2>Issue observer client</h2><p style="margin-bottom:16px">The token will be shown once after creation.</p><form class="form" @submit=${this.createClient}><label>Client ID<input name="client_id" required maxlength="128" placeholder="nido-observer" /></label><label>Display name<input name="display_name" required maxlength="256" placeholder="Nido house monitor" /></label><label>Profile<select name="profile"><option value="observer">observer · read-only</option><option value="operator" disabled>operator · disabled</option></select></label><label>Capabilities<input name="capabilities" value="ha.read.diagnostics" placeholder="ha.read.diagnostics, ha.read.states" /><small class="muted">Comma-separated capability names.</small></label><div class="form-actions"><button class="primary" ?disabled=${this.busy}>Issue client</button></div></form></div></div>`; }
+
   auditView() { return html`<div class="card"><div class="toolbar"><div><h2>Sanitized audit events</h2><p>Request bodies, credentials, tokens and digests are never stored here.</p></div><div><select @change=${(event: Event) => this.loadAudit((event.target as HTMLSelectElement).value)}><option value="">All decisions</option><option value="allowed">Allowed</option><option value="denied">Denied</option><option value="approval_required">Approval required</option></select></div></div>${this.audit.length ? html`<div class="table-wrap"><table><thead><tr><th>Time</th><th>Action</th><th>Target</th><th>Decision</th><th>Outcome</th><th>Request ID</th></tr></thead><tbody>${this.audit.map((event) => html`<tr><td class="mono">${new Date(event.occurred_at).toLocaleString()}</td><td>${event.action}</td><td class="mono">${event.target}</td><td class=${event.decision === 'allowed' ? 'ok' : event.decision === 'denied' ? 'bad' : 'warn'}>${event.decision}</td><td>${event.outcome} · ${event.status_code}</td><td class="mono">${event.request_id}</td></tr>`)}</tbody></table></div>` : html`<div class="empty">No audit events match the selected filter.</div>`}</div>`; }
+
   async loadAudit(decision: string) { this.busy = true; try { this.audit = await api<AuditEvent[]>(`/audit?limit=100${decision ? `&decision=${encodeURIComponent(decision)}` : ''}`); } catch (error) { this.error = error instanceof Error ? error.message : 'Unable to load audit'; } finally { this.busy = false; } }
   policyView() { return html`<div class="split"><div class="card"><h2>Policy matrix</h2><p>Observer clients may read granted capabilities. Mutations remain denied.</p><div style="margin-top:20px"><div class="tag">read capability → allowed</div><div class="tag">missing capability → denied</div><div class="tag">observer mutation → denied</div><div class="tag">operator → globally disabled</div></div></div><div class="card"><h2>Evaluate a request</h2><form class="form" @submit=${this.evaluatePolicy}><label>Client<select name="client_id">${this.clients.map((client) => html`<option value=${client.client_id}>${client.display_name} · ${client.client_id}</option>`)}</select></label><label>Capability<input name="capability" value="ha.read.diagnostics" required /></label><label><span><input name="mutation" type="checkbox" style="width:auto; margin-right:7px" /> mutation request</span></label><div class="form-actions"><button class="primary" ?disabled=${this.busy}>Evaluate</button></div></form></div></div>`; }
   async evaluatePolicy(event: Event) { event.preventDefault(); const data = new FormData(event.target as HTMLFormElement); this.busy = true; try { const result = await api<{ decision: string; reason: string }>('/policy/evaluate', { method: 'POST', body: JSON.stringify({ client_id: data.get('client_id'), capability: data.get('capability'), mutation: data.has('mutation') }) }); window.alert(`${result.decision}: ${result.reason}`); } catch (error) { this.error = error instanceof Error ? error.message : 'Unable to evaluate policy'; } finally { this.busy = false; } }

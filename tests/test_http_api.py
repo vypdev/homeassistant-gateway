@@ -13,6 +13,7 @@ from homeassistant_gateway.application.clients import (
     RevokeClient,
     RotateClient,
 )
+from homeassistant_gateway.application.development import DevelopmentToolRunner
 from homeassistant_gateway.infrastructure.security.tokens import SecureTokenIssuer
 from homeassistant_gateway.presentation.http import create_app
 
@@ -49,7 +50,35 @@ class AuditRecorder:
         return events[:limit]
 
 
-def make_app(audit_sink=None):
+class FakeHomeAssistant:
+    def health(self):
+        return True
+
+    def inventory(self):
+        return {"entities": [{"entity_id": "light.kitchen"}], "services": [], "counts": {"entities": 1, "services": 0}}
+
+    def states(self, entity_id=None):
+        return [{"entity_id": entity_id or "light.kitchen", "state": "on"}]
+
+    def automations(self):
+        return [{"entity_id": "automation.test", "state": "on"}]
+
+    def configuration(self):
+        return {"core": {}, "entity_registry": [], "area_registry": []}
+
+    def services(self):
+        return []
+
+    def events(self):
+        return []
+
+    def history(self, entity_id=None, start_time=None):
+        return []
+
+    def logbook(self, entity_id=None, start_time=None):
+        return []
+
+def make_app(audit_sink=None, home_assistant=None, development_console_enabled=True):
     repository = InMemoryClientRepository()
     tokens = SecureTokenIssuer()
     clock = lambda: datetime(2026, 7, 31, tzinfo=UTC)
@@ -62,6 +91,9 @@ def make_app(audit_sink=None):
         authorize_request=AuthorizeRequest(repository, operator_enabled=False),
         audit_sink=audit_sink,
         audit_reader=audit_sink,
+        home_assistant=home_assistant,
+        development_runner=DevelopmentToolRunner(home_assistant) if home_assistant else None,
+        development_console_enabled=development_console_enabled,
     )
 
 
@@ -76,6 +108,38 @@ def request(app, method: str, url: str, json=None, headers=None) -> httpx.Respon
 
 def ingress_headers() -> dict[str, str]:
     return {"X-Remote-User-Id": "test-user"}
+
+
+def test_development_catalog_requires_ingress_and_lists_probes() -> None:
+    app = make_app(home_assistant=FakeHomeAssistant())
+    assert request(app, "GET", "/api/development/catalog").status_code == 401
+    response = request(app, "GET", "/api/development/catalog", headers=ingress_headers())
+    assert response.status_code == 200
+    assert response.json()["enabled"] is True
+    assert len(response.json()["operations"]) == 8
+    assert response.json()["mutations"]["status"] == "disabled"
+
+
+def test_development_run_all_returns_one_result_per_probe() -> None:
+    response = request(
+        make_app(home_assistant=FakeHomeAssistant()),
+        "POST",
+        "/api/development/run",
+        headers=ingress_headers(),
+        json={"operation": "all", "parameters": {}},
+    )
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ok"
+    assert len(payload["results"]) == 8
+    assert {item["status"] for item in payload["results"]} == {"ok"}
+
+
+def test_development_console_can_be_disabled_without_affecting_health() -> None:
+    app = make_app(home_assistant=FakeHomeAssistant(), development_console_enabled=False)
+    response = request(app, "POST", "/api/development/run", headers=ingress_headers(), json={"operation": "states"})
+    assert response.status_code == 403
+    assert request(app, "GET", "/health").status_code == 200
 
 
 def test_health_endpoint_is_publicly_safe() -> None:

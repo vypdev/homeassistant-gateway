@@ -9,6 +9,7 @@ from homeassistant_gateway.composition import AppSettings, build_app
 def load_settings() -> AppSettings:
     """Load process settings at the executable boundary, never during import."""
     operator_enabled = os.getenv("GATEWAY_OPERATOR_ENABLED", "false").lower() == "true"
+    development_console_enabled = os.getenv("GATEWAY_DEVELOPMENT_CONSOLE_ENABLED", "true").lower() == "true"
     data_dir = Path(os.getenv("GATEWAY_DATA_DIR", "/data"))
     allowed_hosts = tuple(
         host.strip()
@@ -20,6 +21,7 @@ def load_settings() -> AppSettings:
         operator_enabled=operator_enabled,
         supervisor_token=os.getenv("SUPERVISOR_TOKEN") or None,
         supervisor_url=os.getenv("GATEWAY_SUPERVISOR_URL", "http://supervisor/core/api"),
+        development_console_enabled=development_console_enabled,
         mcp_allowed_hosts=allowed_hosts or AppSettings(data_dir).mcp_allowed_hosts,
     )
 

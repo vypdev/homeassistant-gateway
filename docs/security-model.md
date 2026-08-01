@@ -6,6 +6,10 @@ The gateway protects Home Assistant from compromised or over-privileged MCP clie
 
 Assume an MCP client can produce malicious or mistaken tool arguments. The gateway must enforce policy independently of model instructions.
 
+## Internal development verification
+
+The App's Ingress UI exposes `/api/development/catalog` and `/api/development/run` only behind Supervisor Ingress identity. These routes execute the same observer read port as MCP, never accept bearer client tokens, and never perform mutations. `operation=all` runs every bounded read probe and returns per-probe status, count, duration, and sanitized data. Configuration writes, automation edits, service calls, and other operator actions remain approval-gated and disabled.
+
 ## Profiles
 
 ### Observer (default)

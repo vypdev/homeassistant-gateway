@@ -9,7 +9,21 @@ The project is designed to run **inside Home Assistant** as a custom integration
 
 The gateway is intended to be consumed by OpenClaw and Hermes through MCP without exposing Home Assistant credentials to either client.
 
-## Status
+## Development Console
+
+The Ingress UI includes a first-level **Development Console**. It is an internal verification surface, not an MCP endpoint. It runs the same bounded read adapter used by observer tools and reports, per probe:
+
+- operation and upstream status;
+- item count;
+- elapsed time;
+- sanitized payload or explicit failure category;
+- aggregate results from `Run all`.
+
+The current probes cover inventory, states, automations, configuration/registries, services, events, history, and logbook. Entity and start-time filters are available where Home Assistant supports them.
+
+Mutation probes are shown as blocked and require the separate operator design: target allowlist, validated diff, approval token, idempotency key, audit before/after, and rollback. The console never enables MCP mutations by itself.
+
+Disable it with the App option `development_console_enabled: false` or `GATEWAY_DEVELOPMENT_CONSOLE_ENABLED=false`.
 
 The Supervisor App, Ingress UI, observer MCP transport, client lifecycle, audit trail and read-only Home Assistant adapter are implemented. No operator mutation is enabled yet; operator capabilities remain disabled by default and are not exposed as executable tools.
 
