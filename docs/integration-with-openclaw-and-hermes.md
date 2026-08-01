@@ -18,19 +18,35 @@ The operator client should be used only for targeted workflows and should suppor
 - correlation IDs;
 - emergency revocation.
 
-## Tool naming
+## Observer MCP tools
 
-Tool names should be stable and capability-oriented, for example:
+The published observer server registers these read-only tools:
 
 ```text
-homeassistant_gateway__ha_inventory
-homeassistant_gateway__ha_states
-homeassistant_gateway__ha_automations
-homeassistant_gateway__ha_configuration
-homeassistant_gateway__ha_analysis_context
+gateway_diagnostics
+ha_inventory
+ha_states
+ha_automations
+ha_configuration
+ha_history
+ha_logbook
+ha_services
+ha_events
+ha_devices
+ha_areas
+ha_floors
+ha_labels
+ha_entity_registry
+ha_scripts
+ha_scenes
+ha_helpers
+ha_integrations
 ```
 
-Operator tools must have distinct names or explicit capability metadata so a client cannot mistake a mutating tool for a read-only one.
+All tools use the same application read port and bounded Home Assistant adapter. `ha_history` and `ha_logbook` accept optional `entity_id` and `start_time`; when no entity is supplied, the adapter selects one real entity for a bounded reachability probe.
+
+Operator tools are not registered in this release. Operator preview is available only through the Ingress Development Console and never executes a mutation.
+
 
 ## Rollout
 
