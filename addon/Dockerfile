@@ -5,14 +5,14 @@ ARG GATEWAY_REPOSITORY=https://github.com/vypdev/homeassistant-gateway.git
 ARG GATEWAY_REF=9e69322bc496fc6683641aece432aff2dac3e2ef
 
 RUN apt-get update \
-    && apt-get install --no-install-recommends -y git \
+    && apt-get install --no-install-recommends -y build-essential git libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 RUN git init /src \
     && cd /src \
     && git remote add origin "${GATEWAY_REPOSITORY}" \
     && git fetch --depth 1 origin "${GATEWAY_REF}" \
     && git checkout FETCH_HEAD
-RUN python -m pip wheel --no-cache-dir --no-deps --wheel-dir /wheels /src
+RUN python -m pip wheel --no-cache-dir --wheel-dir /wheels /src
 
 FROM python:3.12-slim
 ENV PYTHONUNBUFFERED=1 \
@@ -23,7 +23,7 @@ ENV PYTHONUNBUFFERED=1 \
     GATEWAY_OPERATOR_ENABLED=false
 
 COPY --from=builder /wheels /wheels
-RUN python -m pip install --no-cache-dir /wheels/*.whl \
+RUN python -m pip install --no-cache-dir --no-index --find-links=/wheels /wheels/*.whl \
     && rm -rf /wheels
 COPY run.sh /run.sh
 RUN chmod 0755 /run.sh
