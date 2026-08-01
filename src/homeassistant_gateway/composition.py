@@ -17,6 +17,9 @@ from homeassistant_gateway.application.observer import ObserverDiagnostics
 from homeassistant_gateway.infrastructure.security.tokens import SecureTokenIssuer
 from homeassistant_gateway.infrastructure.storage.sqlite_audit import SQLiteAuditRepository
 from homeassistant_gateway.infrastructure.storage.sqlite_clients import SQLiteClientRepository
+from homeassistant_gateway.infrastructure.storage.sqlite_development import (
+    SQLiteDevelopmentReportStore,
+)
 from homeassistant_gateway.infrastructure.supervisor_home_assistant import (
     SupervisorHomeAssistantClient,
 )
@@ -45,6 +48,7 @@ def build_app(settings: AppSettings) -> FastAPI:
     database = settings.data_dir / "gateway.sqlite3"
     repository = SQLiteClientRepository(database)
     audit_repository = SQLiteAuditRepository(database)
+    development_report_store = SQLiteDevelopmentReportStore(database)
     token_issuer = SecureTokenIssuer()
     clock = lambda: datetime.now(UTC)
 
@@ -81,6 +85,7 @@ def build_app(settings: AppSettings) -> FastAPI:
         mcp_app=mcp_bundle.application,
         home_assistant=home_assistant,
         development_runner=DevelopmentToolRunner(home_assistant) if home_assistant else None,
+        development_report_store=development_report_store,
         development_console_enabled=settings.development_console_enabled,
         lifespan=mcp_bundle.lifespan,
     )

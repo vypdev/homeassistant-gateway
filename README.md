@@ -19,7 +19,9 @@ The Ingress UI includes a first-level **Development Console**. It is an internal
 - sanitized payload or explicit failure category;
 - aggregate results from `Run all`.
 
-The current probes cover inventory, states, automations, configuration/registries, services, events, history, and logbook. Entity and start-time filters are available where Home Assistant supports them.
+The current probes cover inventory, states, automations, configuration/registries, services, events, history, logbook, devices, areas, floors, labels, entity registry, scripts, scenes, helpers and derived integrations. Four packs are available: Basic Inventory, Automation Diagnostics, MCP Readiness and Data Completeness. Entity and start-time filters are available where Home Assistant supports them.
+
+Each execution stores sanitized evidence in the private SQLite database with a schema fingerprint, duration, aggregate count and comparison against the previous run. Historical evidence is visible in the console without exposing credentials, headers, query strings or request bodies.
 
 Mutation probes are shown as blocked and require the separate operator design: target allowlist, validated diff, approval token, idempotency key, audit before/after, and rollback. The console never enables MCP mutations by itself.
 

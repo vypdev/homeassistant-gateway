@@ -17,6 +17,7 @@ type Discovery = { server_name: string; transport: string; endpoint: string; cli
 type DevelopmentOperation = { name: string; label: string; description: string; kind: string; supports_entity_id: boolean; supports_start_time: boolean };
 type DevelopmentPack = { name: string; label: string; description: string; operations: string[] };
 type DevelopmentResult = { status: string; operation: string; duration_ms: number; count: number; data?: unknown; reason?: string | null };
+type DevelopmentReport = { report_id: string; occurred_at: string; operation: string; status: string; duration_ms: number; total_count: number; schema_fingerprint: string; comparison?: { previous_report_id: string; count_delta: number; schema_changed: boolean } | null };
 type DevelopmentCatalog = { enabled: boolean; upstream: string; operations: DevelopmentOperation[]; packs: DevelopmentPack[]; mutations: { status: string; reason: string; approval_required: boolean } };
 
 type View = 'overview' | 'clients' | 'policy' | 'mcp' | 'audit' | 'development';
@@ -44,6 +45,7 @@ export class GatewayApp extends LitElement {
     discovery: { state: true },
     audit: { state: true },
     development: { state: true },
+    developmentReports: { state: true },
   };
 
   @property({ type: String }) view: View = 'overview';
@@ -55,6 +57,7 @@ export class GatewayApp extends LitElement {
   @state() discovery: Discovery | null = null;
   @state() audit: AuditEvent[] = [];
   @state() development: DevelopmentCatalog | null = null;
+  @state() developmentReports: DevelopmentReport[] = [];
   @state() developmentResults: DevelopmentResult[] = [];
   @state() developmentOutput: unknown = null;
   @state() developmentEntity = '';
@@ -133,7 +136,7 @@ export class GatewayApp extends LitElement {
 
   async refresh() {
     this.busy = true; this.error = '';
-    try { [this.ready, this.clients, this.audit, this.development] = await Promise.all([api<Ready>('/../ready'), api<Client[]>('/clients'), api<AuditEvent[]>('/audit'), api<DevelopmentCatalog>('/development/catalog')]); }
+    try { [this.ready, this.clients, this.audit, this.development, this.developmentReports] = await Promise.all([api<Ready>('/../ready'), api<Client[]>('/clients'), api<AuditEvent[]>('/audit'), api<DevelopmentCatalog>('/development/catalog'), api<DevelopmentReport[]>('/development/reports')]); }
     catch (error) { this.error = error instanceof Error ? error.message : 'Unable to load gateway state'; }
     finally { this.busy = false; }
   }
@@ -176,6 +179,10 @@ export class GatewayApp extends LitElement {
     finally { this.busy = false; }
   }
 
+  async loadDevelopmentReports() {
+    try { this.developmentReports = await api<DevelopmentReport[]>('/development/reports'); } catch { /* execution result remains visible */ }
+  }
+
   async runDevelopment(operation: string) {
     this.busy = true; this.error = '';
     const parameters: Record<string, string> = {};
@@ -184,7 +191,7 @@ export class GatewayApp extends LitElement {
     if (definition?.supports_start_time && this.developmentStartTime) parameters.start_time = this.developmentStartTime;
     try {
       const result = await api<DevelopmentResult>('/development/run', { method: 'POST', body: JSON.stringify({ operation, parameters }) });
-      this.developmentResults = [result]; this.developmentOutput = result.data ?? result;
+      this.developmentResults = [result]; this.developmentOutput = result.data ?? result; await this.loadDevelopmentReports();
     } catch (error) { this.error = error instanceof Error ? error.message : 'Unable to run development probe'; }
     finally { this.busy = false; }
   }
@@ -193,7 +200,7 @@ export class GatewayApp extends LitElement {
     this.busy = true; this.error = '';
     try {
       const result = await api<{ status: string; operation: string; results: DevelopmentResult[] }>('/development/run', { method: 'POST', body: JSON.stringify({ operation: 'all', parameters: {} }) });
-      this.developmentResults = result.results; this.developmentOutput = result.results;
+      this.developmentResults = result.results; this.developmentOutput = result.results; await this.loadDevelopmentReports();
     } catch (error) { this.error = error instanceof Error ? error.message : 'Unable to run development probes'; }
     finally { this.busy = false; }
   }
@@ -202,7 +209,7 @@ export class GatewayApp extends LitElement {
     this.busy = true; this.error = '';
     try {
       const result = await api<{ status: string; operation: string; results: DevelopmentResult[] }>('/development/run', { method: 'POST', body: JSON.stringify({ operation: `pack:${pack}`, parameters: {} }) });
-      this.developmentResults = result.results; this.developmentOutput = result.results;
+      this.developmentResults = result.results; this.developmentOutput = result.results; await this.loadDevelopmentReports();
     } catch (error) { this.error = error instanceof Error ? error.message : 'Unable to run development pack'; }
     finally { this.busy = false; }
   }
@@ -247,6 +254,7 @@ export class GatewayApp extends LitElement {
       <div class="card">
         <div class="toolbar"><div><h2>Execution evidence</h2><p>Count, latency, status and sanitized payload.</p></div>${this.developmentResults.length ? html`<span class="tag">${this.developmentResults.length} result(s)</span>` : ''}</div>
         ${this.developmentResults.length ? html`<div class="result-list">${this.developmentResults.map((result) => html`<div class="result-row"><span><strong>${result.operation}</strong> <span class=${result.status === 'ok' ? 'ok' : 'bad'}>${result.status}</span></span><span class="mono">${result.count} items · ${result.duration_ms} ms</span></div>`)}</div><pre class="dev-output">${JSON.stringify(this.developmentOutput, null, 2)}</pre>` : html`<div class="empty">Run a probe to inspect the exact adapter response.</div>`}
+        ${this.developmentReports.length ? html`<h3 style="margin-top:18px">Historical evidence</h3><div class="result-list">${this.developmentReports.map((report) => html`<div class="result-row"><span><strong>${report.operation}</strong> <span class=${report.status === 'ok' ? 'ok' : 'warn'}>${report.status}</span><br><span class="muted">${new Date(report.occurred_at).toLocaleString()} · ${report.schema_fingerprint.slice(0, 12)}</span></span><span class="mono">${report.total_count} items${report.comparison ? ` · Δ ${report.comparison.count_delta}` : ''}${report.comparison?.schema_changed ? ' · schema changed' : ''}</span></div>`)}</div>` : ''}
         <div class="card blocked" style="margin-top:14px"><h3>Mutation probes</h3><p><span class="warn">Blocked by design.</span> Configuration writes, automation changes and service calls require the future approval/idempotency/rollback flow.</p><div style="margin-top:10px"><span class="tag">approval required</span><span class="tag">operator disabled</span><span class="tag">no MCP mutation</span></div></div>
       </div>
     </div>`;

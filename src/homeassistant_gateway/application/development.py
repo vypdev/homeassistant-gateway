@@ -1,9 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+import json
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from hashlib import sha256
 from time import monotonic
-from typing import Any
+from typing import Any, Protocol
 
 from homeassistant_gateway.application.home_assistant import (
     HomeAssistantReadPort,
@@ -29,6 +32,42 @@ class DevelopmentResult:
     count: int
     data: Any = None
     reason: str | None = None
+
+
+@dataclass(frozen=True)
+class DevelopmentReport:
+    report_id: str
+    occurred_at: str
+    operation: str
+    status: str
+    duration_ms: int
+    total_count: int
+    schema_fingerprint: str
+    results: tuple[DevelopmentResult, ...]
+    comparison: dict[str, Any] | None = None
+
+
+class DevelopmentReportStore(Protocol):
+    def save(self, report: DevelopmentReport) -> None: ...
+
+    def list(self, limit: int = 20) -> list[DevelopmentReport]: ...
+
+
+def build_development_report(operation: str, results: Iterable[DevelopmentResult], previous: DevelopmentReport | None = None) -> DevelopmentReport:
+    items = tuple(results)
+    schema_source = [{"operation": item.operation, "status": item.status, "data": item.data} for item in items]
+    fingerprint = sha256(json.dumps(schema_source, sort_keys=True, default=str, separators=(",", ":")).encode()).hexdigest()
+    total_count = sum(item.count for item in items)
+    status = "ok" if all(item.status == "ok" for item in items) else "partial"
+    comparison = None
+    if previous is not None:
+        comparison = {
+            "previous_report_id": previous.report_id,
+            "count_delta": total_count - previous.total_count,
+            "schema_changed": fingerprint != previous.schema_fingerprint,
+        }
+    report_id = sha256(f"{operation}:{datetime.now(UTC).isoformat()}:{fingerprint}".encode()).hexdigest()[:24]
+    return DevelopmentReport(report_id, datetime.now(UTC).isoformat(), operation, status, sum(item.duration_ms for item in items), total_count, fingerprint, items, comparison)
 
 
 def development_catalog() -> tuple[DevelopmentOperation, ...]:

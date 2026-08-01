@@ -2,6 +2,15 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.2.0
+
+- Expanded the Ingress Development Console to 17 read-only probes.
+- Added Basic Inventory, Automation Diagnostics, MCP Readiness and Data Completeness packs.
+- Added persisted sanitized development reports with schema fingerprints and previous-run deltas.
+- Added SQLite-backed report history and historical evidence in the UI.
+- Added operator preview/diff with approval-required and execution-disabled guarantees.
+- Added security response headers and an upstream endpoint matrix for registry/error behavior.
+
 ## 0.1.6
 
 - Reported missing required Home Assistant REST resources explicitly instead of converting them to empty data.

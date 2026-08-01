@@ -146,6 +146,23 @@ def test_development_console_can_be_disabled_without_affecting_health() -> None:
     assert request(app, "GET", "/health").status_code == 200
 
 
+def test_operator_preview_requires_ingress_and_never_executes() -> None:
+    app = make_app(home_assistant=FakeHomeAssistant())
+    payload = {"operation": "ha.call_service", "target": "light.kitchen", "capability": "ha.write.services", "proposed": {"state": "on"}, "current": {"state": "off"}}
+    assert request(app, "POST", "/api/operator/preview", json=payload).status_code == 401
+    response = request(app, "POST", "/api/operator/preview", headers=ingress_headers(), json=payload)
+    assert response.status_code == 200
+    assert response.json()["decision"] == "approval_required"
+    assert response.json()["execution"] == "disabled"
+
+
+def test_ingress_responses_include_security_headers() -> None:
+    response = request(make_app(), "GET", "/", headers=ingress_headers())
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["content-security-policy"].startswith("default-src 'self'")
+
+
 def test_health_endpoint_is_publicly_safe() -> None:
     response = request(make_app(), "GET", "/health")
 

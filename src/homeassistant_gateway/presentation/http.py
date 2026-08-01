@@ -25,8 +25,10 @@ from homeassistant_gateway.application.clients import (
     RotateClient,
 )
 from homeassistant_gateway.application.development import (
+    DevelopmentReportStore,
     DevelopmentResult,
     DevelopmentToolRunner,
+    build_development_report,
     development_catalog,
     development_packs,
 )
@@ -34,6 +36,7 @@ from homeassistant_gateway.application.home_assistant import (
     HomeAssistantReadPort,
     HomeAssistantUnavailable,
 )
+from homeassistant_gateway.application.operator_preview import build_operator_preview
 from homeassistant_gateway.domain.clients import Client
 from homeassistant_gateway.domain.policy import Decision, Profile
 from homeassistant_gateway.presentation.ui import UI_DIST, index_response
@@ -134,6 +137,16 @@ class DevelopmentRunRequest(BaseModel):
     parameters: dict[str, str] = Field(default_factory=dict)
 
 
+class OperatorPreviewRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: str = Field(min_length=1, max_length=128)
+    target: str = Field(min_length=1, max_length=256)
+    capability: str = Field(min_length=1, max_length=128)
+    proposed: dict[str, Any] = Field(default_factory=dict)
+    current: dict[str, Any] = Field(default_factory=dict)
+
+
 class DevelopmentResultResponse(BaseModel):
     status: str
     operation: str
@@ -175,12 +188,19 @@ def create_app(
     mcp_app: Any | None = None,
     home_assistant: HomeAssistantReadPort | None = None,
     development_runner: DevelopmentToolRunner | None = None,
+    development_report_store: DevelopmentReportStore | None = None,
     development_console_enabled: bool = True,
     lifespan: Any | None = None,
 ) -> FastAPI:
     """Build the HTTP adapter around already-wired application use cases."""
-    app = FastAPI(title="Home Assistant Gateway", version="0.1.6", lifespan=lifespan)
+    app = FastAPI(title="Home Assistant Gateway", version="0.2.0", lifespan=lifespan)
     sink = audit_sink or NoopAuditSink()
+
+    def previous_development_report() -> Any | None:
+        if development_report_store is None:
+            return None
+        reports = development_report_store.list(1)
+        return reports[0] if reports else None
     if UI_DIST.is_dir():
         app.mount("/assets", StaticFiles(directory=UI_DIST / "assets"), name="assets")
 
@@ -226,6 +246,10 @@ def create_app(
 
         response = await call_next(request)
         response.headers["X-Request-ID"] = request_id
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "no-referrer"
+        response.headers["Content-Security-Policy"] = "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; connect-src 'self'"
         record_audit(
             request,
             response,
@@ -276,15 +300,39 @@ def create_app(
         try:
             if request.operation == "all":
                 results = development_runner.run_all()
-                return {"status": "ok", "operation": "all", "results": [asdict(item) for item in results]}
+                report = build_development_report("all", results, previous_development_report())
+                if development_report_store:
+                    development_report_store.save(report)
+                return {"status": "ok", "operation": "all", "report": asdict(report), "results": [asdict(item) for item in results]}
             if request.operation.startswith("pack:"):
-                results = development_runner.run_pack(request.operation.removeprefix("pack:"))
-                return {"status": "ok", "operation": request.operation, "results": [asdict(item) for item in results]}
-            return asdict(development_runner.run(request.operation, request.parameters))
+                operation = request.operation
+                results = development_runner.run_pack(operation.removeprefix("pack:"))
+                report = build_development_report(operation, results, previous_development_report())
+                if development_report_store:
+                    development_report_store.save(report)
+                return {"status": "ok", "operation": operation, "report": asdict(report), "results": [asdict(item) for item in results]}
+            result = development_runner.run(request.operation, request.parameters)
+            report = build_development_report(request.operation, (result,), previous_development_report())
+            if development_report_store:
+                development_report_store.save(report)
+            return {**asdict(result), "report": asdict(report)}
         except HomeAssistantUnavailable as error:
             return asdict(DevelopmentResult(status="unavailable", operation=request.operation, duration_ms=0, count=0, reason=str(error)))
         except ValueError as error:
             raise HTTPException(status_code=400, detail=str(error)) from error
+
+    @app.post("/api/operator/preview")
+    def operator_preview_resource(request: OperatorPreviewRequest) -> dict[str, Any]:
+        try:
+            return asdict(build_operator_preview(request.operation, request.target, request.capability, request.proposed, request.current))
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+
+    @app.get("/api/development/reports")
+    def development_reports_resource(limit: int = Query(default=20, ge=1, le=100)) -> list[dict[str, Any]]:
+        if development_report_store is None:
+            return []
+        return [asdict(report) for report in development_report_store.list(limit)]
 
     @app.get("/api/audit", response_model=list[AuditEventResponse])
     def audit_events(

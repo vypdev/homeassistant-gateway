@@ -66,6 +66,33 @@ def test_history_and_logbook_use_bounded_query_parameters() -> None:
     ]
 
 
+def test_extended_registry_matrix_uses_expected_paths() -> None:
+    paths: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        paths.append(request.url.path)
+        if "/config/" in request.url.path:
+            return httpx.Response(200, json=[{"id": request.url.path}])
+        return httpx.Response(200, json=[{"entity_id": "script.test"}, {"entity_id": "light.kitchen"}])
+
+    client = make_client(handler)
+    assert client.extended_read("devices") == [{"id": "/core/api/config/device_registry/list"}]
+    assert client.extended_read("areas") == [{"id": "/core/api/config/area_registry/list"}]
+    assert client.extended_read("scripts") == [{"entity_id": "script.test"}]
+    assert paths == [
+        "/core/api/config/device_registry/list",
+        "/core/api/config/area_registry/list",
+        "/core/api/states",
+    ]
+
+
+def test_required_extended_resource_404_is_explicit() -> None:
+    client = make_client(lambda request: httpx.Response(404))
+
+    with pytest.raises(HomeAssistantUnavailable, match="home_assistant_http_404"):
+        client.services()
+
+
 def test_upstream_error_is_sanitized_and_explicit() -> None:
     client = make_client(lambda request: httpx.Response(503))
 

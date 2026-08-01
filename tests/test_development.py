@@ -5,7 +5,9 @@ from typing import Any
 import pytest
 
 from homeassistant_gateway.application.development import (
+    DevelopmentResult,
     DevelopmentToolRunner,
+    build_development_report,
     development_catalog,
 )
 
@@ -79,6 +81,14 @@ def test_runner_supports_extended_registry_resources() -> None:
 
     assert result.status == "ok"
     assert result.data == [{"resource": "devices"}]
+
+
+def test_build_development_report_compares_previous_schema() -> None:
+    first = build_development_report("all", (DevelopmentResult("ok", "states", 3, 2, [{"state": "on"}]),))
+    second = build_development_report("all", (DevelopmentResult("ok", "states", 4, 4, [{"state": "off"}]),), first)
+
+    assert first.schema_fingerprint != second.schema_fingerprint
+    assert second.comparison == {"previous_report_id": first.report_id, "count_delta": 2, "schema_changed": True}
 
 
 def test_runner_rejects_unknown_probe() -> None:
