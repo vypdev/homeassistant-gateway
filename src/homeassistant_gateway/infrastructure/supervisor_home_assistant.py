@@ -50,9 +50,16 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
             self._health_check("states", "/states"),
             self._health_check("services", "/services"),
             self._health_check("events", "/events"),
-            self._health_check("recorder", "/history/period", {"start_time": (datetime.now(UTC) - timedelta(hours=1)).isoformat()}),
-            self._health_check("logbook", "/logbook", {"start_time": (datetime.now(UTC) - timedelta(hours=1)).isoformat()}),
         ]
+        try:
+            entity = self._probe_entity("health")
+        except HomeAssistantUnavailable as error:
+            checks.extend([self._health_error("recorder", error), self._health_error("logbook", error)])
+        else:
+            checks.extend([
+                self._health_read_check("recorder", lambda: self.history(entity)),
+                self._health_read_check("logbook", lambda: self.logbook(entity)),
+            ])
         core = next(item for item in checks if item["name"] == "core")
         status = "ready" if all(item["status"] == "ok" for item in checks) else ("degraded" if core["status"] == "ok" else "unavailable")
         return {"status": status, "checks": checks}
@@ -69,6 +76,17 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
             status = "error"
             http_status = error.status
         return {"name": name, "status": status, "latency_ms": max(0, round((monotonic() - started) * 1000)), "http_status": http_status, "code": code}
+
+    def _health_error(self, name: str, error: HomeAssistantUnavailable) -> HealthCheck:
+        return {"name": name, "status": "error", "latency_ms": 0, "http_status": error.status, "code": error.code}
+
+    def _health_read_check(self, name: str, reader: Any) -> HealthCheck:
+        started = monotonic()
+        try:
+            reader()
+        except HomeAssistantUnavailable as error:
+            return {"name": name, "status": "error", "latency_ms": max(0, round((monotonic() - started) * 1000)), "http_status": error.status, "code": error.code}
+        return {"name": name, "status": "ok", "latency_ms": max(0, round((monotonic() - started) * 1000)), "http_status": 200, "code": None}
 
     def inventory(self) -> dict[str, Any]:
         states = self.states()

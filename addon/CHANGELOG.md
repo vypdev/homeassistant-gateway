@@ -2,6 +2,12 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.4.4
+
+- Align Recorder and Logbook health checks with the corrected current Home Assistant REST routes.
+- Use one bounded real entity for health checks instead of legacy `start_time` query parameters.
+- Add contract coverage proving health and direct probes use the same routes.
+
 ## 0.4.3
 
 - Classify transport failures as timeout, connection, network, or unavailable.

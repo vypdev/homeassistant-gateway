@@ -102,6 +102,21 @@ def test_transport_retries_once_but_http_errors_are_not_retried() -> None:
     assert attempts == 1
 
 
+def test_health_details_uses_current_history_and_logbook_routes() -> None:
+    paths: list[tuple[str, dict[str, str]]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        paths.append((request.url.path, dict(request.url.params)))
+        if request.url.path.endswith("/states"):
+            return httpx.Response(200, json=[{"entity_id": "sensor.temperature"}])
+        return httpx.Response(200, json=[] if request.url.path.endswith(("/services", "/events")) else {})
+
+    checks = make_client(handler).health_details()
+    assert checks["status"] == "ready"
+    assert any(path.startswith("/core/api/history/period/") and params == {"filter_entity_id": "sensor.temperature"} for path, params in paths)
+    assert any(path.startswith("/core/api/logbook/") and params == {"entity": "sensor.temperature"} for path, params in paths)
+
+
 def test_history_without_entity_uses_one_bounded_real_entity_probe() -> None:
     paths: list[str] = []
 
