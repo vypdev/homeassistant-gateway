@@ -15,6 +15,10 @@ class OperatorPreview:
     before: dict[str, Any]
     after: dict[str, Any]
     reason: str
+    approval_required: bool = True
+    idempotency_required: bool = True
+    rollback_required: bool = True
+    validation: str = "valid"
 
 
 def build_operator_preview(
@@ -30,6 +34,14 @@ def build_operator_preview(
         raise ValueError("operator_preview_field_too_long")
     if not isinstance(proposed, dict) or len(proposed) > 50:
         raise ValueError("operator_preview_invalid_proposed_state")
+    sensitive_names = {"token", "password", "secret", "cookie", "authorization", "api_key"}
+    if any(any(marker in str(key).lower() for marker in sensitive_names) for key in [*proposed, *(current or {})]):
+        raise ValueError("operator_preview_secret_field_forbidden")
+    allowed_operations = {"ha.call_service": "ha.write.services", "ha.update_automation": "ha.write.automations", "ha.update_config": "ha.write.configuration"}
+    if operation not in allowed_operations:
+        raise ValueError("operator_preview_operation_not_allowlisted")
+    if capability != allowed_operations[operation]:
+        raise ValueError("operator_preview_capability_mismatch")
     before = dict(current or {})
     after = dict(before)
     after.update(proposed)

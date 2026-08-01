@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from time import monotonic
 from typing import Any
 
 import httpx
 
 from homeassistant_gateway.application.home_assistant import (
+    HealthCheck,
+    HomeAssistantHealth,
     HomeAssistantReadPort,
     HomeAssistantUnavailable,
     redact,
@@ -39,6 +42,32 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
         except HomeAssistantUnavailable:
             return False
         return response.status_code < 400
+
+    def health_details(self) -> HomeAssistantHealth:
+        checks = [
+            self._health_check("core", "/config"),
+            self._health_check("states", "/states"),
+            self._health_check("services", "/services"),
+            self._health_check("events", "/events"),
+            self._health_check("recorder", "/history/period", {"start_time": (datetime.now(UTC) - timedelta(hours=1)).isoformat()}),
+            self._health_check("logbook", "/logbook", {"start_time": (datetime.now(UTC) - timedelta(hours=1)).isoformat()}),
+        ]
+        core = next(item for item in checks if item["name"] == "core")
+        status = "ready" if all(item["status"] == "ok" for item in checks) else ("degraded" if core["status"] == "ok" else "unavailable")
+        return {"status": status, "checks": checks}
+
+    def _health_check(self, name: str, path: str, params: dict[str, str] | None = None) -> HealthCheck:
+        started = monotonic()
+        try:
+            response = self._request(path, params=params)
+            code = None if response.status_code < 400 else f"home_assistant_http_{response.status_code}"
+            status = "ok" if response.status_code < 400 else "error"
+            http_status = response.status_code
+        except HomeAssistantUnavailable as error:
+            code = error.code
+            status = "error"
+            http_status = error.status
+        return {"name": name, "status": status, "latency_ms": max(0, round((monotonic() - started) * 1000)), "http_status": http_status, "code": code}
 
     def inventory(self) -> dict[str, Any]:
         states = self.states()

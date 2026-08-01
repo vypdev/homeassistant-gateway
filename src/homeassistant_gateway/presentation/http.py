@@ -193,7 +193,7 @@ def create_app(
     lifespan: Any | None = None,
 ) -> FastAPI:
     """Build the HTTP adapter around already-wired application use cases."""
-    app = FastAPI(title="Home Assistant Gateway", version="0.3.0", lifespan=lifespan)
+    app = FastAPI(title="Home Assistant Gateway", version="0.4.0", lifespan=lifespan)
     sink = audit_sink or NoopAuditSink()
 
     def previous_development_report() -> Any | None:
@@ -275,6 +275,16 @@ def create_app(
             mcp="ready" if mcp_app is not None else "disabled",
             home_assistant=upstream,
         )
+
+    @app.get("/api/health/details")
+    def health_details_resource() -> dict[str, Any]:
+        if home_assistant is None:
+            return {"status": "disabled", "checks": []}
+        provider = getattr(home_assistant, "health_details", None)
+        if not callable(provider):
+            return {"status": "unknown", "checks": []}
+        result = provider()
+        return result if isinstance(result, dict) else {"status": "unknown", "checks": []}
 
     @app.get("/api/ui/context")
     def ui_context_resource(request: Request) -> dict[str, str]:
@@ -378,7 +388,7 @@ def create_app(
             client_id=client.client_id,
             profile=client.profile,
             capabilities=client.capabilities,
-            tools=("gateway_diagnostics",),
+            tools=("gateway_diagnostics", "ha_inventory", "ha_states", "ha_automations", "ha_configuration", "ha_services", "ha_events", "ha_history", "ha_logbook", "ha_devices", "ha_areas", "ha_floors", "ha_labels", "ha_entity_registry", "ha_scripts", "ha_scenes", "ha_helpers", "ha_integrations"),
         )
 
     @app.get("/api/client/me", response_model=ClientResponse)

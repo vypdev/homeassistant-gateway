@@ -2,6 +2,16 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.4.0
+
+- Added detailed upstream health checks for Core, states, services, events, Recorder/history and Logbook.
+- Added retryable diagnostics, browser-local sanitized JSON export and report regression details.
+- Added 11 locale catalogs with Home Assistant fallback and local language override.
+- Added upstream health visualization and stronger operator-preview validation.
+- Expanded MCP discovery and read-only tools to cover the complete observer catalog.
+- Added high-contrast and busy-state accessibility behavior for the console.
+- Documented the current Development Console contracts and security boundary.
+
 ## 0.3.0
 
 - Added sanitized upstream diagnostics with endpoint, status and parameter names for development probe failures.

@@ -3,6 +3,19 @@ from collections.abc import Mapping
 from typing import Any, Protocol, TypedDict
 
 
+class HealthCheck(TypedDict):
+    name: str
+    status: str
+    latency_ms: int
+    http_status: int | None
+    code: str | None
+
+
+class HomeAssistantHealth(TypedDict):
+    status: str
+    checks: list[HealthCheck]
+
+
 class HomeAssistantUnavailable(RuntimeError):
     """The Home Assistant upstream could not be reached or returned an error."""
 
@@ -23,6 +36,8 @@ class HomeAssistantUnavailable(RuntimeError):
 
 class HomeAssistantReadPort(Protocol):
     def health(self) -> bool: ...
+
+    def health_details(self) -> HomeAssistantHealth: ...
 
     def inventory(self) -> dict[str, Any]: ...
 

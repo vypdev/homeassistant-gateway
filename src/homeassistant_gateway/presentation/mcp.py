@@ -136,6 +136,37 @@ def create_mcp_app(
     def ha_configuration() -> dict[str, Any]:
         return read_tool("ha.read.config_entries", home_assistant.configuration)  # type: ignore[union-attr]
 
+    @server.tool(
+        name="ha_history",
+        description="Return bounded Home Assistant state history with optional entity and start-time filters.",
+    )
+    def ha_history(entity_id: str | None = None, start_time: str | None = None) -> dict[str, Any]:
+        return read_tool("ha.read.history", lambda: home_assistant.history(entity_id, start_time))  # type: ignore[union-attr]
+
+    @server.tool(
+        name="ha_logbook",
+        description="Return bounded Home Assistant logbook records with optional entity and start-time filters.",
+    )
+    def ha_logbook(entity_id: str | None = None, start_time: str | None = None) -> dict[str, Any]:
+        return read_tool("ha.read.logbook", lambda: home_assistant.logbook(entity_id, start_time))  # type: ignore[union-attr]
+
+    def register_extended_tool(name: str, resource: str) -> None:
+        def tool() -> dict[str, Any]:
+            return read_tool("ha.read.registry", lambda: home_assistant.extended_read(resource))  # type: ignore[union-attr]
+        tool.__name__ = name
+        server.tool(name=name, description=f"Return bounded Home Assistant {resource} data.")(tool)
+
+    for _resource in ("devices", "areas", "floors", "labels", "entity_registry", "scripts", "scenes", "helpers", "integrations"):
+        register_extended_tool(f"ha_{_resource}", _resource)
+
+    @server.tool(name="ha_services", description="Return the bounded Home Assistant service catalog.")
+    def ha_services() -> dict[str, Any]:
+        return read_tool("ha.read.services", home_assistant.services)  # type: ignore[union-attr]
+
+    @server.tool(name="ha_events", description="Return the bounded Home Assistant event catalog.")
+    def ha_events() -> dict[str, Any]:
+        return read_tool("ha.read.events", home_assistant.events)  # type: ignore[union-attr]
+
     server_app = server.streamable_http_app()
     application = BearerMCPMiddleware(server_app, authenticate)
     return MCPApp(application=application, lifespan=server_app.router.lifespan_context)

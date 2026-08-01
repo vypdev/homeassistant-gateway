@@ -54,6 +54,9 @@ class FakeHomeAssistant:
     def health(self):
         return True
 
+    def health_details(self):
+        return {"status": "ready", "checks": [{"name": "core", "status": "ok", "latency_ms": 1, "http_status": 200, "code": None}]}
+
     def inventory(self):
         return {"entities": [{"entity_id": "light.kitchen"}], "services": [], "counts": {"entities": 1, "services": 0}}
 
@@ -133,6 +136,15 @@ def test_ui_context_is_ingress_protected_and_returns_ha_preferences() -> None:
     response = request(app, "GET", "/api/ui/context", headers=ingress_headers())
     assert response.status_code == 200
     assert response.json() == {"locale": "es", "theme": "light"}
+
+
+def test_health_details_is_ingress_protected_and_reports_checks() -> None:
+    app = make_app(home_assistant=FakeHomeAssistant())
+    assert request(app, "GET", "/api/health/details").status_code == 401
+    response = request(app, "GET", "/api/health/details", headers=ingress_headers())
+    assert response.status_code == 200
+    assert response.json()["status"] == "ready"
+    assert response.json()["checks"][0]["name"] == "core"
 
 
 def test_development_run_all_returns_one_result_per_probe() -> None:
@@ -389,7 +401,9 @@ def test_mcp_discovery_returns_only_client_scoped_metadata() -> None:
 
     assert response.status_code == 200
     assert response.json()["endpoint"] == "/mcp/"
-    assert response.json()["tools"] == ["gateway_diagnostics"]
+    assert len(response.json()["tools"]) == 18
+    assert "ha_history" in response.json()["tools"]
+    assert "ha_logbook" in response.json()["tools"]
     assert "token" not in response.json()
     assert "token_digest" not in response.json()
 
