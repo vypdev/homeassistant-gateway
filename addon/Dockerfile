@@ -2,7 +2,7 @@
 
 FROM python:3.12-slim AS builder
 ARG GATEWAY_REPOSITORY=https://github.com/vypdev/homeassistant-gateway.git
-ARG GATEWAY_REF=9e69322bc496fc6683641aece432aff2dac3e2ef
+ARG GATEWAY_REF=e58ff6ad3ea0c1f7b57e5d9c0766c45d97e776b2
 
 RUN apt-get update \
     && apt-get install --no-install-recommends -y build-essential git libffi-dev \
