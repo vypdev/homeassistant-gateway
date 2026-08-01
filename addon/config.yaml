@@ -3,6 +3,7 @@ version: "0.1.1"
 slug: homeassistant_gateway
 description: Secure MCP gateway with observer/operator profiles for Home Assistant
 url: https://github.com/vypdev/homeassistant-gateway
+image: ghcr.io/vypdev/homeassistant-gateway
 arch:
   - amd64
   - aarch64

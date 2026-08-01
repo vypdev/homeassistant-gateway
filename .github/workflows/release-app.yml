@@ -1,0 +1,114 @@
+name: Release App
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - addon/CHANGELOG.md
+      - addon/config.yaml
+      - addon/Dockerfile
+      - addon/run.sh
+      - src/**
+      - pyproject.toml
+      - scripts/release_metadata.py
+      - .github/workflows/release-app.yml
+  workflow_dispatch:
+
+concurrency:
+  group: release-app-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip && python -m pip install ".[test]"
+
+      - name: Run tests
+        run: python -m pytest
+
+      - name: Read changelog release
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(python scripts/release_metadata.py addon/CHANGELOG.md --output version)"
+          tag="v${version}"
+          notes_file="$RUNNER_TEMP/release-notes.md"
+          python scripts/release_metadata.py addon/CHANGELOG.md --output notes > "$notes_file"
+          {
+            echo "version=${version}"
+            echo "tag=${tag}"
+            echo "notes_file=${notes_file}"
+          } >> "$GITHUB_OUTPUT"
+
+          if git ls-remote --exit-code --tags origin "refs/tags/${tag}" >/dev/null 2>&1 \
+            || git ls-remote --exit-code --tags origin "refs/tags/${version}" >/dev/null 2>&1; then
+            echo "new_release=false" >> "$GITHUB_OUTPUT"
+            echo "Release ${tag} already exists; skipping build and release."
+          else
+            echo "new_release=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Log in to GitHub Container Registry
+        if: steps.version.outputs.new_release == 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        if: steps.version.outputs.new_release == 'true'
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        if: steps.version.outputs.new_release == 'true'
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and publish multi-architecture image
+        if: steps.version.outputs.new_release == 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: addon
+          file: addon/Dockerfile
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: true
+          build-args: |
+            GATEWAY_REF=${{ github.sha }}
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
+            ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:sha-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Create GitHub Release
+        if: steps.version.outputs.new_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" \
+            --repo "${{ github.repository }}" \
+            --target "${{ github.sha }}" \
+            --title "${{ steps.version.outputs.tag }}" \
+            --notes-file "${{ steps.version.outputs.notes_file }}"
