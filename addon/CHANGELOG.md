@@ -2,6 +2,13 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.4.2
+
+- Use Home Assistant REST timestamp path segments for history and logbook.
+- Send `filter_entity_id` and `entity` using the documented query parameters.
+- Use a bounded real entity as the automatic read-only probe when Run all has no entity filter.
+- Keep dynamic timestamps out of sanitized diagnostic paths.
+
 ## 0.4.1
 
 - Normalize default history and logbook boundaries to Home Assistant's documented UTC `Z` format.

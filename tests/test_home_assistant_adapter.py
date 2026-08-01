@@ -61,20 +61,20 @@ def test_history_and_logbook_use_bounded_query_parameters() -> None:
     assert paths == [
         ("/core/api/services", {}),
         ("/core/api/events", {}),
-        ("/core/api/history/period", {"filter_entity_id": "light.kitchen", "start_time": "2026-08-01T00:00:00Z"}),
-        ("/core/api/logbook", {"entity": "light.kitchen", "start_time": "2026-08-01T00:00:00Z"}),
+        ("/core/api/history/period/2026-08-01T00:00:00Z", {"filter_entity_id": "light.kitchen"}),
+        ("/core/api/logbook/2026-08-01T00:00:00Z", {"entity": "light.kitchen"}),
     ]
 
 
 def test_default_history_window_uses_home_assistant_utc_format() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        start_time = request.url.params["start_time"]
-        assert start_time.endswith("Z")
-        assert "+00:00" not in start_time
-        assert "." not in start_time
+        timestamp = request.url.path.rsplit("/", 1)[-1]
+        assert timestamp.endswith("Z")
+        assert "+00:00" not in timestamp
+        assert "." not in timestamp
         return httpx.Response(200, json=[])
 
-    assert make_client(handler).history() == []
+    assert make_client(handler).history("sensor.temp") == []
 
 
 def test_transport_retries_once_but_http_errors_are_not_retried() -> None:
@@ -87,7 +87,7 @@ def test_transport_retries_once_but_http_errors_are_not_retried() -> None:
             raise httpx.ConnectError("temporary", request=request)
         return httpx.Response(200, json=[])
 
-    assert make_client(transient_handler).logbook() == []
+    assert make_client(transient_handler).logbook("sensor.temp") == []
     assert attempts == 2
 
     attempts = 0
@@ -98,15 +98,28 @@ def test_transport_retries_once_but_http_errors_are_not_retried() -> None:
         return httpx.Response(400)
 
     with pytest.raises(HomeAssistantUnavailable, match="home_assistant_http_400"):
-        make_client(http_error_handler).history()
+        make_client(http_error_handler).history("sensor.temp")
     assert attempts == 1
+
+
+def test_history_without_entity_uses_one_bounded_real_entity_probe() -> None:
+    paths: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        paths.append(request.url.path)
+        if request.url.path.endswith("/states"):
+            return httpx.Response(200, json=[{"entity_id": "sensor.temperature"}])
+        return httpx.Response(200, json=[])
+
+    assert make_client(handler).history() == []
+    assert paths == ["/core/api/states", "/core/api/history/period/" + paths[1].rsplit("/", 1)[-1]]
 
 
 def test_history_normalizes_home_assistant_grouped_response() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=[[{"entity_id": "sensor.temp", "state": "20"}, {"entity_id": "sensor.temp", "state": "21"}], [{"entity_id": "light.kitchen", "state": "on"}]])
 
-    assert make_client(handler).history() == [
+    assert make_client(handler).history("sensor.temp") == [
         {"entity_id": "sensor.temp", "states": [{"entity_id": "sensor.temp", "state": "20"}, {"entity_id": "sensor.temp", "state": "21"}]},
         {"entity_id": "light.kitchen", "states": [{"entity_id": "light.kitchen", "state": "on"}]},
     ]
@@ -161,7 +174,7 @@ def test_upstream_error_includes_safe_request_context() -> None:
         client.history("sensor.temp", "2026-08-01T00:00:00Z")
 
     assert '"path": "/history/period"' in str(captured.value)
-    assert '"params": ["filter_entity_id", "start_time"]' in str(captured.value)
+    assert '"params": ["filter_entity_id"]' in str(captured.value)
     assert "supervisor-secret" not in str(captured.value)
 
 

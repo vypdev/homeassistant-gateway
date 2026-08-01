@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from time import monotonic, sleep
 from typing import Any
+from urllib.parse import quote
 
 import httpx
 
@@ -96,11 +97,10 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
         return self._bounded_list(self._get_json("/events", default=[]))
 
     def history(self, entity_id: str | None = None, start_time: str | None = None) -> list[dict[str, Any]]:
+        entity = entity_id or self._probe_entity("history")
         start = start_time or self._timestamp(datetime.now(UTC) - timedelta(days=1))
-        params = {"start_time": start}
-        if entity_id:
-            params["filter_entity_id"] = entity_id
-        payload = self._get_json("/history/period", default=[], params=params)
+        params = {"filter_entity_id": entity}
+        payload = self._get_json(f"/history/period/{quote(start, safe='')}", default=[], params=params, diagnostic_path="/history/period")
         if not isinstance(payload, list):
             return []
         groups: list[dict[str, Any]] = []
@@ -113,11 +113,10 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
         return groups
 
     def logbook(self, entity_id: str | None = None, start_time: str | None = None) -> list[dict[str, Any]]:
+        entity = entity_id or self._probe_entity("logbook")
         start = start_time or self._timestamp(datetime.now(UTC) - timedelta(days=1))
-        params = {"start_time": start}
-        if entity_id:
-            params["entity"] = entity_id
-        return self._bounded_list(self._get_json("/logbook", default=[], params=params))
+        params = {"entity": entity}
+        return self._bounded_list(self._get_json(f"/logbook/{quote(start, safe='')}", default=[], params=params, diagnostic_path="/logbook"))
 
     def extended_read(self, resource: str) -> list[dict[str, Any]]:
         registry_paths = {
@@ -150,14 +149,15 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
         config = self._get_json("/config", default={})
         return {"core": config, "entity_registry": self._get_json("/config/entity_registry/list", default=[], allow_not_found=True), "area_registry": self._get_json("/config/area_registry/list", default=[], allow_not_found=True)}
 
-    def _get_json(self, path: str, default: Any, params: dict[str, str] | None = None, allow_not_found: bool = False) -> Any:
+    def _get_json(self, path: str, default: Any, params: dict[str, str] | None = None, allow_not_found: bool = False, diagnostic_path: str | None = None) -> Any:
         response = self._request(path, params=params)
+        safe_path = diagnostic_path or path
         if response.status_code == 404:
             if allow_not_found:
                 return default
-            raise HomeAssistantUnavailable("home_assistant_http_404", path=path, status=404, params=tuple(sorted(params or {})))
+            raise HomeAssistantUnavailable("home_assistant_http_404", path=safe_path, status=404, params=tuple(sorted(params or {})))
         if response.status_code >= 400:
-            raise HomeAssistantUnavailable(f"home_assistant_http_{response.status_code}", path=path, status=response.status_code, params=tuple(sorted(params or {})))
+            raise HomeAssistantUnavailable(f"home_assistant_http_{response.status_code}", path=safe_path, status=response.status_code, params=tuple(sorted(params or {})))
         try:
             return redact(response.json())
         except ValueError as error:
@@ -173,6 +173,13 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
                     raise HomeAssistantUnavailable("home_assistant_transport_unavailable") from error
                 sleep(0.05)
         raise AssertionError("unreachable")
+
+    def _probe_entity(self, operation: str) -> str:
+        for item in self.states():
+            entity_id = item.get("entity_id")
+            if isinstance(entity_id, str) and "." in entity_id:
+                return entity_id
+        raise HomeAssistantUnavailable(f"{operation}_entity_required", path=f"/{operation}")
 
     @staticmethod
     def _timestamp(value: datetime) -> str:

@@ -11,6 +11,8 @@ The Development Console is an Ingress-protected, observer-only verification surf
 - `GET /api/ui/context` — locale/theme compatibility context.
 - `POST /api/operator/preview` — validation/diff preview only; execution remains disabled.
 
+The adapter follows Home Assistant's current REST contract: history starts at `/history/period/<timestamp>` with `filter_entity_id`, and logbook starts at `/logbook/<timestamp>` with `entity`; `end_time` remains a query parameter. When an unfiltered probe is requested, the adapter selects one real entity from the bounded states inventory so the reachability check remains valid without pretending that the REST history endpoint supports an unrestricted query.
+
 The MCP discovery contract advertises the same observer surface: `gateway_diagnostics`, inventory, states, automations, configuration, services, events, history, logbook, devices, areas, floors, labels, entity registry, scripts, scenes, helpers and integrations. The MCP functions call the same application read port rather than duplicating upstream HTTP logic.
 
 All management endpoints require the Supervisor Ingress identity. `/health` and `/ready` remain safe health endpoints.
