@@ -25,6 +25,8 @@ class HomeAssistantReadPort(Protocol):
 
     def logbook(self, entity_id: str | None = None, start_time: str | None = None) -> list[dict[str, Any]]: ...
 
+    def extended_read(self, resource: str) -> list[dict[str, Any]]: ...
+
 
 class ReadinessStatus(TypedDict):
     status: str

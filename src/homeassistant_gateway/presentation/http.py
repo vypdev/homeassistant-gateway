@@ -28,6 +28,7 @@ from homeassistant_gateway.application.development import (
     DevelopmentResult,
     DevelopmentToolRunner,
     development_catalog,
+    development_packs,
 )
 from homeassistant_gateway.application.home_assistant import (
     HomeAssistantReadPort,
@@ -258,6 +259,7 @@ def create_app(
             "enabled": development_console_enabled,
             "upstream": upstream,
             "operations": [asdict(item) for item in development_catalog()],
+            "packs": [asdict(item) for item in development_packs()],
             "mutations": {
                 "status": "disabled",
                 "reason": "operator_mutations_not_implemented",
@@ -275,6 +277,9 @@ def create_app(
             if request.operation == "all":
                 results = development_runner.run_all()
                 return {"status": "ok", "operation": "all", "results": [asdict(item) for item in results]}
+            if request.operation.startswith("pack:"):
+                results = development_runner.run_pack(request.operation.removeprefix("pack:"))
+                return {"status": "ok", "operation": request.operation, "results": [asdict(item) for item in results]}
             return asdict(development_runner.run(request.operation, request.parameters))
         except HomeAssistantUnavailable as error:
             return asdict(DevelopmentResult(status="unavailable", operation=request.operation, duration_ms=0, count=0, reason=str(error)))

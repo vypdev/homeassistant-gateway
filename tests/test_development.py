@@ -35,6 +35,9 @@ class FakeHomeAssistant:
     def logbook(self, entity_id: str | None = None, start_time: str | None = None) -> list[dict[str, Any]]:
         return [{"entity_id": entity_id or "light.kitchen", "when": start_time}]
 
+    def extended_read(self, resource: str) -> list[dict[str, Any]]:
+        return [{"resource": resource}]
+
     def health(self) -> bool:
         return True
 
@@ -49,6 +52,15 @@ def test_catalog_exposes_every_internal_observer_probe() -> None:
         "events",
         "history",
         "logbook",
+        "devices",
+        "areas",
+        "floors",
+        "labels",
+        "entity_registry",
+        "scripts",
+        "scenes",
+        "helpers",
+        "integrations",
     ]
 
 
@@ -60,6 +72,13 @@ def test_runner_returns_timing_and_count_for_probe() -> None:
     assert result.count == 1
     assert result.duration_ms >= 0
     assert result.data[0]["entity_id"] == "light.kitchen"
+
+
+def test_runner_supports_extended_registry_resources() -> None:
+    result = DevelopmentToolRunner(FakeHomeAssistant()).run("devices", {})
+
+    assert result.status == "ok"
+    assert result.data == [{"resource": "devices"}]
 
 
 def test_runner_rejects_unknown_probe() -> None:

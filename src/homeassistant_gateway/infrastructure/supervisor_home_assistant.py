@@ -73,6 +73,25 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
         params = {key: value for key, value in {"entity": entity_id, "start_time": start_time}.items() if value}
         return self._bounded_list(self._get_json("/logbook", default=[], params=params))
 
+    def extended_read(self, resource: str) -> list[dict[str, Any]]:
+        registry_paths = {
+            "devices": "/config/device_registry/list",
+            "areas": "/config/area_registry/list",
+            "floors": "/config/floor_registry/list",
+            "labels": "/config/label_registry/list",
+            "entity_registry": "/config/entity_registry/list",
+        }
+        if resource in registry_paths:
+            return self._bounded_list(self._get_json(registry_paths[resource], default=[], allow_not_found=True))
+        states = self.states()
+        prefixes = {"scripts": ("script.",), "scenes": ("scene.",), "helpers": ("input_",)}
+        if resource in prefixes:
+            return [item for item in states if str(item.get("entity_id", "")).startswith(prefixes[resource])]
+        if resource == "integrations":
+            domains = sorted({str(item.get("entity_id", "")).split(".", 1)[0] for item in states if "." in str(item.get("entity_id", ""))})
+            return [{"domain": domain} for domain in domains]
+        raise ValueError("unknown_extended_resource")
+
     def configuration(self) -> dict[str, Any]:
         config = self._get_json("/config", default={})
         return {"core": config, "entity_registry": self._get_json("/config/entity_registry/list", default=[], allow_not_found=True), "area_registry": self._get_json("/config/area_registry/list", default=[], allow_not_found=True)}

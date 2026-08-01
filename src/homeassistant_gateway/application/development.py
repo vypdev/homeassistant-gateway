@@ -41,6 +41,32 @@ def development_catalog() -> tuple[DevelopmentOperation, ...]:
         DevelopmentOperation("events", "Event catalog", "Available event types exposed by Home Assistant."),
         DevelopmentOperation("history", "History", "State history, optionally scoped to entity and start time.", supports_entity_id=True, supports_start_time=True),
         DevelopmentOperation("logbook", "Logbook", "Human-readable state/activity records, optionally scoped to entity and start time.", supports_entity_id=True, supports_start_time=True),
+        DevelopmentOperation("devices", "Device registry", "Registered devices."),
+        DevelopmentOperation("areas", "Area registry", "Registered areas."),
+        DevelopmentOperation("floors", "Floor registry", "Registered floors."),
+        DevelopmentOperation("labels", "Label registry", "Registered labels."),
+        DevelopmentOperation("entity_registry", "Entity registry", "Registered entities and metadata."),
+        DevelopmentOperation("scripts", "Scripts", "Script entities derived from current states."),
+        DevelopmentOperation("scenes", "Scenes", "Scene entities derived from current states."),
+        DevelopmentOperation("helpers", "Helpers", "Input helpers derived from current states."),
+        DevelopmentOperation("integrations", "Integrations", "Integration domains derived from entity states."),
+    )
+
+
+@dataclass(frozen=True)
+class DevelopmentPack:
+    name: str
+    label: str
+    description: str
+    operations: tuple[str, ...]
+
+
+def development_packs() -> tuple[DevelopmentPack, ...]:
+    return (
+        DevelopmentPack("basic_inventory", "Basic inventory", "Core read model and registries.", ("inventory", "states", "devices", "areas", "floors", "labels", "entity_registry")),
+        DevelopmentPack("automation_diagnostics", "Automation diagnostics", "Automations and related state/activity data.", ("automations", "scripts", "scenes", "helpers", "history", "logbook")),
+        DevelopmentPack("mcp_readiness", "MCP readiness", "Resources required by observer clients.", ("inventory", "services", "events", "configuration", "automations")),
+        DevelopmentPack("data_completeness", "Data completeness", "Extended read model coverage and explicit endpoint failures.", tuple(item.name for item in development_catalog())),
     )
 
 
@@ -56,6 +82,7 @@ class DevelopmentToolRunner:
             "events": home_assistant.events,
             "history": home_assistant.history,
             "logbook": home_assistant.logbook,
+            **{operation.name: (lambda resource=operation.name: home_assistant.extended_read(resource)) for operation in development_catalog() if operation.name not in {"inventory", "states", "automations", "configuration", "services", "events", "history", "logbook"}},
         }
 
     def run(self, operation: str, parameters: dict[str, Any]) -> DevelopmentResult:
@@ -75,15 +102,24 @@ class DevelopmentToolRunner:
         )
 
     def run_all(self) -> tuple[DevelopmentResult, ...]:
+        return self.run_operations(tuple(item.name for item in development_catalog()))
+
+    def run_pack(self, pack: str) -> tuple[DevelopmentResult, ...]:
+        definition = next((item for item in development_packs() if item.name == pack), None)
+        if definition is None:
+            raise ValueError("unknown_development_pack")
+        return self.run_operations(definition.operations)
+
+    def run_operations(self, operations: tuple[str, ...]) -> tuple[DevelopmentResult, ...]:
         results: list[DevelopmentResult] = []
-        for definition in development_catalog():
+        for operation in operations:
             try:
-                results.append(self.run(definition.name, {}))
+                results.append(self.run(operation, {}))
             except (HomeAssistantUnavailable, ValueError) as error:
                 results.append(
                     DevelopmentResult(
                         status="error",
-                        operation=definition.name,
+                        operation=operation,
                         duration_ms=0,
                         count=0,
                         reason=type(error).__name__,

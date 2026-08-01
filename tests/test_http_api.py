@@ -78,6 +78,9 @@ class FakeHomeAssistant:
     def logbook(self, entity_id=None, start_time=None):
         return []
 
+    def extended_read(self, resource):
+        return [{"resource": resource}]
+
 def make_app(audit_sink=None, home_assistant=None, development_console_enabled=True):
     repository = InMemoryClientRepository()
     tokens = SecureTokenIssuer()
@@ -116,7 +119,8 @@ def test_development_catalog_requires_ingress_and_lists_probes() -> None:
     response = request(app, "GET", "/api/development/catalog", headers=ingress_headers())
     assert response.status_code == 200
     assert response.json()["enabled"] is True
-    assert len(response.json()["operations"]) == 8
+    assert len(response.json()["operations"]) == 17
+    assert len(response.json()["packs"]) == 4
     assert response.json()["mutations"]["status"] == "disabled"
 
 
@@ -131,7 +135,7 @@ def test_development_run_all_returns_one_result_per_probe() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "ok"
-    assert len(payload["results"]) == 8
+    assert len(payload["results"]) == 17
     assert {item["status"] for item in payload["results"]} == {"ok"}
 
 

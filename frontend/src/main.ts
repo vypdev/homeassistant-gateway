@@ -15,8 +15,9 @@ type Ready = { status: string; storage: string; mcp: string; home_assistant: str
 type AuditEvent = { event_id: string; occurred_at: string; request_id: string; remote_user_id: string | null; action: string; target: string; decision: string; outcome: string; status_code: number };
 type Discovery = { server_name: string; transport: string; endpoint: string; client_id: string; profile: Profile; capabilities: string[]; tools: string[] };
 type DevelopmentOperation = { name: string; label: string; description: string; kind: string; supports_entity_id: boolean; supports_start_time: boolean };
+type DevelopmentPack = { name: string; label: string; description: string; operations: string[] };
 type DevelopmentResult = { status: string; operation: string; duration_ms: number; count: number; data?: unknown; reason?: string | null };
-type DevelopmentCatalog = { enabled: boolean; upstream: string; operations: DevelopmentOperation[]; mutations: { status: string; reason: string; approval_required: boolean } };
+type DevelopmentCatalog = { enabled: boolean; upstream: string; operations: DevelopmentOperation[]; packs: DevelopmentPack[]; mutations: { status: string; reason: string; approval_required: boolean } };
 
 type View = 'overview' | 'clients' | 'policy' | 'mcp' | 'audit' | 'development';
 
@@ -117,6 +118,9 @@ export class GatewayApp extends LitElement {
     .dev-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 14px; }
     .dev-output { max-height: 420px; overflow: auto; white-space: pre-wrap; word-break: break-word; border: 1px solid #23415e; border-radius: 10px; padding: 14px; background: #06101b; color: #b8ecff; font: 12px/1.5 "JetBrains Mono", ui-monospace, monospace; }
     .result-list { display: grid; gap: 8px; margin-top: 14px; }
+    .pack-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 16px 0; }
+    .pack-grid button { display: grid; gap: 3px; text-align: left; }
+    .pack-grid small { color: #8ea5bd; }
     .result-row { display: flex; justify-content: space-between; gap: 10px; align-items: center; border: 1px solid #1b3550; border-radius: 9px; padding: 9px 10px; }
     .blocked { border-color: #805d35; background: #3a281233; }
     @keyframes drift { from { transform: translate3d(-1%, -1%, 0) scale(1); } to { transform: translate3d(2%, 2%, 0) scale(1.04); } }
@@ -194,6 +198,15 @@ export class GatewayApp extends LitElement {
     finally { this.busy = false; }
   }
 
+  async runDevelopmentPack(pack: string) {
+    this.busy = true; this.error = '';
+    try {
+      const result = await api<{ status: string; operation: string; results: DevelopmentResult[] }>('/development/run', { method: 'POST', body: JSON.stringify({ operation: `pack:${pack}`, parameters: {} }) });
+      this.developmentResults = result.results; this.developmentOutput = result.results;
+    } catch (error) { this.error = error instanceof Error ? error.message : 'Unable to run development pack'; }
+    finally { this.busy = false; }
+  }
+
   render() {
     const active = this.view;
     return html`<div class="shell"><div class="grid"></div><div class="layout">
@@ -223,6 +236,7 @@ export class GatewayApp extends LitElement {
     return html`<div class="dev-grid">
       <div class="card">
         <div class="toolbar"><div><h2>Observer probes</h2><p>Internal Ingress-only verification surface.</p></div><button class="primary" @click=${() => void this.runAllDevelopment()} ?disabled=${this.busy || !catalog?.enabled}>Run all</button></div>
+        <div class="pack-grid">${catalog?.packs.map((pack) => html`<button class="secondary" @click=${() => void this.runDevelopmentPack(pack.name)} ?disabled=${this.busy || !catalog.enabled}><strong>${pack.label}</strong><small>${pack.description}</small></button>`)}</div>
         <p>Upstream: <span class=${catalog?.upstream === 'ready' ? 'ok' : 'warn'}>${catalog?.upstream ?? 'loading'}</span>. Each probe uses the same read adapter that MCP clients use.</p>
         <div class="form" style="margin-top:16px">
           <label>Entity filter<input .value=${this.developmentEntity} @input=${(event: Event) => { this.developmentEntity = (event.target as HTMLInputElement).value; }} placeholder="light.kitchen (optional)" /></label>
