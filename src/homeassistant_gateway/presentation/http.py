@@ -4,9 +4,10 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request, Response, status
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.staticfiles import StaticFiles
 
 from homeassistant_gateway.application.audit import AuditEvent, AuditSink, NoopAuditSink
 from homeassistant_gateway.application.authentication import AuthenticateClient
@@ -18,7 +19,7 @@ from homeassistant_gateway.application.clients import (
 )
 from homeassistant_gateway.domain.clients import Client
 from homeassistant_gateway.domain.policy import Decision, Profile
-from homeassistant_gateway.presentation.ui import index_response
+from homeassistant_gateway.presentation.ui import UI_DIST, index_response
 
 
 class HealthResponse(BaseModel):
@@ -113,8 +114,10 @@ def create_app(
     lifespan: Any | None = None,
 ) -> FastAPI:
     """Build the HTTP adapter around already-wired application use cases."""
-    app = FastAPI(title="Home Assistant Gateway", version="0.1.1", lifespan=lifespan)
+    app = FastAPI(title="Home Assistant Gateway", version="0.1.2", lifespan=lifespan)
     sink = audit_sink or NoopAuditSink()
+    if UI_DIST.is_dir():
+        app.mount("/assets", StaticFiles(directory=UI_DIST / "assets"), name="assets")
 
     def record_audit(request: Request, response: Response, decision: str, outcome: str) -> None:
         sink.record(
@@ -166,8 +169,8 @@ def create_app(
         )
         return response
 
-    @app.get("/", response_class=HTMLResponse, include_in_schema=False)
-    def index() -> HTMLResponse:
+    @app.get("/", response_class=Response, include_in_schema=False)
+    def index() -> Response:
         return index_response()
 
     @app.get("/health", response_model=HealthResponse)

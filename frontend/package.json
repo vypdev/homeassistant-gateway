@@ -1,0 +1,15 @@
+{
+  "name": "homeassistant-gateway-ui",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "lit": "^3.3.0",
+    "vite": "^7.1.0",
+    "typescript": "^5.8.0"
+  },
+  "devDependencies": {}
+}

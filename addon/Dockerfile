@@ -14,6 +14,13 @@ RUN git init /src \
     && git checkout FETCH_HEAD
 RUN python -m pip wheel --no-cache-dir --wheel-dir /wheels /src
 
+FROM node:22-alpine AS ui-builder
+COPY --from=builder /src/frontend /frontend
+WORKDIR /frontend
+RUN npm ci --no-audit --no-fund \
+    && npm run check \
+    && npm run build
+
 FROM python:3.12-slim
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -23,6 +30,7 @@ ENV PYTHONUNBUFFERED=1 \
     GATEWAY_OPERATOR_ENABLED=false
 
 COPY --from=builder /wheels /wheels
+COPY --from=ui-builder /frontend/dist /app/static
 RUN python -m pip install --no-cache-dir --no-index --find-links=/wheels /wheels/*.whl \
     && rm -rf /wheels
 COPY run.sh /run.sh

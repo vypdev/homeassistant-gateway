@@ -2,6 +2,12 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.1.2
+
+- Added a Lit + TypeScript + Vite management UI.
+- Added overview, clients, one-time token issuance, revocation, policy and MCP discovery views.
+- Added compiled static asset serving through Supervisor Ingress.
+
 ## 0.1.1
 
 - Added an Ingress landing shell with gateway readiness feedback.
