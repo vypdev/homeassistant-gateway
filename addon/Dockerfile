@@ -7,7 +7,11 @@ ARG GATEWAY_REF=main
 RUN apt-get update \
     && apt-get install --no-install-recommends -y git \
     && rm -rf /var/lib/apt/lists/*
-RUN git clone --depth 1 --branch "${GATEWAY_REF}" "${GATEWAY_REPOSITORY}" /src
+RUN git init /src \
+    && cd /src \
+    && git remote add origin "${GATEWAY_REPOSITORY}" \
+    && git fetch --depth 1 origin "${GATEWAY_REF}" \
+    && git checkout FETCH_HEAD
 RUN python -m pip wheel --no-cache-dir --no-deps --wheel-dir /wheels /src
 
 FROM python:3.12-slim
