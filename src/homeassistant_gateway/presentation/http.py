@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Request, Response, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel, ConfigDict, Field
 
 from homeassistant_gateway.application.audit import AuditEvent, AuditSink, NoopAuditSink
@@ -18,6 +18,7 @@ from homeassistant_gateway.application.clients import (
 )
 from homeassistant_gateway.domain.clients import Client
 from homeassistant_gateway.domain.policy import Decision, Profile
+from homeassistant_gateway.presentation.ui import index_response
 
 
 class HealthResponse(BaseModel):
@@ -164,6 +165,10 @@ def create_app(
             "success" if response.status_code < 400 else "error",
         )
         return response
+
+    @app.get("/", response_class=HTMLResponse, include_in_schema=False)
+    def index() -> HTMLResponse:
+        return index_response()
 
     @app.get("/health", response_model=HealthResponse)
     def health() -> HealthResponse:

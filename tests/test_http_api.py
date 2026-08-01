@@ -75,6 +75,14 @@ def test_health_endpoint_is_publicly_safe() -> None:
     assert re.fullmatch(r"[a-f0-9]{32}", response.headers["x-request-id"])
 
 
+def test_ingress_index_serves_gateway_shell() -> None:
+    response = request(make_app(), "GET", "/", headers=ingress_headers())
+
+    assert response.status_code == 200
+    assert "Secure gateway control plane" in response.text
+    assert "fetch(new URL('ready'" in response.text
+
+
 def test_readiness_endpoint_is_public_and_reports_composition_state() -> None:
     response = request(make_app(), "GET", "/ready")
 
