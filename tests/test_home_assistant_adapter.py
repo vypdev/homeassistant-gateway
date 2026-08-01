@@ -77,6 +77,28 @@ def test_default_history_window_uses_home_assistant_utc_format() -> None:
     assert make_client(handler).history("sensor.temp") == []
 
 
+@pytest.mark.parametrize("status", [400, 401, 403, 404, 500])
+def test_upstream_http_statuses_are_classified_without_response_body(status: int) -> None:
+    client = make_client(lambda request: httpx.Response(status, text="secret upstream body"))
+
+    with pytest.raises(HomeAssistantUnavailable) as captured:
+        client.history("sensor.temp", "2026-08-01T00:00:00Z")
+
+    reason = str(captured.value)
+    assert f"home_assistant_http_{status}" in reason
+    assert "secret upstream body" not in reason
+    assert "sensor.temp" not in reason
+
+
+def test_invalid_json_is_classified_without_body() -> None:
+    client = make_client(lambda request: httpx.Response(200, text="secret html body", headers={"content-type": "text/html"}))
+
+    with pytest.raises(HomeAssistantUnavailable, match="home_assistant_invalid_json") as captured:
+        client.states()
+
+    assert "secret html body" not in str(captured.value)
+
+
 def test_transport_retries_once_but_http_errors_are_not_retried() -> None:
     attempts = 0
 
