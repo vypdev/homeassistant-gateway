@@ -74,6 +74,23 @@ class IssueClient:
         return IssuedClient(client=client, token=token)
 
 
+class RotateClient:
+    """Replace an active client's bearer material and return plaintext only once."""
+
+    def __init__(self, repository: ClientRepository, token_issuer: TokenIssuer) -> None:
+        self._repository = repository
+        self._token_issuer = token_issuer
+
+    def execute(self, client_id: str) -> IssuedClient:
+        client = self._repository.get(client_id)
+        if client is None or client.status is ClientStatus.REVOKED:
+            raise ValueError("client_not_active")
+        token, digest = self._token_issuer.issue()
+        client.token_digest = digest
+        self._repository.save(client)
+        return IssuedClient(client=client, token=token)
+
+
 class ListClients:
     def __init__(self, repository: ClientRepository) -> None:
         self._repository = repository

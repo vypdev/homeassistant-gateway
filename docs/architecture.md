@@ -76,7 +76,7 @@ A companion custom integration may be added later for native Home Assistant regi
 
 ### Configuration and raw files
 
-The supported read model uses Home Assistant's authenticated REST/WebSocket APIs first. Raw `/config` access is not enabled by default because it can expose `secrets.yaml`, `.storage`, tokens, and private topology. A future narrowly scoped configuration-inspection capability may read selected files through an explicit allowlist, redaction pipeline, and separate policy gate; it must never expose the raw configuration directory.
+The supported read model uses Home Assistant's authenticated REST API through the Supervisor-provided `SUPERVISOR_TOKEN`. The adapter applies bounded timeouts, `trust_env=False`, explicit upstream errors and recursive redaction of secret-like fields. Raw `/config` access is not enabled by default.
 
 ## Capability model
 
@@ -107,7 +107,11 @@ The MCP layer exposes bounded tools grouped by intent rather than raw Home Assis
 4. `ha_configuration`: safe configuration metadata and integration diagnostics without secrets.
 5. `ha_analysis_context`: a consistent read snapshot for analysis workflows.
 6. `gateway_diagnostics`: initial Streamable HTTP observer tool, authenticated with a client bearer token and gated by `ha.read.diagnostics`.
-7. Operator tools are added only after the observer contract and approval model are verified.
+7. `ha_inventory`: bounded entity/service inventory gated by `ha.read.entities`.
+8. `ha_states`: bounded state reads gated by `ha.read.states`.
+9. `ha_automations`: automation entity reads gated by `ha.read.automations`.
+10. `ha_configuration`: safe configuration/registry metadata gated by `ha.read.config_entries`.
+11. Operator tools are added only after the observer contract and approval model are verified.
 
 Every tool has a schema, capability requirement, timeout, output-size limit, redaction rule, and audit classification.
 

@@ -11,7 +11,7 @@ The gateway is intended to be consumed by OpenClaw and Hermes through MCP withou
 
 ## Status
 
-Architecture and integration contract phase. No operator mutation is enabled yet.
+The Supervisor App, Ingress UI, observer MCP transport, client lifecycle, audit trail and read-only Home Assistant adapter are implemented. No operator mutation is enabled yet; operator capabilities remain disabled by default and are not exposed as executable tools.
 
 ## Design goals
 
@@ -42,7 +42,9 @@ OpenClaw / Hermes
     └── operator profile only when explicitly provisioned
 ```
 
-The first implementation target is a Supervisor-managed Home Assistant App installed from this GitHub repository. It starts with Home Assistant and serves its management UI through Ingress. The management UI will use Lit + TypeScript and a small Vite build, with a visual system documented in `DESIGN.md`. A companion custom integration may be added later for native entities/services, but it is not the primary MCP server boundary.
+The management UI is a real Lit + TypeScript + Vite frontend served as static assets by FastAPI. It provides overview/readiness, clients, one-time token issuance, revocation, rotation, profiles/policy, MCP discovery and sanitized audit views.
+
+The App can use the Supervisor-provided Home Assistant API through a bounded read-only adapter. The current MCP observer tools are `gateway_diagnostics`, `ha_inventory`, `ha_states`, `ha_automations`, and `ha_configuration`; each requires an explicit capability.
 
 ## Security posture
 

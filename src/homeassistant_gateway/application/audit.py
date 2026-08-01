@@ -20,6 +20,10 @@ class AuditSink(Protocol):
     def record(self, event: AuditEvent) -> None: ...
 
 
+class AuditReader(Protocol):
+    def list(self, limit: int = 100, decision: str | None = None) -> list[AuditEvent]: ...
+
+
 class NoopAuditSink:
     def record(self, event: AuditEvent) -> None:
         del event

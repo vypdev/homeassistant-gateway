@@ -11,10 +11,11 @@ type Client = {
   status: string;
   revoked_at: string | null;
 };
-type Ready = { status: string; storage: string; mcp: string };
+type Ready = { status: string; storage: string; mcp: string; home_assistant: string };
+type AuditEvent = { event_id: string; occurred_at: string; request_id: string; remote_user_id: string | null; action: string; target: string; decision: string; outcome: string; status_code: number };
 type Discovery = { server_name: string; transport: string; endpoint: string; client_id: string; profile: Profile; capabilities: string[]; tools: string[] };
 
-type View = 'overview' | 'clients' | 'policy' | 'mcp';
+type View = 'overview' | 'clients' | 'policy' | 'mcp' | 'audit';
 
 const api = async <T>(path: string, init?: RequestInit): Promise<T> => {
   const response = await fetch(new URL(`./api${path}`, document.baseURI), {
@@ -37,6 +38,7 @@ export class GatewayApp extends LitElement {
     error: { state: true },
     issuedToken: { state: true },
     discovery: { state: true },
+    audit: { state: true },
   };
 
   @property({ type: String }) view: View = 'overview';
@@ -46,6 +48,7 @@ export class GatewayApp extends LitElement {
   @state() error = '';
   @state() issuedToken = '';
   @state() discovery: Discovery | null = null;
+  @state() audit: AuditEvent[] = [];
 
   static styles = css`
     :host { display: block; color: #e7f0fb; min-height: 100vh; font: 14px/1.5 Inter, ui-sans-serif, system-ui, sans-serif; }
@@ -112,7 +115,7 @@ export class GatewayApp extends LitElement {
 
   async refresh() {
     this.busy = true; this.error = '';
-    try { [this.ready, this.clients] = await Promise.all([api<Ready>('/../ready'), api<Client[]>('/clients')]); }
+    try { [this.ready, this.clients, this.audit] = await Promise.all([api<Ready>('/../ready'), api<Client[]>('/clients'), api<AuditEvent[]>('/audit')]); }
     catch (error) { this.error = error instanceof Error ? error.message : 'Unable to load gateway state'; }
     finally { this.busy = false; }
   }
@@ -139,6 +142,14 @@ export class GatewayApp extends LitElement {
     finally { this.busy = false; }
   }
 
+  async rotate(clientId: string) {
+    if (!window.confirm(`Rotate credentials for ${clientId}? The current token will stop working.`)) return;
+    this.busy = true; this.error = '';
+    try { const result = await api<Client & { token: string }>(`/clients/${encodeURIComponent(clientId)}/rotate`, { method: 'POST' }); this.issuedToken = result.token; await this.refresh(); }
+    catch (error) { this.error = error instanceof Error ? error.message : 'Unable to rotate client'; }
+    finally { this.busy = false; }
+  }
+
   async loadDiscovery(event: Event) {
     event.preventDefault(); const form = event.target as HTMLFormElement; const token = String(new FormData(form).get('token') ?? '');
     this.busy = true; this.error = '';
@@ -153,23 +164,27 @@ export class GatewayApp extends LitElement {
       <aside>
         <div class="brand"><div class="brand-mark">⌁</div><div><strong>Gateway</strong><small> control plane</small></div></div>
         <nav aria-label="Gateway navigation">
-          ${this.nav('overview', '◈', 'Overview')}${this.nav('clients', '◎', 'Clients')}${this.nav('policy', '◇', 'Policy')}${this.nav('mcp', '⌁', 'MCP')}
+          ${this.nav('overview', '◈', 'Overview')}${this.nav('clients', '◎', 'Clients')}${this.nav('policy', '◇', 'Policy')}${this.nav('mcp', '⌁', 'MCP')}${this.nav('audit', '◌', 'Audit')}
         </nav>
         <div class="side-foot"><div class="ok">● observer-first</div><div>Operator capabilities disabled</div></div>
       </aside>
       <main>
         <div class="topline"><div><div class="eyebrow">Home Assistant App · MCP Gateway</div><h1>${this.pageTitle()}</h1><p>${this.subtitle()}</p></div><div class="status-pill ${this.ready?.status === 'ready' ? '' : 'warn'}"><span class="dot"></span>${this.ready?.status === 'ready' ? 'Gateway ready' : 'Checking gateway'}</div></div>
         ${this.error ? html`<div class="alert" role="alert">${this.error}</div>` : ''}
-        ${active === 'overview' ? this.overview() : active === 'clients' ? this.clientsView() : active === 'policy' ? this.policyView() : this.mcpView()}
+        ${active === 'overview' ? this.overview() : active === 'clients' ? this.clientsView() : active === 'policy' ? this.policyView() : active === 'mcp' ? this.mcpView() : this.auditView()}
       </main>
     </div>${this.issuedToken ? this.tokenModal() : ''}</div>`;
   }
 
   nav(view: View, icon: string, label: string) { return html`<button class=${this.view === view ? 'active' : ''} @click=${() => this.setView(view)}><span aria-hidden="true">${icon}</span> ${label}</button>`; }
-  pageTitle() { return ({ overview: 'Secure gateway control plane.', clients: 'Clients & tokens', policy: 'Profiles & policy', mcp: 'MCP transport' } as Record<View, string>)[this.view]; }
-  subtitle() { return ({ overview: 'A quiet observatory for identity, readiness and read-only access.', clients: 'Issue independent credentials and revoke them without exposing stored secrets.', policy: 'Review the capability boundaries enforced before any MCP operation.', mcp: 'Inspect the authenticated Streamable HTTP surface exposed to observer clients.' } as Record<View, string>)[this.view]; }
-  overview() { const active = this.clients.filter((client) => client.status === 'active').length; return html`<section class="cards"><div class="card"><span class="card-label">Storage</span><strong class="metric ok">${this.ready?.storage ?? '—'}</strong><p>Private SQLite state</p></div><div class="card"><span class="card-label">MCP endpoint</span><strong class="metric ${this.ready?.mcp === 'ready' ? 'ok' : 'warn'}">${this.ready?.mcp ?? '—'}</strong><p>Streamable HTTP</p></div><div class="card"><span class="card-label">Active clients</span><strong class="metric">${active}</strong><p>Bearer identities</p></div><div class="card"><span class="card-label">Operator</span><strong class="metric warn">disabled</strong><p>Observer-only default</p></div></section><div class="split"><div class="card wide"><h2>System posture</h2><p>All management requests are protected by Supervisor Ingress identity. Client tokens are hashed at rest and displayed only once during issuance.</p><div style="margin-top:22px"><span class="tag">Ingress trusted identity</span><span class="tag">SHA-256 token digests</span><span class="tag">read-only MCP</span></div></div><div class="card wide"><h2>Quick actions</h2><div class="form-actions" style="justify-content:flex-start; margin-top:24px"><button class="primary" @click=${() => this.setView('clients')}>Manage clients</button><button class="secondary" @click=${() => this.setView('policy')}>Review policy</button></div></div></div>`; }
-  clientsView() { return html`<div class="split"><div class="card"><div class="toolbar"><div><h2>Registered clients</h2><p>Tokens never appear in this list.</p></div><button class="secondary" @click=${() => void this.refresh()} ?disabled=${this.busy}>Refresh</button></div>${this.clients.length ? html`<div class="table-wrap"><table><thead><tr><th>Identity</th><th>Profile</th><th>Capabilities</th><th>Status</th><th></th></tr></thead><tbody>${this.clients.map((client) => html`<tr><td><strong>${client.display_name}</strong><br><span class="mono">${client.client_id}</span></td><td><span class="tag">${client.profile}</span></td><td>${client.capabilities.map((capability) => html`<span class="tag">${capability}</span>`)}</td><td class=${client.status === 'active' ? 'ok' : 'bad'}>${client.status}</td><td>${client.status === 'active' ? html`<button class="danger" @click=${() => void this.revoke(client.client_id)} ?disabled=${this.busy}>Revoke</button>` : ''}</td></tr>`)}</tbody></table></div>` : html`<div class="empty">No clients issued yet.</div>`}</div><div class="card"><h2>Issue observer client</h2><p style="margin-bottom:16px">The token will be shown once after creation.</p><form class="form" @submit=${this.createClient}><label>Client ID<input name="client_id" required maxlength="128" placeholder="nido-observer" /></label><label>Display name<input name="display_name" required maxlength="256" placeholder="Nido house monitor" /></label><label>Profile<select name="profile"><option value="observer">observer · read-only</option><option value="operator" disabled>operator · disabled</option></select></label><label>Capabilities<input name="capabilities" value="ha.read.diagnostics" placeholder="ha.read.diagnostics, ha.read.states" /><small class="muted">Comma-separated capability names.</small></label><div class="form-actions"><button class="primary" ?disabled=${this.busy}>Issue client</button></div></form></div></div>`; }
+  pageTitle() { return ({ overview: 'Secure gateway control plane.', clients: 'Clients & tokens', policy: 'Profiles & policy', mcp: 'MCP transport', audit: 'Sanitized audit trail' } as Record<View, string>)[this.view]; }
+  subtitle() { return ({ overview: 'A quiet observatory for identity, readiness and read-only access.', clients: 'Issue independent credentials and revoke them without exposing stored secrets.', policy: 'Review the capability boundaries enforced before any MCP operation.', mcp: 'Inspect the authenticated Streamable HTTP surface exposed to observer clients.', audit: 'Trace decisions and outcomes without exposing request secrets.' } as Record<View, string>)[this.view]; }
+
+  overview() { const active = this.clients.filter((client) => client.status === 'active').length; return html`<section class="cards"><div class="card"><span class="card-label">Storage</span><strong class="metric ok">${this.ready?.storage ?? '—'}</strong><p>Private SQLite state</p></div><div class="card"><span class="card-label">Home Assistant</span><strong class="metric ${this.ready?.home_assistant === 'ready' ? 'ok' : 'warn'}">${this.ready?.home_assistant ?? '—'}</strong><p>Supervisor upstream</p></div><div class="card"><span class="card-label">Active clients</span><strong class="metric">${active}</strong><p>Bearer identities</p></div><div class="card"><span class="card-label">Audit events</span><strong class="metric">${this.audit.length}</strong><p>Sanitized records</p></div></section><div class="split"><div class="card wide"><h2>System posture</h2><p>All management requests are protected by Supervisor Ingress identity. Client tokens are hashed at rest and displayed only once during issuance.</p><div style="margin-top:22px"><span class="tag">Ingress trusted identity</span><span class="tag">SHA-256 token digests</span><span class="tag">read-only MCP</span></div></div><div class="card wide"><h2>Quick actions</h2><div class="form-actions" style="justify-content:flex-start; margin-top:24px"><button class="primary" @click=${() => this.setView('clients')}>Manage clients</button><button class="secondary" @click=${() => this.setView('audit')}>View audit</button></div></div></div>`; }
+
+  clientsView() { return html`<div class="split"><div class="card"><div class="toolbar"><div><h2>Registered clients</h2><p>Tokens never appear in this list.</p></div><button class="secondary" @click=${() => void this.refresh()} ?disabled=${this.busy}>Refresh</button></div>${this.clients.length ? html`<div class="table-wrap"><table><thead><tr><th>Identity</th><th>Profile</th><th>Capabilities</th><th>Status</th><th></th></tr></thead><tbody>${this.clients.map((client) => html`<tr><td><strong>${client.display_name}</strong><br><span class="mono">${client.client_id}</span></td><td><span class="tag">${client.profile}</span></td><td>${client.capabilities.map((capability) => html`<span class="tag">${capability}</span>`)}</td><td class=${client.status === 'active' ? 'ok' : 'bad'}>${client.status}</td><td>${client.status === 'active' ? html`<button class="danger" @click=${() => void this.revoke(client.client_id)} ?disabled=${this.busy}>Revoke</button><button class="secondary" @click=${() => void this.rotate(client.client_id)} ?disabled=${this.busy}>Rotate</button>` : ''}</td></tr>`)}</tbody></table></div>` : html`<div class="empty">No clients issued yet.</div>`}</div><div class="card"><h2>Issue observer client</h2><p style="margin-bottom:16px">The token will be shown once after creation.</p><form class="form" @submit=${this.createClient}><label>Client ID<input name="client_id" required maxlength="128" placeholder="nido-observer" /></label><label>Display name<input name="display_name" required maxlength="256" placeholder="Nido house monitor" /></label><label>Profile<select name="profile"><option value="observer">observer · read-only</option><option value="operator" disabled>operator · disabled</option></select></label><label>Capabilities<input name="capabilities" value="ha.read.diagnostics" placeholder="ha.read.diagnostics, ha.read.states" /><small class="muted">Comma-separated capability names.</small></label><div class="form-actions"><button class="primary" ?disabled=${this.busy}>Issue client</button></div></form></div></div>`; }
+  auditView() { return html`<div class="card"><div class="toolbar"><div><h2>Sanitized audit events</h2><p>Request bodies, credentials, tokens and digests are never stored here.</p></div><div><select @change=${(event: Event) => this.loadAudit((event.target as HTMLSelectElement).value)}><option value="">All decisions</option><option value="allowed">Allowed</option><option value="denied">Denied</option><option value="approval_required">Approval required</option></select></div></div>${this.audit.length ? html`<div class="table-wrap"><table><thead><tr><th>Time</th><th>Action</th><th>Target</th><th>Decision</th><th>Outcome</th><th>Request ID</th></tr></thead><tbody>${this.audit.map((event) => html`<tr><td class="mono">${new Date(event.occurred_at).toLocaleString()}</td><td>${event.action}</td><td class="mono">${event.target}</td><td class=${event.decision === 'allowed' ? 'ok' : event.decision === 'denied' ? 'bad' : 'warn'}>${event.decision}</td><td>${event.outcome} · ${event.status_code}</td><td class="mono">${event.request_id}</td></tr>`)}</tbody></table></div>` : html`<div class="empty">No audit events match the selected filter.</div>`}</div>`; }
+  async loadAudit(decision: string) { this.busy = true; try { this.audit = await api<AuditEvent[]>(`/audit?limit=100${decision ? `&decision=${encodeURIComponent(decision)}` : ''}`); } catch (error) { this.error = error instanceof Error ? error.message : 'Unable to load audit'; } finally { this.busy = false; } }
   policyView() { return html`<div class="split"><div class="card"><h2>Policy matrix</h2><p>Observer clients may read granted capabilities. Mutations remain denied.</p><div style="margin-top:20px"><div class="tag">read capability → allowed</div><div class="tag">missing capability → denied</div><div class="tag">observer mutation → denied</div><div class="tag">operator → globally disabled</div></div></div><div class="card"><h2>Evaluate a request</h2><form class="form" @submit=${this.evaluatePolicy}><label>Client<select name="client_id">${this.clients.map((client) => html`<option value=${client.client_id}>${client.display_name} · ${client.client_id}</option>`)}</select></label><label>Capability<input name="capability" value="ha.read.diagnostics" required /></label><label><span><input name="mutation" type="checkbox" style="width:auto; margin-right:7px" /> mutation request</span></label><div class="form-actions"><button class="primary" ?disabled=${this.busy}>Evaluate</button></div></form></div></div>`; }
   async evaluatePolicy(event: Event) { event.preventDefault(); const data = new FormData(event.target as HTMLFormElement); this.busy = true; try { const result = await api<{ decision: string; reason: string }>('/policy/evaluate', { method: 'POST', body: JSON.stringify({ client_id: data.get('client_id'), capability: data.get('capability'), mutation: data.has('mutation') }) }); window.alert(`${result.decision}: ${result.reason}`); } catch (error) { this.error = error instanceof Error ? error.message : 'Unable to evaluate policy'; } finally { this.busy = false; } }
   mcpView() { return html`<div class="split"><div class="card"><h2>Streamable HTTP</h2><p>Authenticated endpoint</p><div class="token mono" style="margin-top:20px">/mcp/</div><p>Transport: <span class="ok">${this.ready?.mcp ?? 'unknown'}</span></p><p style="margin-top:8px">Tool: <code>gateway_diagnostics</code></p></div><div class="card"><h2>Discovery</h2><p style="margin-bottom:16px">Paste a client token to inspect its scoped metadata. It is sent only in the Authorization header.</p><form class="form" @submit=${this.loadDiscovery}><label>Bearer token<input name="token" type="password" required placeholder="hgw_…" /></label><div class="form-actions"><button class="primary" ?disabled=${this.busy}>Load discovery</button></div></form>${this.discovery ? html`<div style="margin-top:18px"><span class="tag">${this.discovery.client_id}</span><span class="tag">${this.discovery.profile}</span>${this.discovery.capabilities.map((item) => html`<span class="tag">${item}</span>`)}</div>` : ''}</div></div>`; }

@@ -51,14 +51,20 @@ class SQLiteAuditRepository(AuditSink):
                 ),
             )
 
-    def list(self, limit: int = 100) -> list[AuditEvent]:
+    def list(self, limit: int = 100, decision: str | None = None) -> list[AuditEvent]:
         if limit < 1 or limit > 1000:
             raise ValueError("invalid_audit_limit")
         with self._connect() as connection:
-            rows = connection.execute(
-                "SELECT * FROM audit_events ORDER BY occurred_at, event_id LIMIT ?",
-                (limit,),
-            ).fetchall()
+            if decision:
+                rows = connection.execute(
+                    "SELECT * FROM audit_events WHERE decision = ? ORDER BY occurred_at DESC, event_id DESC LIMIT ?",
+                    (decision, limit),
+                ).fetchall()
+            else:
+                rows = connection.execute(
+                    "SELECT * FROM audit_events ORDER BY occurred_at DESC, event_id DESC LIMIT ?",
+                    (limit,),
+                ).fetchall()
         return [self._from_row(row) for row in rows]
 
     def _connect(self) -> sqlite3.Connection:

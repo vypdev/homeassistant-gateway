@@ -6,7 +6,12 @@ from fastapi import FastAPI
 
 from homeassistant_gateway.application.authentication import AuthenticateClient
 from homeassistant_gateway.application.authorization import AuthorizeRequest
-from homeassistant_gateway.application.clients import IssueClient, ListClients, RevokeClient
+from homeassistant_gateway.application.clients import (
+    IssueClient,
+    ListClients,
+    RevokeClient,
+    RotateClient,
+)
 from homeassistant_gateway.application.observer import ObserverDiagnostics
 from homeassistant_gateway.infrastructure.security.tokens import SecureTokenIssuer
 from homeassistant_gateway.infrastructure.storage.sqlite_audit import SQLiteAuditRepository
@@ -66,9 +71,11 @@ def build_app(settings: AppSettings) -> FastAPI:
         ),
         list_clients=ListClients(repository),
         revoke_client=RevokeClient(repository, clock),
+        rotate_client=RotateClient(repository, token_issuer),
         authenticate_client=authenticate_client,
         authorize_request=authorize_request,
         audit_sink=audit_repository,
+        audit_reader=audit_repository,
         mcp_app=mcp_bundle.application,
         home_assistant=home_assistant,
         lifespan=mcp_bundle.lifespan,

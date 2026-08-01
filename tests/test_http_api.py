@@ -7,7 +7,12 @@ import httpx
 from homeassistant_gateway.application.audit import AuditEvent
 from homeassistant_gateway.application.authentication import AuthenticateClient
 from homeassistant_gateway.application.authorization import AuthorizeRequest
-from homeassistant_gateway.application.clients import IssueClient, ListClients, RevokeClient
+from homeassistant_gateway.application.clients import (
+    IssueClient,
+    ListClients,
+    RevokeClient,
+    RotateClient,
+)
 from homeassistant_gateway.infrastructure.security.tokens import SecureTokenIssuer
 from homeassistant_gateway.presentation.http import create_app
 
@@ -39,6 +44,10 @@ class AuditRecorder:
     def record(self, event: AuditEvent) -> None:
         self.events.append(event)
 
+    def list(self, limit=100, decision=None):
+        events = [event for event in self.events if decision is None or event.decision == decision]
+        return events[:limit]
+
 
 def make_app(audit_sink=None):
     repository = InMemoryClientRepository()
@@ -48,9 +57,11 @@ def make_app(audit_sink=None):
         issue_client=IssueClient(repository, tokens, clock, operator_enabled=False),
         list_clients=ListClients(repository),
         revoke_client=RevokeClient(repository, clock),
+        rotate_client=RotateClient(repository, tokens),
         authenticate_client=AuthenticateClient(repository, tokens),
         authorize_request=AuthorizeRequest(repository, operator_enabled=False),
         audit_sink=audit_sink,
+        audit_reader=audit_sink,
     )
 
 
@@ -151,6 +162,38 @@ def test_policy_evaluation_returns_decision_without_executing_operation() -> Non
 
     assert response.status_code == 200
     assert response.json() == {"decision": "allowed", "reason": "read_allowed"}
+
+
+def test_audit_endpoint_returns_sanitized_events_and_filters_decision() -> None:
+    recorder = AuditRecorder()
+    response = request(make_app(recorder), "GET", "/api/clients", headers=ingress_headers())
+    assert response.status_code == 200
+
+    events = request(make_app(recorder), "GET", "/api/audit?limit=10&decision=allowed", headers=ingress_headers())
+    assert events.status_code == 200
+    assert events.json()[0]["target"] == "/api/clients"
+    assert "token" not in events.text.lower()
+
+
+def test_client_rotation_replaces_old_bearer_material() -> None:
+    app = make_app()
+    created = request(
+        app,
+        "POST",
+        "/api/clients",
+        headers=ingress_headers(),
+        json={"client_id": "rotatable", "display_name": "Rotatable", "profile": "observer", "capabilities": ["ha.read.states"]},
+    )
+    old_token = created.json()["token"]
+
+    rotated = request(app, "POST", "/api/clients/rotatable/rotate", headers=ingress_headers())
+    assert rotated.status_code == 201
+    new_token = rotated.json()["token"]
+    assert new_token != old_token
+    old_headers = {**ingress_headers(), "Authorization": f"Bearer {old_token}"}
+    new_headers = {**ingress_headers(), "Authorization": f"Bearer {new_token}"}
+    assert request(app, "GET", "/api/client/me", headers=old_headers).status_code == 401
+    assert request(app, "GET", "/api/client/me", headers=new_headers).status_code == 200
 
 
 def test_observer_mutation_is_denied_by_capability_policy() -> None:

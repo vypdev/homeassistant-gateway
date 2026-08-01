@@ -4,15 +4,25 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Request, status
+from fastapi import FastAPI, HTTPException, Query, Request, status
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.staticfiles import StaticFiles
 
-from homeassistant_gateway.application.audit import AuditEvent, AuditSink, NoopAuditSink
+from homeassistant_gateway.application.audit import (
+    AuditEvent,
+    AuditReader,
+    AuditSink,
+    NoopAuditSink,
+)
 from homeassistant_gateway.application.authentication import AuthenticateClient
 from homeassistant_gateway.application.authorization import AuthorizeRequest
-from homeassistant_gateway.application.clients import IssueClient, ListClients, RevokeClient
+from homeassistant_gateway.application.clients import (
+    IssueClient,
+    ListClients,
+    RevokeClient,
+    RotateClient,
+)
 from homeassistant_gateway.application.home_assistant import HomeAssistantReadPort
 from homeassistant_gateway.domain.clients import Client
 from homeassistant_gateway.domain.policy import Decision, Profile
@@ -80,6 +90,24 @@ class PolicyDecisionResponse(BaseModel):
     reason: str
 
 
+class AuditEventResponse(BaseModel):
+    event_id: str
+    occurred_at: datetime
+    request_id: str
+    remote_user_id: str | None
+    action: str
+    target: str
+    decision: str
+    outcome: str
+    status_code: int
+
+    @classmethod
+    def from_domain(cls, event: AuditEvent) -> "AuditEventResponse":
+        return cls.model_validate(event, from_attributes=True)
+
+
+
+
 class MCPDiscoveryResponse(BaseModel):
     server_name: str
     transport: str
@@ -105,15 +133,17 @@ def create_app(
     issue_client: IssueClient,
     list_clients: ListClients,
     revoke_client: RevokeClient,
+    rotate_client: RotateClient,
     authenticate_client: AuthenticateClient,
     authorize_request: AuthorizeRequest,
     audit_sink: AuditSink | None = None,
+    audit_reader: AuditReader | None = None,
     mcp_app: Any | None = None,
     home_assistant: HomeAssistantReadPort | None = None,
     lifespan: Any | None = None,
 ) -> FastAPI:
     """Build the HTTP adapter around already-wired application use cases."""
-    app = FastAPI(title="Home Assistant Gateway", version="0.1.3", lifespan=lifespan)
+    app = FastAPI(title="Home Assistant Gateway", version="0.1.4", lifespan=lifespan)
     sink = audit_sink or NoopAuditSink()
     if UI_DIST.is_dir():
         app.mount("/assets", StaticFiles(directory=UI_DIST / "assets"), name="assets")
@@ -186,6 +216,15 @@ def create_app(
             home_assistant=upstream,
         )
 
+    @app.get("/api/audit", response_model=list[AuditEventResponse])
+    def audit_events(
+        limit: int = Query(default=100, ge=1, le=1000),
+        decision: str | None = Query(default=None, max_length=64),
+    ) -> list[AuditEventResponse]:
+        if audit_reader is None:
+            return []
+        return [AuditEventResponse.from_domain(event) for event in audit_reader.list(limit=limit, decision=decision)]
+
     @app.get("/api/clients", response_model=list[ClientResponse])
     def list_client_resources() -> list[ClientResponse]:
         return [ClientResponse.from_domain(client) for client in list_clients.execute()]
@@ -254,6 +293,15 @@ def create_app(
     def revoke_client_resource(client_id: str) -> Response:
         revoke_client.execute(client_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @app.post("/api/clients/{client_id}/rotate", response_model=IssuedClientResponse, status_code=status.HTTP_201_CREATED)
+    def rotate_client_resource(client_id: str) -> IssuedClientResponse:
+        try:
+            issued = rotate_client.execute(client_id)
+        except ValueError as error:
+            raise HTTPException(status_code=404, detail=str(error)) from error
+        client = ClientResponse.from_domain(issued.client)
+        return IssuedClientResponse(**client.model_dump(), token=issued.token)
 
     if mcp_app is not None:
         app.mount("/mcp", mcp_app)
