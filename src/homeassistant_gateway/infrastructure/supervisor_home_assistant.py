@@ -31,6 +31,8 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
             raise ValueError("supervisor_token_required")
         if timeout <= 0 or timeout > 30:
             raise ValueError("invalid_supervisor_timeout")
+        if max_items < 1 or max_items > 10000:
+            raise ValueError("invalid_supervisor_max_items")
         self._headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout

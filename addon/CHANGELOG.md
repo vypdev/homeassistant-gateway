@@ -2,6 +2,11 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.4.6
+
+- Reject invalid or unbounded Supervisor adapter `max_items` values.
+- Add regression coverage for bounded response configuration.
+
 ## 0.4.5
 
 - Synchronize OpenClaw and Hermes documentation with the 18 registered observer tools.

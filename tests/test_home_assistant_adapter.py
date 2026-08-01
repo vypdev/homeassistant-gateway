@@ -15,6 +15,13 @@ def make_client(handler):
     )
 
 
+def test_adapter_rejects_unbounded_max_items() -> None:
+    with pytest.raises(ValueError, match="invalid_supervisor_max_items"):
+        SupervisorHomeAssistantClient("token", max_items=0)
+    with pytest.raises(ValueError, match="invalid_supervisor_max_items"):
+        SupervisorHomeAssistantClient("token", max_items=10001)
+
+
 def test_states_uses_supervisor_auth_and_redacts_secret_fields() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         assert request.url == "http://supervisor/core/api/states"
