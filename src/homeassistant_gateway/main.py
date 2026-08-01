@@ -18,6 +18,8 @@ def load_settings() -> AppSettings:
     return AppSettings(
         data_dir=data_dir,
         operator_enabled=operator_enabled,
+        supervisor_token=os.getenv("SUPERVISOR_TOKEN") or None,
+        supervisor_url=os.getenv("GATEWAY_SUPERVISOR_URL", "http://supervisor/core/api"),
         mcp_allowed_hosts=allowed_hosts or AppSettings(data_dir).mcp_allowed_hosts,
     )
 

@@ -12,11 +12,8 @@ from starlette.staticfiles import StaticFiles
 from homeassistant_gateway.application.audit import AuditEvent, AuditSink, NoopAuditSink
 from homeassistant_gateway.application.authentication import AuthenticateClient
 from homeassistant_gateway.application.authorization import AuthorizeRequest
-from homeassistant_gateway.application.clients import (
-    IssueClient,
-    ListClients,
-    RevokeClient,
-)
+from homeassistant_gateway.application.clients import IssueClient, ListClients, RevokeClient
+from homeassistant_gateway.application.home_assistant import HomeAssistantReadPort
 from homeassistant_gateway.domain.clients import Client
 from homeassistant_gateway.domain.policy import Decision, Profile
 from homeassistant_gateway.presentation.ui import UI_DIST, index_response
@@ -30,6 +27,7 @@ class ReadinessResponse(BaseModel):
     status: str
     storage: str
     mcp: str
+    home_assistant: str
 
 
 class CreateClientRequest(BaseModel):
@@ -111,10 +109,11 @@ def create_app(
     authorize_request: AuthorizeRequest,
     audit_sink: AuditSink | None = None,
     mcp_app: Any | None = None,
+    home_assistant: HomeAssistantReadPort | None = None,
     lifespan: Any | None = None,
 ) -> FastAPI:
     """Build the HTTP adapter around already-wired application use cases."""
-    app = FastAPI(title="Home Assistant Gateway", version="0.1.2", lifespan=lifespan)
+    app = FastAPI(title="Home Assistant Gateway", version="0.1.3", lifespan=lifespan)
     sink = audit_sink or NoopAuditSink()
     if UI_DIST.is_dir():
         app.mount("/assets", StaticFiles(directory=UI_DIST / "assets"), name="assets")
@@ -179,10 +178,12 @@ def create_app(
 
     @app.get("/ready", response_model=ReadinessResponse)
     def readiness() -> ReadinessResponse:
+        upstream = "disabled" if home_assistant is None else ("ready" if home_assistant.health() else "unavailable")
         return ReadinessResponse(
-            status="ready",
+            status="ready" if upstream != "unavailable" else "degraded",
             storage="ready",
             mcp="ready" if mcp_app is not None else "disabled",
+            home_assistant=upstream,
         )
 
     @app.get("/api/clients", response_model=list[ClientResponse])

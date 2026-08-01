@@ -2,6 +2,12 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.1.3
+
+- Added the Supervisor-provided Home Assistant read-only adapter.
+- Added upstream readiness reporting and secret redaction.
+- Added MCP inventory, states, automations and configuration tools with capability enforcement.
+
 ## 0.1.2
 
 - Added a Lit + TypeScript + Vite management UI.

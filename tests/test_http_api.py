@@ -87,7 +87,7 @@ def test_readiness_endpoint_is_public_and_reports_composition_state() -> None:
     response = request(make_app(), "GET", "/ready")
 
     assert response.status_code == 200
-    assert response.json() == {"status": "ready", "storage": "ready", "mcp": "disabled"}
+    assert response.json() == {"status": "ready", "storage": "ready", "mcp": "disabled", "home_assistant": "disabled"}
 
 
 def test_request_id_is_bounded_and_returned_for_ingress_requests() -> None:

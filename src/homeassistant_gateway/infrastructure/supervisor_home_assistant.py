@@ -1,0 +1,88 @@
+from __future__ import annotations
+
+from typing import Any
+
+import httpx
+
+from homeassistant_gateway.application.home_assistant import (
+    HomeAssistantReadPort,
+    HomeAssistantUnavailable,
+    redact,
+)
+
+
+class SupervisorHomeAssistantClient(HomeAssistantReadPort):
+    """Bounded read-only adapter for Home Assistant's Supervisor-provided API."""
+
+    def __init__(
+        self,
+        token: str,
+        base_url: str = "http://supervisor/core/api",
+        timeout: float = 5.0,
+        max_items: int = 5000,
+        transport: httpx.BaseTransport | None = None,
+    ) -> None:
+        if not token:
+            raise ValueError("supervisor_token_required")
+        if timeout <= 0 or timeout > 30:
+            raise ValueError("invalid_supervisor_timeout")
+        self._headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+        self._base_url = base_url.rstrip("/")
+        self._timeout = timeout
+        self._max_items = max_items
+        self._transport = transport
+
+    def health(self) -> bool:
+        try:
+            response = self._request("/config")
+        except HomeAssistantUnavailable:
+            return False
+        return response.status_code < 400
+
+    def inventory(self) -> dict[str, Any]:
+        states = self.states()
+        services = self._get_json("/services", default=[])
+        return {
+            "entities": states,
+            "services": self._bounded_list(services),
+            "counts": {"entities": len(states), "services": len(services) if isinstance(services, list) else 0},
+        }
+
+    def states(self, entity_id: str | None = None) -> list[dict[str, Any]]:
+        path = f"/states/{entity_id}" if entity_id else "/states"
+        payload = self._get_json(path, default=[])
+        if entity_id:
+            payload = [payload] if isinstance(payload, dict) else []
+        return self._bounded_list(payload)
+
+    def automations(self) -> list[dict[str, Any]]:
+        # The stable REST contract exposes automation entities through /states.
+        return [item for item in self.states() if str(item.get("entity_id", "")).startswith("automation.")]
+
+    def configuration(self) -> dict[str, Any]:
+        config = self._get_json("/config", default={})
+        return {"core": config, "entity_registry": self._get_json("/config/entity_registry/list", default=[]), "area_registry": self._get_json("/config/area_registry/list", default=[])}
+
+    def _get_json(self, path: str, default: Any) -> Any:
+        response = self._request(path)
+        if response.status_code == 404:
+            return default
+        if response.status_code >= 400:
+            raise HomeAssistantUnavailable(f"home_assistant_http_{response.status_code}")
+        try:
+            return redact(response.json())
+        except ValueError as error:
+            raise HomeAssistantUnavailable("home_assistant_invalid_json") from error
+
+    def _request(self, path: str) -> httpx.Response:
+        try:
+            with httpx.Client(headers=self._headers, timeout=self._timeout, trust_env=False, transport=self._transport) as client:
+                response = client.get(f"{self._base_url}{path}")
+        except httpx.HTTPError as error:
+            raise HomeAssistantUnavailable("home_assistant_transport_unavailable") from error
+        return response
+
+    def _bounded_list(self, value: Any) -> list[dict[str, Any]]:
+        if not isinstance(value, list):
+            return []
+        return [item for item in value[: self._max_items] if isinstance(item, dict)]

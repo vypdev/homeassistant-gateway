@@ -7,6 +7,10 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 from mcp.server.transport_security import TransportSecuritySettings
 
+from homeassistant_gateway.application.home_assistant import (
+    HomeAssistantReadPort,
+    HomeAssistantUnavailable,
+)
 from homeassistant_gateway.application.observer import ObserverDiagnostics
 from homeassistant_gateway.presentation.http import parse_bearer_token
 
@@ -55,6 +59,8 @@ class BearerMCPMiddleware:
 def create_mcp_app(
     diagnostics: ObserverDiagnostics,
     authenticate: Callable[[str], Any],
+    authorize: Callable[..., Any],
+    home_assistant: HomeAssistantReadPort | None = None,
     allowed_hosts: tuple[str, ...] = ("localhost", "127.0.0.1", "[::1]"),
 ) -> MCPApp:
     server = FastMCP(
@@ -78,6 +84,57 @@ def create_mcp_app(
             return asdict(diagnostics.execute(token))
         except PermissionError as error:
             return {"status": "denied", "reason": str(error)}
+
+    def authorize_tool(capability: str) -> dict[str, Any] | None:
+        token = _current_token.get()
+        if token is None:
+            return {"status": "denied", "reason": "invalid_client_token"}
+        client = authenticate(token)
+        if client is None:
+            return {"status": "denied", "reason": "invalid_client_token"}
+        decision = authorize(client.client_id, capability, mutation=False)
+        if decision.decision.value != "allowed":
+            return {"status": "denied", "reason": decision.reason}
+        if home_assistant is None:
+            return {"status": "unavailable", "reason": "home_assistant_not_configured"}
+        return None
+
+    def read_tool(capability: str, operation: Callable[[], Any]) -> dict[str, Any]:
+        denied = authorize_tool(capability)
+        if denied is not None:
+            return denied
+        try:
+            return {"status": "ok", "data": operation()}
+        except HomeAssistantUnavailable:
+            return {"status": "unavailable", "reason": "home_assistant_unavailable"}
+
+    @server.tool(
+        name="ha_inventory",
+        description="Return a bounded, redacted Home Assistant entity and service inventory.",
+    )
+    def ha_inventory() -> dict[str, Any]:
+        return read_tool("ha.read.entities", home_assistant.inventory)  # type: ignore[union-attr]
+
+    @server.tool(
+        name="ha_states",
+        description="Return bounded, redacted Home Assistant states, optionally for one entity.",
+    )
+    def ha_states(entity_id: str | None = None) -> dict[str, Any]:
+        return read_tool("ha.read.states", lambda: home_assistant.states(entity_id))  # type: ignore[union-attr]
+
+    @server.tool(
+        name="ha_automations",
+        description="Return bounded, redacted automation entity states.",
+    )
+    def ha_automations() -> dict[str, Any]:
+        return read_tool("ha.read.automations", home_assistant.automations)  # type: ignore[union-attr]
+
+    @server.tool(
+        name="ha_configuration",
+        description="Return safe Home Assistant configuration and registry metadata without secrets.",
+    )
+    def ha_configuration() -> dict[str, Any]:
+        return read_tool("ha.read.config_entries", home_assistant.configuration)  # type: ignore[union-attr]
 
     server_app = server.streamable_http_app()
     application = BearerMCPMiddleware(server_app, authenticate)
