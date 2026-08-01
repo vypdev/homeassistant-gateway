@@ -81,6 +81,9 @@ class FakeHomeAssistant:
     def extended_read(self, resource):
         return [{"resource": resource}]
 
+    def ui_context(self):
+        return {"locale": "es", "theme": "light"}
+
 def make_app(audit_sink=None, home_assistant=None, development_console_enabled=True):
     repository = InMemoryClientRepository()
     tokens = SecureTokenIssuer()
@@ -122,6 +125,14 @@ def test_development_catalog_requires_ingress_and_lists_probes() -> None:
     assert len(response.json()["operations"]) == 17
     assert len(response.json()["packs"]) == 4
     assert response.json()["mutations"]["status"] == "disabled"
+
+
+def test_ui_context_is_ingress_protected_and_returns_ha_preferences() -> None:
+    app = make_app(home_assistant=FakeHomeAssistant())
+    assert request(app, "GET", "/api/ui/context").status_code == 401
+    response = request(app, "GET", "/api/ui/context", headers=ingress_headers())
+    assert response.status_code == 200
+    assert response.json() == {"locale": "es", "theme": "light"}
 
 
 def test_development_run_all_returns_one_result_per_probe() -> None:

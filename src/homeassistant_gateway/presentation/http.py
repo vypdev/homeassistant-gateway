@@ -193,7 +193,7 @@ def create_app(
     lifespan: Any | None = None,
 ) -> FastAPI:
     """Build the HTTP adapter around already-wired application use cases."""
-    app = FastAPI(title="Home Assistant Gateway", version="0.2.1", lifespan=lifespan)
+    app = FastAPI(title="Home Assistant Gateway", version="0.3.0", lifespan=lifespan)
     sink = audit_sink or NoopAuditSink()
 
     def previous_development_report() -> Any | None:
@@ -275,6 +275,24 @@ def create_app(
             mcp="ready" if mcp_app is not None else "disabled",
             home_assistant=upstream,
         )
+
+    @app.get("/api/ui/context")
+    def ui_context_resource(request: Request) -> dict[str, str]:
+        context = {"locale": "en", "theme": "auto"}
+        if home_assistant is not None:
+            try:
+                provider = getattr(home_assistant, "ui_context", None)
+                if callable(provider):
+                    provided = provider()
+                    if isinstance(provided, dict):
+                        context.update({str(key): str(value) for key, value in provided.items()})
+            except HomeAssistantUnavailable:
+                pass
+        if context["locale"] == "en":
+            accept_language = request.headers.get("accept-language", "")
+            if accept_language:
+                context["locale"] = accept_language.split(",", 1)[0].split(";", 1)[0].strip().replace("_", "-").lower() or "en"
+        return context
 
     @app.get("/api/development/catalog")
     def development_catalog_resource() -> dict[str, Any]:

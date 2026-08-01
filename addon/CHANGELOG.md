@@ -2,6 +2,15 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.3.0
+
+- Added sanitized upstream diagnostics with endpoint, status and parameter names for development probe failures.
+- Added a copyable diagnostic action for failed probes without copying secrets or payloads.
+- Added locale fallback resolution for English, Spanish and French.
+- Added Home Assistant UI context endpoint for locale/theme hints, with browser fallback.
+- Added light/dark/auto visual modes aligned with Home Assistant/browser preferences.
+- Added an accessible animated neural-network background with reduced-motion support.
+
 ## 0.2.1
 
 - Fixed Home Assistant history responses, which are grouped lists rather than flat records.

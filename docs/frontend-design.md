@@ -70,3 +70,13 @@ The primary navigation always shows the active profile and whether operator capa
 - Reduced motion support.
 - Never use color alone for health, authorization, or revocation state.
 - Never render token values after the one-time issuance view.
+
+## Locale and theme resolution
+
+The UI uses a small public translation catalog (`en`, `es`, `fr`) and falls back by language base (`es-MX` → `es`) and then English. The `/api/ui/context` endpoint first consumes locale/theme hints exposed by the Home Assistant core configuration, then uses the browser `Accept-Language` and `prefers-color-scheme` context. It does not read Home Assistant `.storage` or private frontend internals.
+
+Theme modes are `light`, `dark`, and `auto`. `auto` follows the system/browser preference when Home Assistant does not expose an explicit theme. The visual layer remains observer-only and does not alter Home Assistant settings.
+
+## Development diagnostics
+
+Every upstream probe failure returns a sanitized reason containing only the safe error code, HTTP status, endpoint path, and parameter names. The Development Console exposes a **Copy diagnostic** action for failed probes. The copied object never includes authorization values, query parameter values, response bodies, or Home Assistant state payloads.

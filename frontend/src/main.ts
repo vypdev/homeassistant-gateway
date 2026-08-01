@@ -19,8 +19,39 @@ type DevelopmentPack = { name: string; label: string; description: string; opera
 type DevelopmentResult = { status: string; operation: string; duration_ms: number; count: number; data?: unknown; reason?: string | null };
 type DevelopmentReport = { report_id: string; occurred_at: string; operation: string; status: string; duration_ms: number; total_count: number; schema_fingerprint: string; comparison?: { previous_report_id: string; count_delta: number; schema_changed: boolean } | null };
 type DevelopmentCatalog = { enabled: boolean; upstream: string; operations: DevelopmentOperation[]; packs: DevelopmentPack[]; mutations: { status: string; reason: string; approval_required: boolean } };
+type UiContext = { locale: string; theme: 'light' | 'dark' | 'auto' };
 
 type View = 'overview' | 'clients' | 'policy' | 'mcp' | 'audit' | 'development';
+
+const TRANSLATIONS: Record<string, Record<string, string>> = {
+  en: {
+    gateway: 'Gateway', controlPlane: 'control plane', overview: 'Overview', development: 'Dev Console', clients: 'Clients', policy: 'Policy', mcp: 'MCP', audit: 'Audit',
+    observerFirst: 'observer-first', operatorDisabled: 'Operator capabilities disabled', gatewayReady: 'Gateway ready', checkingGateway: 'Checking gateway',
+    developmentTitle: 'Development Console', runAll: 'Run all', observerProbes: 'Observer probes', executionEvidence: 'Execution evidence', historicalEvidence: 'Historical evidence',
+    countLatency: 'Count, latency, status and sanitized payload.', internalSurface: 'Internal Ingress-only verification surface.', runProbe: 'Run', entityFilter: 'Entity filter', startTime: 'Start time',
+    exactResponse: 'Run a probe to inspect the exact adapter response.', blocked: 'Blocked by design.', approvalRequired: 'approval required', operatorDisabledTag: 'operator disabled', noMcpMutation: 'no MCP mutation',
+    overviewTitle: 'Secure gateway control plane.', developmentSubtitle: 'Run every observer probe internally and see exactly where retrieval succeeds or fails.',
+    clientsTitle: 'Clients & tokens', policyTitle: 'Profiles & policy', mcpTitle: 'MCP transport', auditTitle: 'Sanitized audit trail',
+  },
+  es: {
+    gateway: 'Gateway', controlPlane: 'panel de control', overview: 'Resumen', development: 'Consola de desarrollo', clients: 'Clientes', policy: 'Política', mcp: 'MCP', audit: 'Auditoría',
+    observerFirst: 'solo observador', operatorDisabled: 'Capacidades operator desactivadas', gatewayReady: 'Gateway listo', checkingGateway: 'Comprobando gateway',
+    developmentTitle: 'Consola de desarrollo', runAll: 'Ejecutar todo', observerProbes: 'Pruebas observer', executionEvidence: 'Evidencia de ejecución', historicalEvidence: 'Evidencia histórica',
+    countLatency: 'Cantidad, latencia, estado y payload sanitizado.', internalSurface: 'Superficie interna protegida por Ingress.', runProbe: 'Ejecutar', entityFilter: 'Filtro de entidad', startTime: 'Hora de inicio',
+    exactResponse: 'Ejecuta una prueba para inspeccionar la respuesta exacta del adaptador.', blocked: 'Bloqueado por diseño.', approvalRequired: 'aprobación requerida', operatorDisabledTag: 'operator desactivado', noMcpMutation: 'sin mutaciones MCP',
+    overviewTitle: 'Panel de control seguro.', developmentSubtitle: 'Ejecuta internamente las pruebas observer y comprueba exactamente qué lecturas funcionan o fallan.',
+    clientsTitle: 'Clientes y tokens', policyTitle: 'Perfiles y política', mcpTitle: 'Transporte MCP', auditTitle: 'Auditoría sanitizada',
+  },
+  fr: {
+    gateway: 'Gateway', controlPlane: 'plan de contrôle', overview: 'Vue d’ensemble', development: 'Console de développement', clients: 'Clients', policy: 'Politique', mcp: 'MCP', audit: 'Audit',
+    observerFirst: 'observer uniquement', operatorDisabled: 'Capacités operator désactivées', gatewayReady: 'Gateway prêt', checkingGateway: 'Vérification du gateway',
+    developmentTitle: 'Console de développement', runAll: 'Tout exécuter', observerProbes: 'Tests observer', executionEvidence: 'Preuves d’exécution', historicalEvidence: 'Preuves historiques',
+    countLatency: 'Quantité, latence, état et payload nettoyé.', internalSurface: 'Surface interne protégée par Ingress.', runProbe: 'Exécuter', entityFilter: 'Filtre d’entité', startTime: 'Heure de début',
+    exactResponse: 'Exécutez un test pour inspecter la réponse exacte de l’adaptateur.', blocked: 'Bloqué par conception.', approvalRequired: 'approbation requise', operatorDisabledTag: 'operator désactivé', noMcpMutation: 'aucune mutation MCP',
+    overviewTitle: 'Plan de contrôle sécurisé.', developmentSubtitle: 'Exécutez les tests observer et voyez précisément quelles lectures réussissent ou échouent.',
+    clientsTitle: 'Clients et tokens', policyTitle: 'Profils et politique', mcpTitle: 'Transport MCP', auditTitle: 'Journal d’audit nettoyé',
+  },
+};
 
 const api = async <T>(path: string, init?: RequestInit): Promise<T> => {
   const response = await fetch(new URL(`./api${path}`, document.baseURI), {
@@ -46,6 +77,7 @@ export class GatewayApp extends LitElement {
     audit: { state: true },
     development: { state: true },
     developmentReports: { state: true },
+    uiContext: { state: true },
   };
 
   @property({ type: String }) view: View = 'overview';
@@ -58,6 +90,7 @@ export class GatewayApp extends LitElement {
   @state() audit: AuditEvent[] = [];
   @state() development: DevelopmentCatalog | null = null;
   @state() developmentReports: DevelopmentReport[] = [];
+  @state() uiContext: UiContext = { locale: 'en', theme: 'auto' };
   @state() developmentResults: DevelopmentResult[] = [];
   @state() developmentOutput: unknown = null;
   @state() developmentEntity = '';
@@ -67,7 +100,21 @@ export class GatewayApp extends LitElement {
     :host { display: block; color: #e7f0fb; min-height: 100vh; font: 14px/1.5 Inter, ui-sans-serif, system-ui, sans-serif; }
     * { box-sizing: border-box; }
     .shell { min-height: 100vh; position: relative; overflow: hidden; background: #07111f; }
+    .shell.light { color: #243447; background: #f4f7fb; }
+    .shell.light aside, .shell.light .card { background: #ffffffee; border-color: #d3deea; box-shadow: 0 18px 50px #38516b14; }
+    .shell.light p, .shell.light .muted, .shell.light .brand small, .shell.light .card-label, .shell.light .side-foot, .shell.light nav button { color: #607286; }
+    .shell.light nav button:hover, .shell.light nav button.active { color: #17324d; background: #dceefa; }
+    .shell.light nav button.active { box-shadow: inset 2px 0 #168bd0; }
+    .shell.light th, .shell.light td { border-color: #dbe5ee; } .shell.light td { color: #29445d; }
+    .shell.light input, .shell.light select, .shell.light textarea { color: #243447; background: #f8fbfe; border-color: #b9cad9; }
+    .shell.light .dev-output { color: #31516b; background: #f5f9fc; border-color: #d3deea; }
+    .shell.light .grid { opacity: .25; background-image: linear-gradient(#5c88a31c 1px, transparent 1px), linear-gradient(90deg, #5c88a31c 1px, transparent 1px); }
     .shell::before { content: ''; position: fixed; inset: -20%; pointer-events: none; background: radial-gradient(circle at 18% 0%, #087fb52b, transparent 34%), radial-gradient(circle at 90% 20%, #234b9c22, transparent 36%); animation: drift 32s ease-in-out infinite alternate; }
+    .neural { position: fixed; inset: 0; pointer-events: none; opacity: .45; overflow: hidden; }
+    .neural::before, .neural::after { content: ''; position: absolute; inset: 8% 4%; background: linear-gradient(28deg, transparent 48%, #4bc9ff22 49%, transparent 50%), linear-gradient(151deg, transparent 48%, #6ce0c522 49%, transparent 50%), linear-gradient(79deg, transparent 49%, #4bc9ff18 50%, transparent 51%); background-size: 260px 210px, 320px 280px, 420px 330px; animation: network-flow 24s linear infinite; mask-image: radial-gradient(ellipse at center, black, transparent 76%); }
+    .neural::after { filter: blur(1px); opacity: .7; animation-duration: 36s; animation-direction: reverse; }
+    .node { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: #65d8ff; box-shadow: 0 0 0 4px #65d8ff14, 0 0 18px #65d8ffcc; animation: node-pulse 4s ease-in-out infinite; }
+    .shell.light .neural { opacity: .25; } .shell.light .node { background: #168bd0; box-shadow: 0 0 0 4px #168bd014, 0 0 18px #168bd066; }
     .grid { position: fixed; inset: 0; opacity: .16; pointer-events: none; background-image: linear-gradient(#6fa8d30d 1px, transparent 1px), linear-gradient(90deg, #6fa8d30d 1px, transparent 1px); background-size: 42px 42px; mask-image: linear-gradient(to bottom, black, transparent 85%); }
     .layout { position: relative; width: min(1360px, calc(100% - 40px)); margin: auto; display: grid; grid-template-columns: 230px 1fr; gap: 28px; padding: 28px 0; }
     aside { border: 1px solid #23415e; border-radius: 20px; background: #0b1929dd; padding: 20px 14px; height: calc(100vh - 56px); position: sticky; top: 28px; display: flex; flex-direction: column; }
@@ -127,16 +174,22 @@ export class GatewayApp extends LitElement {
     .result-row { display: flex; justify-content: space-between; gap: 10px; align-items: center; border: 1px solid #1b3550; border-radius: 9px; padding: 9px 10px; }
     .blocked { border-color: #805d35; background: #3a281233; }
     @keyframes drift { from { transform: translate3d(-1%, -1%, 0) scale(1); } to { transform: translate3d(2%, 2%, 0) scale(1.04); } }
+    @keyframes network-flow { from { transform: translate3d(-2%, -1%, 0) rotate(0deg); } to { transform: translate3d(2%, 1%, 0) rotate(2deg); } }
+    @keyframes node-pulse { 0%, 100% { opacity: .45; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.25); } }
     @media (max-width: 1000px) { .cards { grid-template-columns: repeat(2, 1fr); } .split { grid-template-columns: 1fr; } }
     @media (max-width: 720px) { .layout { width: min(100% - 24px, 600px); display: block; padding-top: 12px; } aside { height: auto; position: static; margin-bottom: 18px; } nav { grid-template-columns: repeat(4, 1fr); } nav button { text-align: center; padding: 9px 4px; font-size: 12px; } .side-foot { display: none; } .cards { grid-template-columns: 1fr 1fr; } .topline { display: block; } .status-pill { margin-top: 16px; } }
-    @media (prefers-reduced-motion: reduce) { .shell::before { animation: none; } *, *::before, *::after { transition-duration: .01ms !important; } }
+    @media (prefers-reduced-motion: reduce) { .shell::before, .neural::before, .neural::after, .node { animation: none; } *, *::before, *::after { transition-duration: .01ms !important; } }
   `;
 
   connectedCallback() { super.connectedCallback(); void this.refresh(); }
 
+  get locale() { const base = this.uiContext.locale.toLowerCase().split('-', 1)[0]; return TRANSLATIONS[base] ? base : 'en'; }
+  t(key: string) { return TRANSLATIONS[this.locale]?.[key] ?? TRANSLATIONS.en[key] ?? key; }
+  get effectiveTheme() { return this.uiContext.theme === 'auto' ? (window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : this.uiContext.theme; }
+
   async refresh() {
     this.busy = true; this.error = '';
-    try { [this.ready, this.clients, this.audit, this.development, this.developmentReports] = await Promise.all([api<Ready>('/../ready'), api<Client[]>('/clients'), api<AuditEvent[]>('/audit'), api<DevelopmentCatalog>('/development/catalog'), api<DevelopmentReport[]>('/development/reports')]); }
+    try { [this.ready, this.clients, this.audit, this.development, this.developmentReports, this.uiContext] = await Promise.all([api<Ready>('/../ready'), api<Client[]>('/clients'), api<AuditEvent[]>('/audit'), api<DevelopmentCatalog>('/development/catalog'), api<DevelopmentReport[]>('/development/reports'), api<UiContext>('/ui/context')]); }
     catch (error) { this.error = error instanceof Error ? error.message : 'Unable to load gateway state'; }
     finally { this.busy = false; }
   }
@@ -214,18 +267,22 @@ export class GatewayApp extends LitElement {
     finally { this.busy = false; }
   }
 
+  async copyDiagnostic(result: DevelopmentResult) {
+    await navigator.clipboard?.writeText(JSON.stringify({ operation: result.operation, status: result.status, reason: result.reason ?? null }, null, 2));
+  }
+
   render() {
     const active = this.view;
-    return html`<div class="shell"><div class="grid"></div><div class="layout">
+    return html`<div class="shell ${this.effectiveTheme}"><div class="neural" aria-hidden="true"><span class="node" style="left:14%;top:24%"></span><span class="node" style="left:31%;top:12%;animation-delay:1s"></span><span class="node" style="left:52%;top:28%;animation-delay:2s"></span><span class="node" style="left:76%;top:18%;animation-delay:.5s"></span><span class="node" style="left:88%;top:44%;animation-delay:1.7s"></span><span class="node" style="left:24%;top:68%;animation-delay:2.4s"></span><span class="node" style="left:61%;top:74%;animation-delay:1.2s"></span></div><div class="grid"></div><div class="layout">
       <aside>
-        <div class="brand"><div class="brand-mark">⌁</div><div><strong>Gateway</strong><small> control plane</small></div></div>
+        <div class="brand"><div class="brand-mark">⌁</div><div><strong>${this.t('gateway')}</strong><small> ${this.t('controlPlane')}</small></div></div>
         <nav aria-label="Gateway navigation">
-          ${this.nav('overview', '◈', 'Overview')}${this.nav('development', '⚗', 'Dev Console')}${this.nav('clients', '◎', 'Clients')}${this.nav('policy', '◇', 'Policy')}${this.nav('mcp', '⌁', 'MCP')}${this.nav('audit', '◌', 'Audit')}
+          ${this.nav('overview', '◈', this.t('overview'))}${this.nav('development', '⚗', this.t('development'))}${this.nav('clients', '◎', this.t('clients'))}${this.nav('policy', '◇', this.t('policy'))}${this.nav('mcp', '⌁', this.t('mcp'))}${this.nav('audit', '◌', this.t('audit'))}
         </nav>
-        <div class="side-foot"><div class="ok">● observer-first</div><div>Operator capabilities disabled</div></div>
+        <div class="side-foot"><div class="ok">● ${this.t('observerFirst')}</div><div>${this.t('operatorDisabled')}</div></div>
       </aside>
       <main>
-        <div class="topline"><div><div class="eyebrow">Home Assistant App · MCP Gateway</div><h1>${this.pageTitle()}</h1><p>${this.subtitle()}</p></div><div class="status-pill ${this.ready?.status === 'ready' ? '' : 'warn'}"><span class="dot"></span>${this.ready?.status === 'ready' ? 'Gateway ready' : 'Checking gateway'}</div></div>
+        <div class="topline"><div><div class="eyebrow">Home Assistant App · MCP Gateway</div><h1>${this.pageTitle()}</h1><p>${this.subtitle()}</p></div><div class="status-pill ${this.ready?.status === 'ready' ? '' : 'warn'}"><span class="dot"></span>${this.ready?.status === 'ready' ? this.t('gatewayReady') : this.t('checkingGateway')}</div></div>
         ${this.error ? html`<div class="alert" role="alert">${this.error}</div>` : ''}
         ${active === 'overview' ? this.overview() : active === 'development' ? this.developmentView() : active === 'clients' ? this.clientsView() : active === 'policy' ? this.policyView() : active === 'mcp' ? this.mcpView() : this.auditView()}
       </main>
@@ -233,8 +290,8 @@ export class GatewayApp extends LitElement {
   }
 
   nav(view: View, icon: string, label: string) { return html`<button class=${this.view === view ? 'active' : ''} @click=${() => this.setView(view)}><span aria-hidden="true">${icon}</span> ${label}</button>`; }
-  pageTitle() { return ({ overview: 'Secure gateway control plane.', development: 'Development Console', clients: 'Clients & tokens', policy: 'Profiles & policy', mcp: 'MCP transport', audit: 'Sanitized audit trail' } as Record<View, string>)[this.view]; }
-  subtitle() { return ({ overview: 'A quiet observatory for identity, readiness and read-only access.', development: 'Run every observer probe internally and see exactly where retrieval succeeds or fails.', clients: 'Issue independent credentials and revoke them without exposing stored secrets.', policy: 'Review the capability boundaries enforced before any MCP operation.', mcp: 'Inspect the authenticated Streamable HTTP surface exposed to observer clients.', audit: 'Trace decisions and outcomes without exposing request secrets.' } as Record<View, string>)[this.view]; }
+  pageTitle() { return ({ overview: this.t('overviewTitle'), development: this.t('developmentTitle'), clients: this.t('clientsTitle'), policy: this.t('policyTitle'), mcp: this.t('mcpTitle'), audit: this.t('auditTitle') } as Record<View, string>)[this.view]; }
+  subtitle() { return ({ overview: 'A quiet observatory for identity, readiness and read-only access.', development: this.t('developmentSubtitle'), clients: 'Issue independent credentials and revoke them without exposing stored secrets.', policy: 'Review the capability boundaries enforced before any MCP operation.', mcp: 'Inspect the authenticated Streamable HTTP surface exposed to observer clients.', audit: 'Trace decisions and outcomes without exposing request secrets.' } as Record<View, string>)[this.view]; }
 
   overview() { const active = this.clients.filter((client) => client.status === 'active').length; return html`<section class="cards"><div class="card"><span class="card-label">Storage</span><strong class="metric ok">${this.ready?.storage ?? '—'}</strong><p>Private SQLite state</p></div><div class="card"><span class="card-label">Home Assistant</span><strong class="metric ${this.ready?.home_assistant === 'ready' ? 'ok' : 'warn'}">${this.ready?.home_assistant ?? '—'}</strong><p>Supervisor upstream</p></div><div class="card"><span class="card-label">Active clients</span><strong class="metric">${active}</strong><p>Bearer identities</p></div><div class="card"><span class="card-label">Audit events</span><strong class="metric">${this.audit.length}</strong><p>Sanitized records</p></div></section><div class="split"><div class="card wide"><h2>System posture</h2><p>All management requests are protected by Supervisor Ingress identity. Client tokens are hashed at rest and displayed only once during issuance.</p><div style="margin-top:22px"><span class="tag">Ingress trusted identity</span><span class="tag">SHA-256 token digests</span><span class="tag">read-only MCP</span></div></div><div class="card wide"><h2>Quick actions</h2><div class="form-actions" style="justify-content:flex-start; margin-top:24px"><button class="primary" @click=${() => this.setView('clients')}>Manage clients</button><button class="secondary" @click=${() => this.setView('audit')}>View audit</button></div></div></div>`; }
 
@@ -242,18 +299,18 @@ export class GatewayApp extends LitElement {
     const catalog = this.development;
     return html`<div class="dev-grid">
       <div class="card">
-        <div class="toolbar"><div><h2>Observer probes</h2><p>Internal Ingress-only verification surface.</p></div><button class="primary" @click=${() => void this.runAllDevelopment()} ?disabled=${this.busy || !catalog?.enabled}>Run all</button></div>
+        <div class="toolbar"><div><h2>${this.t('observerProbes')}</h2><p>${this.t('internalSurface')}</p></div><button class="primary" @click=${() => void this.runAllDevelopment()} ?disabled=${this.busy || !catalog?.enabled}>${this.t('runAll')}</button></div>
         <div class="pack-grid">${catalog?.packs.map((pack) => html`<button class="secondary" @click=${() => void this.runDevelopmentPack(pack.name)} ?disabled=${this.busy || !catalog.enabled}><strong>${pack.label}</strong><small>${pack.description}</small></button>`)}</div>
         <p>Upstream: <span class=${catalog?.upstream === 'ready' ? 'ok' : 'warn'}>${catalog?.upstream ?? 'loading'}</span>. Each probe uses the same read adapter that MCP clients use.</p>
         <div class="form" style="margin-top:16px">
-          <label>Entity filter<input .value=${this.developmentEntity} @input=${(event: Event) => { this.developmentEntity = (event.target as HTMLInputElement).value; }} placeholder="light.kitchen (optional)" /></label>
-          <label>Start time<input .value=${this.developmentStartTime} @input=${(event: Event) => { this.developmentStartTime = (event.target as HTMLInputElement).value; }} placeholder="2026-08-01T00:00:00Z (optional)" /></label>
+          <label>${this.t('entityFilter')}<input .value=${this.developmentEntity} @input=${(event: Event) => { this.developmentEntity = (event.target as HTMLInputElement).value; }} placeholder="light.kitchen (optional)" /></label>
+          <label>${this.t('startTime')}<input .value=${this.developmentStartTime} @input=${(event: Event) => { this.developmentStartTime = (event.target as HTMLInputElement).value; }} placeholder="2026-08-01T00:00:00Z (optional)" /></label>
         </div>
         <div class="result-list">${catalog?.operations.map((operation) => html`<div class="result-row"><div><strong>${operation.label}</strong><br><span class="muted">${operation.description}</span></div><button class="secondary" @click=${() => void this.runDevelopment(operation.name)} ?disabled=${this.busy || !catalog.enabled}>Run</button></div>`)}</div>
       </div>
       <div class="card">
-        <div class="toolbar"><div><h2>Execution evidence</h2><p>Count, latency, status and sanitized payload.</p></div>${this.developmentResults.length ? html`<span class="tag">${this.developmentResults.length} result(s)</span>` : ''}</div>
-        ${this.developmentResults.length ? html`<div class="result-list">${this.developmentResults.map((result) => html`<div class="result-row"><span><strong>${result.operation}</strong> <span class=${result.status === 'ok' ? 'ok' : 'bad'}>${result.status}</span></span><span class="mono">${result.count} items · ${result.duration_ms} ms</span></div>`)}</div><pre class="dev-output">${JSON.stringify(this.developmentOutput, null, 2)}</pre>` : html`<div class="empty">Run a probe to inspect the exact adapter response.</div>`}
+        <div class="toolbar"><div><h2>${this.t('executionEvidence')}</h2><p>${this.t('countLatency')}</p></div>${this.developmentResults.length ? html`<span class="tag">${this.developmentResults.length} result(s)</span>` : ''}</div>
+        ${this.developmentResults.length ? html`<div class="result-list">${this.developmentResults.map((result) => html`<div class="result-row"><span><strong>${result.operation}</strong> <span class=${result.status === 'ok' ? 'ok' : 'bad'}>${result.status}</span></span><span class="mono">${result.count} items · ${result.duration_ms} ms ${result.status !== 'ok' ? html`<button class="secondary" @click=${() => void this.copyDiagnostic(result)}>Copy diagnostic</button>` : ''}</span></div>`)}</div><pre class="dev-output">${JSON.stringify(this.developmentOutput, null, 2)}</pre>` : html`<div class="empty">${this.t('exactResponse')}</div>`}
         ${this.developmentReports.length ? html`<h3 style="margin-top:18px">Historical evidence</h3><div class="result-list">${this.developmentReports.map((report) => html`<div class="result-row"><span><strong>${report.operation}</strong> <span class=${report.status === 'ok' ? 'ok' : 'warn'}>${report.status}</span><br><span class="muted">${new Date(report.occurred_at).toLocaleString()} · ${report.schema_fingerprint.slice(0, 12)}</span></span><span class="mono">${report.total_count} items${report.comparison ? ` · Δ ${report.comparison.count_delta}` : ''}${report.comparison?.schema_changed ? ' · schema changed' : ''}</span></div>`)}</div>` : ''}
         <div class="card blocked" style="margin-top:14px"><h3>Mutation probes</h3><p><span class="warn">Blocked by design.</span> Configuration writes, automation changes and service calls require the future approval/idempotency/rollback flow.</p><div style="margin-top:10px"><span class="tag">approval required</span><span class="tag">operator disabled</span><span class="tag">no MCP mutation</span></div></div>
       </div>

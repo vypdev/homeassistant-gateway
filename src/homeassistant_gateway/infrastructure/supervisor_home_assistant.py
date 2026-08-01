@@ -109,6 +109,14 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
             return [{"domain": domain} for domain in domains]
         raise ValueError("unknown_extended_resource")
 
+    def ui_context(self) -> dict[str, str]:
+        core = self.configuration().get("core", {})
+        if not isinstance(core, dict):
+            return {"locale": "en", "theme": "auto"}
+        language = str(core.get("language") or core.get("locale") or "en").replace("_", "-").lower()
+        theme = str(core.get("theme") or core.get("frontend_theme") or "auto").lower()
+        return {"locale": language, "theme": theme if theme in {"light", "dark", "auto"} else "auto"}
+
     def configuration(self) -> dict[str, Any]:
         config = self._get_json("/config", default={})
         return {"core": config, "entity_registry": self._get_json("/config/entity_registry/list", default=[], allow_not_found=True), "area_registry": self._get_json("/config/area_registry/list", default=[], allow_not_found=True)}
@@ -118,13 +126,13 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
         if response.status_code == 404:
             if allow_not_found:
                 return default
-            raise HomeAssistantUnavailable("home_assistant_http_404")
+            raise HomeAssistantUnavailable("home_assistant_http_404", path=path, status=404, params=tuple(sorted(params or {})))
         if response.status_code >= 400:
-            raise HomeAssistantUnavailable(f"home_assistant_http_{response.status_code}")
+            raise HomeAssistantUnavailable(f"home_assistant_http_{response.status_code}", path=path, status=response.status_code, params=tuple(sorted(params or {})))
         try:
             return redact(response.json())
         except ValueError as error:
-            raise HomeAssistantUnavailable("home_assistant_invalid_json") from error
+            raise HomeAssistantUnavailable("home_assistant_invalid_json", path=path, status=response.status_code) from error
 
     def _request(self, path: str, params: dict[str, str] | None = None) -> httpx.Response:
         try:

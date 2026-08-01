@@ -1,9 +1,24 @@
+import json
 from collections.abc import Mapping
 from typing import Any, Protocol, TypedDict
 
 
 class HomeAssistantUnavailable(RuntimeError):
     """The Home Assistant upstream could not be reached or returned an error."""
+
+    def __init__(self, code: str, *, path: str | None = None, status: int | None = None, params: tuple[str, ...] = ()) -> None:
+        self.code = code
+        self.path = path
+        self.status = status
+        self.params = params
+        context: dict[str, Any] = {"code": code}
+        if status is not None:
+            context["status"] = status
+        if path is not None:
+            context["path"] = path
+        if params:
+            context["params"] = list(params)
+        super().__init__(json.dumps(context, sort_keys=True))
 
 
 class HomeAssistantReadPort(Protocol):
@@ -26,6 +41,8 @@ class HomeAssistantReadPort(Protocol):
     def logbook(self, entity_id: str | None = None, start_time: str | None = None) -> list[dict[str, Any]]: ...
 
     def extended_read(self, resource: str) -> list[dict[str, Any]]: ...
+
+    def ui_context(self) -> dict[str, str]: ...
 
 
 class ReadinessStatus(TypedDict):

@@ -161,7 +161,7 @@ class DevelopmentToolRunner:
                         operation=operation,
                         duration_ms=0,
                         count=0,
-                        reason=type(error).__name__,
+                        reason=str(error) if isinstance(error, HomeAssistantUnavailable) else type(error).__name__,
                     )
                 )
         return tuple(results)

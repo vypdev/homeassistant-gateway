@@ -118,5 +118,25 @@ def test_transport_failure_is_not_misreported_as_empty_data() -> None:
         make_client(handler).states()
 
 
+def test_upstream_error_includes_safe_request_context() -> None:
+    client = make_client(lambda request: httpx.Response(503))
+
+    with pytest.raises(HomeAssistantUnavailable) as captured:
+        client.history("sensor.temp", "2026-08-01T00:00:00Z")
+
+    assert '"path": "/history/period"' in str(captured.value)
+    assert '"params": ["filter_entity_id", "start_time"]' in str(captured.value)
+    assert "supervisor-secret" not in str(captured.value)
+
+
+def test_ui_context_reads_supported_core_preferences_with_fallback() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/config"):
+            return httpx.Response(200, json={"language": "es", "theme": "dark"})
+        return httpx.Response(404)
+
+    assert make_client(handler).ui_context() == {"locale": "es", "theme": "dark"}
+
+
 def test_redact_handles_nested_values() -> None:
     assert redact({"nested": [{"password": "hidden"}], "safe": "value"}) == {"nested": [{"password": "[REDACTED]"}], "safe": "value"}

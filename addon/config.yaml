@@ -1,5 +1,5 @@
 name: Home Assistant Gateway
-version: "0.2.1"
+version: "0.3.0"
 slug: homeassistant_gateway
 description: Secure MCP gateway with observer/operator profiles for Home Assistant
 url: https://github.com/vypdev/homeassistant-gateway
