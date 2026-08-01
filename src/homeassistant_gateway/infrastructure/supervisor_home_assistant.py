@@ -150,8 +150,8 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
         return {"core": config, "entity_registry": self._get_json("/config/entity_registry/list", default=[], allow_not_found=True), "area_registry": self._get_json("/config/area_registry/list", default=[], allow_not_found=True)}
 
     def _get_json(self, path: str, default: Any, params: dict[str, str] | None = None, allow_not_found: bool = False, diagnostic_path: str | None = None) -> Any:
-        response = self._request(path, params=params)
         safe_path = diagnostic_path or path
+        response = self._request(path, params=params, diagnostic_path=safe_path)
         if response.status_code == 404:
             if allow_not_found:
                 return default
@@ -161,16 +161,30 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
         try:
             return redact(response.json())
         except ValueError as error:
-            raise HomeAssistantUnavailable("home_assistant_invalid_json", path=path, status=response.status_code) from error
+            raise HomeAssistantUnavailable("home_assistant_invalid_json", path=safe_path, status=response.status_code) from error
 
-    def _request(self, path: str, params: dict[str, str] | None = None) -> httpx.Response:
+    def _request(self, path: str, params: dict[str, str] | None = None, diagnostic_path: str | None = None) -> httpx.Response:
+        request_path = diagnostic_path or path
+        request_params = tuple(sorted(params or {}))
         for attempt in range(2):
             try:
                 with httpx.Client(headers=self._headers, timeout=self._timeout, trust_env=False, transport=self._transport) as client:
                     return client.get(f"{self._base_url}{path}", params=params)
+            except httpx.ReadTimeout as error:
+                if attempt == 1:
+                    raise HomeAssistantUnavailable("home_assistant_transport_timeout", path=request_path, params=request_params) from error
+                sleep(0.05)
+            except httpx.ConnectError as error:
+                if attempt == 1:
+                    raise HomeAssistantUnavailable("home_assistant_transport_connection", path=request_path, params=request_params) from error
+                sleep(0.05)
+            except httpx.NetworkError as error:
+                if attempt == 1:
+                    raise HomeAssistantUnavailable("home_assistant_transport_network", path=request_path, params=request_params) from error
+                sleep(0.05)
             except httpx.HTTPError as error:
                 if attempt == 1:
-                    raise HomeAssistantUnavailable("home_assistant_transport_unavailable") from error
+                    raise HomeAssistantUnavailable("home_assistant_transport_unavailable", path=request_path, params=request_params) from error
                 sleep(0.05)
         raise AssertionError("unreachable")
 

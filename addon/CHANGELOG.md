@@ -2,6 +2,12 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.4.3
+
+- Classify transport failures as timeout, connection, network, or unavailable.
+- Preserve logical diagnostic paths and bounded parameter names for transport errors.
+- Add regression coverage proving timestamp and entity values remain absent from diagnostics.
+
 ## 0.4.2
 
 - Use Home Assistant REST timestamp path segments for history and logbook.

@@ -15,6 +15,15 @@ The adapter follows Home Assistant's current REST contract: history starts at `/
 
 The MCP discovery contract advertises the same observer surface: `gateway_diagnostics`, inventory, states, automations, configuration, services, events, history, logbook, devices, areas, floors, labels, entity registry, scripts, scenes, helpers and integrations. The MCP functions call the same application read port rather than duplicating upstream HTTP logic.
 
+Diagnostic transport failures are classified without exposing upstream exception text:
+
+- `home_assistant_transport_timeout` — bounded request timeout;
+- `home_assistant_transport_connection` — connection establishment failure;
+- `home_assistant_transport_network` — other network-layer failure;
+- `home_assistant_transport_unavailable` — remaining HTTPX transport failure.
+
+Transport failures include only the logical endpoint and bounded parameter names. History and Logbook timestamp path values and entity values are never included in diagnostics. Only transient transport failures are retried once; upstream HTTP validation failures are not retried.
+
 All management endpoints require the Supervisor Ingress identity. `/health` and `/ready` remain safe health endpoints.
 
 ## Upstream health contract

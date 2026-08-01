@@ -163,8 +163,22 @@ def test_transport_failure_is_not_misreported_as_empty_data() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError("secret-hostname.example", request=request)
 
-    with pytest.raises(HomeAssistantUnavailable, match="transport_unavailable"):
+    with pytest.raises(HomeAssistantUnavailable, match="home_assistant_transport_connection"):
         make_client(handler).states()
+
+
+def test_timeout_failure_is_classified_and_keeps_logical_path() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("secret-timeout", request=request)
+
+    with pytest.raises(HomeAssistantUnavailable) as captured:
+        make_client(handler).history("sensor.temp", "2026-08-01T00:00:00Z")
+
+    reason = str(captured.value)
+    assert "home_assistant_transport_timeout" in reason
+    assert '"path": "/history/period"' in reason
+    assert "2026-08-01" not in reason
+    assert "sensor.temp" not in reason
 
 
 def test_upstream_error_includes_safe_request_context() -> None:
