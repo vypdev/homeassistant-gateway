@@ -66,6 +66,42 @@ def test_history_and_logbook_use_bounded_query_parameters() -> None:
     ]
 
 
+def test_default_history_window_uses_home_assistant_utc_format() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        start_time = request.url.params["start_time"]
+        assert start_time.endswith("Z")
+        assert "+00:00" not in start_time
+        assert "." not in start_time
+        return httpx.Response(200, json=[])
+
+    assert make_client(handler).history() == []
+
+
+def test_transport_retries_once_but_http_errors_are_not_retried() -> None:
+    attempts = 0
+
+    def transient_handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise httpx.ConnectError("temporary", request=request)
+        return httpx.Response(200, json=[])
+
+    assert make_client(transient_handler).logbook() == []
+    assert attempts == 2
+
+    attempts = 0
+
+    def http_error_handler(request: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        return httpx.Response(400)
+
+    with pytest.raises(HomeAssistantUnavailable, match="home_assistant_http_400"):
+        make_client(http_error_handler).history()
+    assert attempts == 1
+
+
 def test_history_normalizes_home_assistant_grouped_response() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(200, json=[[{"entity_id": "sensor.temp", "state": "20"}, {"entity_id": "sensor.temp", "state": "21"}], [{"entity_id": "light.kitchen", "state": "on"}]])

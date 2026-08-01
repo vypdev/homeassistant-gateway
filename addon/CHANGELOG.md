@@ -2,6 +2,12 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.4.1
+
+- Normalize default history and logbook boundaries to Home Assistant's documented UTC `Z` format.
+- Retry one transient transport failure while keeping HTTP errors non-retriable.
+- Add adapter regressions for timestamp formatting and retry semantics.
+
 ## 0.4.0
 
 - Added detailed upstream health checks for Core, states, services, events, Recorder/history and Logbook.

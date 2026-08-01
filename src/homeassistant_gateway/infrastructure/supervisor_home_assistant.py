@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
-from time import monotonic
+from time import monotonic, sleep
 from typing import Any
 
 import httpx
@@ -96,7 +96,7 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
         return self._bounded_list(self._get_json("/events", default=[]))
 
     def history(self, entity_id: str | None = None, start_time: str | None = None) -> list[dict[str, Any]]:
-        start = start_time or (datetime.now(UTC) - timedelta(days=1)).isoformat()
+        start = start_time or self._timestamp(datetime.now(UTC) - timedelta(days=1))
         params = {"start_time": start}
         if entity_id:
             params["filter_entity_id"] = entity_id
@@ -113,7 +113,7 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
         return groups
 
     def logbook(self, entity_id: str | None = None, start_time: str | None = None) -> list[dict[str, Any]]:
-        start = start_time or (datetime.now(UTC) - timedelta(days=1)).isoformat()
+        start = start_time or self._timestamp(datetime.now(UTC) - timedelta(days=1))
         params = {"start_time": start}
         if entity_id:
             params["entity"] = entity_id
@@ -164,12 +164,19 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
             raise HomeAssistantUnavailable("home_assistant_invalid_json", path=path, status=response.status_code) from error
 
     def _request(self, path: str, params: dict[str, str] | None = None) -> httpx.Response:
-        try:
-            with httpx.Client(headers=self._headers, timeout=self._timeout, trust_env=False, transport=self._transport) as client:
-                response = client.get(f"{self._base_url}{path}", params=params)
-        except httpx.HTTPError as error:
-            raise HomeAssistantUnavailable("home_assistant_transport_unavailable") from error
-        return response
+        for attempt in range(2):
+            try:
+                with httpx.Client(headers=self._headers, timeout=self._timeout, trust_env=False, transport=self._transport) as client:
+                    return client.get(f"{self._base_url}{path}", params=params)
+            except httpx.HTTPError as error:
+                if attempt == 1:
+                    raise HomeAssistantUnavailable("home_assistant_transport_unavailable") from error
+                sleep(0.05)
+        raise AssertionError("unreachable")
+
+    @staticmethod
+    def _timestamp(value: datetime) -> str:
+        return value.astimezone(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
     def _bounded_list(self, value: Any) -> list[dict[str, Any]]:
         if not isinstance(value, list):
