@@ -2,6 +2,12 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.2.1
+
+- Fixed Home Assistant history responses, which are grouped lists rather than flat records.
+- Normalize history into bounded entity groups while preserving state entries.
+- Send an explicit one-day start time for history and logbook probes when no filter is supplied.
+
 ## 0.2.0
 
 - Expanded the Ingress Development Console to 17 read-only probes.

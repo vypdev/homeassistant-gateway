@@ -66,6 +66,16 @@ def test_history_and_logbook_use_bounded_query_parameters() -> None:
     ]
 
 
+def test_history_normalizes_home_assistant_grouped_response() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=[[{"entity_id": "sensor.temp", "state": "20"}, {"entity_id": "sensor.temp", "state": "21"}], [{"entity_id": "light.kitchen", "state": "on"}]])
+
+    assert make_client(handler).history() == [
+        {"entity_id": "sensor.temp", "states": [{"entity_id": "sensor.temp", "state": "20"}, {"entity_id": "sensor.temp", "state": "21"}]},
+        {"entity_id": "light.kitchen", "states": [{"entity_id": "light.kitchen", "state": "on"}]},
+    ]
+
+
 def test_extended_registry_matrix_uses_expected_paths() -> None:
     paths: list[str] = []
 

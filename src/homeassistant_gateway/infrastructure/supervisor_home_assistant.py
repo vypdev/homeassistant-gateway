@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 import httpx
@@ -66,11 +67,27 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
         return self._bounded_list(self._get_json("/events", default=[]))
 
     def history(self, entity_id: str | None = None, start_time: str | None = None) -> list[dict[str, Any]]:
-        params = {key: value for key, value in {"filter_entity_id": entity_id, "start_time": start_time}.items() if value}
-        return self._bounded_list(self._get_json("/history/period", default=[], params=params))
+        start = start_time or (datetime.now(UTC) - timedelta(days=1)).isoformat()
+        params = {"start_time": start}
+        if entity_id:
+            params["filter_entity_id"] = entity_id
+        payload = self._get_json("/history/period", default=[], params=params)
+        if not isinstance(payload, list):
+            return []
+        groups: list[dict[str, Any]] = []
+        for group in payload[: self._max_items]:
+            if not isinstance(group, list):
+                continue
+            states = [item for item in group[: self._max_items] if isinstance(item, dict)]
+            if states:
+                groups.append({"entity_id": states[0].get("entity_id"), "states": states})
+        return groups
 
     def logbook(self, entity_id: str | None = None, start_time: str | None = None) -> list[dict[str, Any]]:
-        params = {key: value for key, value in {"entity": entity_id, "start_time": start_time}.items() if value}
+        start = start_time or (datetime.now(UTC) - timedelta(days=1)).isoformat()
+        params = {"start_time": start}
+        if entity_id:
+            params["entity"] = entity_id
         return self._bounded_list(self._get_json("/logbook", default=[], params=params))
 
     def extended_read(self, resource: str) -> list[dict[str, Any]]:
