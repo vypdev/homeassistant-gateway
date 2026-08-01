@@ -178,7 +178,7 @@ def create_app(
     lifespan: Any | None = None,
 ) -> FastAPI:
     """Build the HTTP adapter around already-wired application use cases."""
-    app = FastAPI(title="Home Assistant Gateway", version="0.1.5", lifespan=lifespan)
+    app = FastAPI(title="Home Assistant Gateway", version="0.1.6", lifespan=lifespan)
     sink = audit_sink or NoopAuditSink()
     if UI_DIST.is_dir():
         app.mount("/assets", StaticFiles(directory=UI_DIST / "assets"), name="assets")

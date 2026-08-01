@@ -2,6 +2,11 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.1.6
+
+- Reported missing required Home Assistant REST resources explicitly instead of converting them to empty data.
+- Kept optional entity/area registry endpoints tolerant of `404`.
+
 ## 0.1.5
 
 - Added first-level Ingress-only Development Console.

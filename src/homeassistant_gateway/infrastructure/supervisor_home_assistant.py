@@ -75,12 +75,14 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
 
     def configuration(self) -> dict[str, Any]:
         config = self._get_json("/config", default={})
-        return {"core": config, "entity_registry": self._get_json("/config/entity_registry/list", default=[]), "area_registry": self._get_json("/config/area_registry/list", default=[])}
+        return {"core": config, "entity_registry": self._get_json("/config/entity_registry/list", default=[], allow_not_found=True), "area_registry": self._get_json("/config/area_registry/list", default=[], allow_not_found=True)}
 
-    def _get_json(self, path: str, default: Any, params: dict[str, str] | None = None) -> Any:
+    def _get_json(self, path: str, default: Any, params: dict[str, str] | None = None, allow_not_found: bool = False) -> Any:
         response = self._request(path, params=params)
         if response.status_code == 404:
-            return default
+            if allow_not_found:
+                return default
+            raise HomeAssistantUnavailable("home_assistant_http_404")
         if response.status_code >= 400:
             raise HomeAssistantUnavailable(f"home_assistant_http_{response.status_code}")
         try:
