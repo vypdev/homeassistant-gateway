@@ -34,30 +34,49 @@ class HomeAssistantUnavailable(RuntimeError):
         super().__init__(json.dumps(context, sort_keys=True))
 
 
-class HomeAssistantReadPort(Protocol):
+class HomeAssistantDiagnosticsPort(Protocol):
     def health(self) -> bool: ...
 
     def health_details(self) -> HomeAssistantHealth: ...
 
+    def ui_context(self) -> dict[str, str]: ...
+
+
+class HomeAssistantInventoryPort(Protocol):
     def inventory(self) -> dict[str, Any]: ...
 
     def states(self, entity_id: str | None = None) -> list[dict[str, Any]]: ...
 
     def automations(self) -> list[dict[str, Any]]: ...
 
+
+class HomeAssistantCatalogPort(Protocol):
     def configuration(self) -> dict[str, Any]: ...
 
     def services(self) -> list[dict[str, Any]]: ...
 
     def events(self) -> list[dict[str, Any]]: ...
 
+
+class HomeAssistantActivityPort(Protocol):
     def history(self, entity_id: str | None = None, start_time: str | None = None) -> list[dict[str, Any]]: ...
 
     def logbook(self, entity_id: str | None = None, start_time: str | None = None) -> list[dict[str, Any]]: ...
 
+
+class HomeAssistantRegistryPort(Protocol):
     def extended_read(self, resource: str) -> list[dict[str, Any]]: ...
 
-    def ui_context(self) -> dict[str, str]: ...
+
+class HomeAssistantReadPort(
+    HomeAssistantDiagnosticsPort,
+    HomeAssistantInventoryPort,
+    HomeAssistantCatalogPort,
+    HomeAssistantActivityPort,
+    HomeAssistantRegistryPort,
+    Protocol,
+):
+    pass
 
 
 class ReadinessStatus(TypedDict):
