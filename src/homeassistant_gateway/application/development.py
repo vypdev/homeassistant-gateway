@@ -2,51 +2,22 @@ from __future__ import annotations
 
 import json
 from collections.abc import Callable, Iterable
-from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
 from time import monotonic
 from typing import Any, Protocol
 
+from homeassistant_gateway.application.development_models import (
+    DevelopmentOperation,
+    DevelopmentPack,
+    DevelopmentReport,
+    DevelopmentResult,
+)
 from homeassistant_gateway.application.home_assistant import (
     HomeAssistantReadPort,
     HomeAssistantUnavailable,
 )
 from homeassistant_gateway.application.port_diagnostics import PortDiagnosticsPort
-
-
-@dataclass(frozen=True)
-class DevelopmentOperation:
-    name: str
-    label: str
-    description: str
-    kind: str = "read"
-    supports_entity_id: bool = False
-    supports_start_time: bool = False
-
-
-@dataclass(frozen=True)
-class DevelopmentResult:
-    status: str
-    operation: str
-    duration_ms: int
-    count: int
-    data: Any = None
-    reason: str | None = None
-
-
-@dataclass(frozen=True)
-class DevelopmentReport:
-    report_id: str
-    occurred_at: str
-    operation: str
-    status: str
-    duration_ms: int
-    total_count: int
-    schema_fingerprint: str
-    results: tuple[DevelopmentResult, ...]
-    comparison: dict[str, Any] | None = None
-    comparison_details: dict[str, Any] | None = None
 
 
 class DevelopmentReportStore(Protocol):
@@ -106,14 +77,6 @@ def development_catalog() -> tuple[DevelopmentOperation, ...]:
         DevelopmentOperation("integrations", "Integrations", "Integration domains derived from entity states."),
         DevelopmentOperation("gateway_ports", "Gateway ports and MCP transport", "Bounded local checks for the gateway listener and MCP authentication boundary."),
     )
-
-
-@dataclass(frozen=True)
-class DevelopmentPack:
-    name: str
-    label: str
-    description: str
-    operations: tuple[str, ...]
 
 
 def development_packs() -> tuple[DevelopmentPack, ...]:

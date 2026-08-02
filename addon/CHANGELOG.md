@@ -2,6 +2,11 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.4.20
+
+- Extract development domain models into a dedicated application module while preserving public imports.
+- Extract the frontend API client from the main Lit component.
+
 ## 0.4.19
 
 - Guarantee terminal states for unexpected development probe and report persistence failures.
