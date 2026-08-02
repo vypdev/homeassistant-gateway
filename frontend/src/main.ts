@@ -2,6 +2,7 @@ import { LitElement, css, html } from 'lit';
 import { downloadDiagnostic as downloadDiagnosticFile, copyDiagnostic as copyDiagnosticFile } from './diagnostics-service';
 import { api } from './api';
 import { CAPABILITY_DEFINITIONS } from './capabilities';
+import { resolveLocale, resolveTheme, translate } from './locale';
 import { loadDevelopmentReports, queueDevelopmentJob, watchDevelopmentJob } from './development-service';
 import { property, state } from 'lit/decorators.js';
 import { EXTRA_TRANSLATIONS } from './i18n-extra';
@@ -261,23 +262,12 @@ export class GatewayApp extends LitElement {
 
   connectedCallback() { super.connectedCallback(); void this.refresh(); }
 
-  get locale() { const base = (this.localeOverride || this.uiContext.locale).toLowerCase().split('-', 1)[0]; return TRANSLATIONS[base] ? base : 'en'; }
+  get locale() { return resolveLocale(this.localeOverride, this.uiContext.locale, TRANSLATIONS); }
   t(key: string) {
-    const catalogs = [
-      TRANSLATIONS[this.locale],
-      DEVELOPMENT_TRANSLATIONS[this.locale],
-      DEVELOPMENT_EXTRA_TRANSLATIONS[this.locale],
-      UI_TRANSLATIONS[this.locale],
-      UI_EXTRA_TRANSLATIONS[this.locale],
-    ];
-    for (const catalog of catalogs) {
-      const value = catalog?.[key];
-      if (value) return value;
-    }
-    return TRANSLATIONS.en[key] ?? key;
+    return translate(key, this.locale, [TRANSLATIONS, DEVELOPMENT_TRANSLATIONS, DEVELOPMENT_EXTRA_TRANSLATIONS, UI_TRANSLATIONS, UI_EXTRA_TRANSLATIONS], TRANSLATIONS);
   }
   setLocale(locale: string) { this.localeOverride = locale; if (locale) localStorage.setItem('gateway-locale', locale); else localStorage.removeItem('gateway-locale'); }
-  get effectiveTheme() { return this.uiContext.theme === 'auto' ? (window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : this.uiContext.theme; }
+  get effectiveTheme() { return resolveTheme(this.uiContext.theme, Boolean(window.matchMedia?.('(prefers-color-scheme: light)').matches)); }
 
   async refresh() {
     this.busy = true; this.bootState = 'checking'; this.error = '';
