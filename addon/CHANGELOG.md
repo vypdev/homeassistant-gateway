@@ -2,6 +2,11 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.4.15
+
+- Resolve Development Console translations directly from the merged locale catalogs at runtime.
+- Refine the console layout with calmer contrast, softer secondary buttons, consistent spacing, and visible keyboard focus.
+
 ## 0.4.14
 
 - Allow direct authenticated MCP transport on `/mcp/` without Supervisor Ingress identity headers.

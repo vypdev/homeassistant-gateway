@@ -177,6 +177,7 @@ export class GatewayApp extends LitElement {
     .shell.light aside, .shell.light .card { background: #ffffffee; border-color: #d3deea; box-shadow: 0 18px 50px #38516b14; }
     .shell.light p, .shell.light .muted, .shell.light .brand small, .shell.light .card-label, .shell.light .side-foot, .shell.light nav button { color: #607286; }
     .shell.light nav button:hover, .shell.light nav button.active { color: #17324d; background: #dceefa; }
+    .shell.light button.secondary { color: #29445d; background: #e5eef5; border-color: #b9cad9; }
     .shell.light nav button.active { box-shadow: inset 2px 0 #168bd0; }
     .shell.light th, .shell.light td { border-color: #dbe5ee; } .shell.light td { color: #29445d; }
     .shell.light input, .shell.light select, .shell.light textarea { color: #243447; background: #f8fbfe; border-color: #b9cad9; }
@@ -216,8 +217,10 @@ export class GatewayApp extends LitElement {
     .wide { min-height: 180px; }
     .split { display: grid; grid-template-columns: 1.3fr .7fr; gap: 14px; }
     .toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 14px; }
-    button.primary, button.secondary, button.danger { border: 1px solid transparent; border-radius: 9px; padding: 9px 13px; color: #031522; background: #63d8ff; cursor: pointer; font: 700 13px inherit; }
-    button.secondary { color: #c5e8ff; background: #123651; border-color: #2b6184; }
+    button.primary, button.secondary, button.danger { border: 1px solid transparent; border-radius: 9px; padding: 9px 13px; color: #031522; background: #63d8ff; cursor: pointer; font: 700 13px inherit; transition: background .15s ease, border-color .15s ease, transform .15s ease; }
+    button.secondary { color: #c5e8ff; background: #173b55; border-color: #315b75; }
+    button.secondary:hover:not(:disabled) { background: #20516f; border-color: #4d87a8; transform: none; }
+    button.secondary:focus-visible, nav button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #7ddcff; outline-offset: 2px; }
     button.danger { color: #ffd7d7; background: #552b3a; border-color: #91455a; }
     button:disabled { opacity: .55; cursor: wait; }
     .table-wrap { overflow-x: auto; }
@@ -238,12 +241,12 @@ export class GatewayApp extends LitElement {
     .modal-backdrop { position: fixed; inset: 0; z-index: 5; display: grid; place-items: center; padding: 20px; background: #020812aa; backdrop-filter: blur(6px); }
     .modal { width: min(560px, 100%); border: 1px solid #3b7796; border-radius: 18px; background: #0b1b2c; padding: 22px; box-shadow: 0 30px 100px #0009; }
     .empty { padding: 28px 10px; text-align: center; color: #8ea5bd; }
-    .dev-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 14px; }
+    .dev-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 20px; align-items: start; }
     .dev-output { max-height: 420px; overflow: auto; white-space: pre-wrap; word-break: break-word; border: 1px solid #23415e; border-radius: 10px; padding: 14px; background: #06101b; color: #b8ecff; font: 12px/1.5 "JetBrains Mono", ui-monospace, monospace; }
     .result-list { display: grid; gap: 8px; margin-top: 14px; }
     .pack-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 16px 0; }
-    .pack-grid button { display: grid; gap: 3px; text-align: left; }
-    .pack-grid small { color: #8ea5bd; }
+    .pack-grid button { display: grid; gap: 5px; text-align: left; padding: 12px 13px; min-height: 72px; }
+    .pack-grid small { color: #9fb8cc; line-height: 1.4; }
     .capability-toolbar { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 8px; }
     .capability-grid { display: grid; gap: 8px; max-height: 360px; overflow: auto; padding-right: 3px; }
     .capability-option { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; border: 1px solid #23415e; border-radius: 10px; padding: 10px; background: #07152299; cursor: pointer; }
@@ -254,7 +257,7 @@ export class GatewayApp extends LitElement {
     .capability-option.operator { opacity: .5; cursor: not-allowed; }
     .shell.light .capability-option { background: #f8fbfe; border-color: #b9cad9; }
     .shell.light .capability-option strong { color: #29445d; }
-    .result-row { display: flex; justify-content: space-between; gap: 10px; align-items: center; border: 1px solid #1b3550; border-radius: 9px; padding: 9px 10px; }
+    .result-row { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; border: 1px solid #29465f; border-radius: 10px; padding: 12px 13px; background: #07152233; }
     .blocked { border-color: #805d35; background: #3a281233; }
     @keyframes drift { from { transform: translate3d(-1%, -1%, 0) scale(1); } to { transform: translate3d(2%, 2%, 0) scale(1.04); } }
     @keyframes network-flow { from { transform: translate3d(-2%, -1%, 0) rotate(0deg); } to { transform: translate3d(2%, 1%, 0) rotate(2deg); } }
@@ -268,7 +271,20 @@ export class GatewayApp extends LitElement {
   connectedCallback() { super.connectedCallback(); void this.refresh(); }
 
   get locale() { const base = (this.localeOverride || this.uiContext.locale).toLowerCase().split('-', 1)[0]; return TRANSLATIONS[base] ? base : 'en'; }
-  t(key: string) { return TRANSLATIONS[this.locale]?.[key] ?? TRANSLATIONS.en[key] ?? key; }
+  t(key: string) {
+    const catalogs = [
+      TRANSLATIONS[this.locale],
+      DEVELOPMENT_TRANSLATIONS[this.locale],
+      DEVELOPMENT_EXTRA_TRANSLATIONS[this.locale],
+      UI_TRANSLATIONS[this.locale],
+      UI_EXTRA_TRANSLATIONS[this.locale],
+    ];
+    for (const catalog of catalogs) {
+      const value = catalog?.[key];
+      if (value) return value;
+    }
+    return TRANSLATIONS.en[key] ?? key;
+  }
   setLocale(locale: string) { this.localeOverride = locale; if (locale) localStorage.setItem('gateway-locale', locale); else localStorage.removeItem('gateway-locale'); }
   get effectiveTheme() { return this.uiContext.theme === 'auto' ? (window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : this.uiContext.theme; }
 
