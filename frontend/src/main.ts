@@ -3,6 +3,7 @@ import { downloadDiagnostic as downloadDiagnosticFile, copyDiagnostic as copyDia
 import { api } from './api';
 import { CAPABILITY_DEFINITIONS } from './capabilities';
 import { resolveLocale, resolveTheme, translate } from './locale';
+import { capabilityText as resolveCapabilityText, operationText as resolveOperationText, packText as resolvePackText, pageSubtitle, pageTitle, statusText as resolveStatusText } from './view-helpers';
 import { loadDevelopmentReports, queueDevelopmentJob, watchDevelopmentJob } from './development-service';
 import { property, state } from 'lit/decorators.js';
 import { EXTRA_TRANSLATIONS } from './i18n-extra';
@@ -303,21 +304,17 @@ export class GatewayApp extends LitElement {
   clearCapabilities() { this.selectedCapabilities = new Set(); }
 
   capabilityText(name: string, suffix: 'Label' | 'Description', fallback: string) {
-    const keys: Record<string, string> = { 'ha.read.diagnostics': 'Diagnostics', 'ha.read.entities': 'Entities', 'ha.read.states': 'States', 'ha.read.automations': 'Automations', 'ha.read.config_entries': 'Config', 'ha.read.history': 'History', 'ha.read.logbook': 'Logbook', 'ha.read.registry': 'Registry', 'ha.read.services': 'Services', 'ha.read.events': 'Events', 'ha.write.services': 'WriteServices', 'ha.write.automations': 'WriteAutomations', 'ha.write.configuration': 'WriteConfig' };
-    return TRANSLATIONS[this.locale]?.[`cap${keys[name] ?? name}${suffix}`] ?? fallback;
+    return resolveCapabilityText(TRANSLATIONS[this.locale], name, suffix, fallback);
   }
 
-  statusText(status: string) { return this.t(status === 'warning' ? 'statusPartial' : `status${status.charAt(0).toUpperCase()}${status.slice(1)}`); }
+  statusText(status: string) { return resolveStatusText(this.t.bind(this), status); }
 
   operationText(operation: string, field: 'Label' | 'Description', fallback: string) {
-    const key = `op${operation === 'entity_registry' ? 'EntityRegistry' : operation === 'gateway_ports' ? 'GatewayPorts' : operation.charAt(0).toUpperCase() + operation.slice(1)}${field}`;
-    return this.t(key) === key ? fallback : this.t(key);
+    return resolveOperationText(this.t.bind(this), operation, field, fallback);
   }
 
   packText(pack: string, field: 'Label' | 'Description', fallback: string) {
-    const names: Record<string, string> = { basic_inventory: 'Basic', automation_diagnostics: 'Automation', mcp_readiness: 'Mcp', data_completeness: 'Completeness' };
-    const key = `pack${names[pack] ?? pack}${field}`;
-    return this.t(key) === key ? fallback : this.t(key);
+    return resolvePackText(this.t.bind(this), pack, field, fallback);
   }
 
   capabilitySelector() {
@@ -421,8 +418,8 @@ export class GatewayApp extends LitElement {
   }
 
   nav(view: View, icon: string, label: string) { return html`<button class=${this.view === view ? 'active' : ''} @click=${() => this.setView(view)}><span aria-hidden="true">${icon}</span> ${label}</button>`; }
-  pageTitle() { return ({ overview: this.t('overviewTitle'), development: this.t('developmentTitle'), clients: this.t('clientsTitle'), policy: this.t('policyTitle'), mcp: this.t('mcpTitle'), audit: this.t('auditTitle') } as Record<View, string>)[this.view]; }
-  subtitle() { return ({ overview: this.t('overviewSubtitle'), development: this.t('developmentSubtitle'), clients: this.t('clientsSubtitle'), policy: this.t('policySubtitle'), mcp: this.t('mcpSubtitle'), audit: this.t('auditSubtitle') } as Record<View, string>)[this.view]; }
+  pageTitle() { return pageTitle(this.t.bind(this), this.view); }
+  subtitle() { return pageSubtitle(this.t.bind(this), this.view); }
 
   overview() { const active = this.clients.filter((client) => client.status === 'active').length; return html`<section class="cards"><div class="card"><span class="card-label">${this.t('storage')}</span><strong class="metric ok">${this.ready?.storage ?? '—'}</strong><p>${this.t('privateState')}</p></div><div class="card"><span class="card-label">${this.t('homeAssistant')}</span><strong class="metric ${this.ready?.home_assistant === 'ready' ? 'ok' : 'warn'}">${this.statusText(this.ready?.home_assistant ?? 'unknown')}</strong><p>${this.t('supervisorUpstream')}</p></div><div class="card"><span class="card-label">${this.t('activeClients')}</span><strong class="metric">${active}</strong><p>${this.t('bearerIdentities')}</p></div><div class="card"><span class="card-label">${this.t('auditEvents')}</span><strong class="metric">${this.audit.length}</strong><p>${this.t('sanitizedRecords')}</p></div></section><div class="split"><div class="card wide"><h2>${this.t('systemPosture')}</h2><p>${this.t('postureDescription')}</p><div style="margin-top:22px"><span class="tag">${this.t('ingressTrusted')}</span><span class="tag">${this.t('tokenDigests')}</span><span class="tag">${this.t('readOnlyMcp')}</span></div></div><div class="card wide"><h2>${this.t('quickActions')}</h2><div class="form-actions" style="justify-content:flex-start; margin-top:24px"><button class="primary" @click=${() => this.setView('clients')}>${this.t('manageClients')}</button><button class="secondary" @click=${() => this.setView('audit')}>${this.t('viewAudit')}</button></div></div></div>`; }
 
