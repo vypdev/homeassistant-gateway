@@ -1,4 +1,5 @@
 import { LitElement, css, html } from 'lit';
+import { downloadDiagnostic as downloadDiagnosticFile, copyDiagnostic as copyDiagnosticFile } from './diagnostics-service';
 import { api } from './api';
 import { loadDevelopmentReports, queueDevelopmentJob, watchDevelopmentJob } from './development-service';
 import { property, state } from 'lit/decorators.js';
@@ -410,7 +411,7 @@ export class GatewayApp extends LitElement {
   }
 
   async copyDiagnostic(result: DevelopmentResult) {
-    await navigator.clipboard?.writeText(JSON.stringify({ operation: result.operation, status: result.status, reason: result.reason ?? null }, null, 2));
+    await copyDiagnosticFile(result);
   }
 
   async retryDevelopment(operation: string) {
@@ -418,9 +419,7 @@ export class GatewayApp extends LitElement {
   }
 
   downloadDiagnostic() {
-    const payload = { generated_at: new Date().toISOString(), health: this.healthDetails, results: this.developmentResults, reports: this.developmentReports.slice(0, 10) };
-    const url = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
-    const anchor = document.createElement('a'); anchor.href = url; anchor.download = `homeassistant-gateway-diagnostic-${Date.now()}.json`; anchor.click(); URL.revokeObjectURL(url);
+    downloadDiagnosticFile(this.healthDetails, this.developmentResults, this.developmentReports);
   }
 
   loadingView() {
