@@ -9,6 +9,7 @@ import { neuralBackground } from './shell-view';
 import { overviewView, healthView, topologyView } from './overview-view';
 import { auditView } from './audit-view';
 import { clientsView as renderClientsView } from './clients-view';
+import { developmentView as renderDevelopmentView } from './development-view';
 import { policyView as renderPolicyView } from './policy-view';
 import { mcpView as renderMcpView } from './mcp-view';
 import { loadDevelopmentReports, queueDevelopmentJob, watchDevelopmentJob } from './development-service';
@@ -432,27 +433,7 @@ export class GatewayApp extends LitElement {
 
   topologyPanel() { return topologyView({ ready: this.ready, clients: this.clients, audit: this.audit, healthDetails: this.healthDetails, t: this.t.bind(this), statusText: this.statusText.bind(this), navigate: (view) => this.setView(view) }); }
 
-  developmentView() {
-    const catalog = this.development;
-    return html`<div class="dev-grid">
-      <div class="card">
-        <div class="toolbar"><div><h2>${this.t('observerProbes')}</h2><p>${this.t('internalSurface')}</p></div><button class="primary" @click=${() => void this.runAllDevelopment()} ?disabled=${this.busy || !catalog?.enabled}>${this.t('runAll')}</button></div>
-        <div class="pack-grid">${catalog?.packs.map((pack) => html`<button class="secondary" @click=${() => void this.runDevelopmentPack(pack.name)} ?disabled=${this.busy || !catalog.enabled}><strong>${this.packText(pack.name, 'Label', pack.label)}</strong><small>${this.packText(pack.name, 'Description', pack.description)}</small></button>`)}</div>
-        <p>${this.t('devUpstreamStatus')}: <span class=${catalog?.upstream === 'ready' ? 'ok' : 'warn'}>${this.statusText(catalog?.upstream ?? 'loading')}</span>.</p>
-        <div class="form" style="margin-top:16px">
-          <label>${this.t('entityFilter')}<input .value=${this.developmentEntity} @input=${(event: Event) => { this.developmentEntity = (event.target as HTMLInputElement).value; }} placeholder=${this.t('devEntityPlaceholder')} /></label>
-          <label>${this.t('startTime')}<input .value=${this.developmentStartTime} @input=${(event: Event) => { this.developmentStartTime = (event.target as HTMLInputElement).value; }} placeholder=${this.t('devStartTimePlaceholder')} /></label>
-        </div>
-        <div class="result-list">${catalog?.operations.map((operation) => html`<div class="result-row"><div><strong>${this.operationText(operation.name, 'Label', operation.label)}</strong><br><span class="muted">${this.operationText(operation.name, 'Description', operation.description)}</span></div><button class="secondary" @click=${() => void this.runDevelopment(operation.name)} ?disabled=${this.busy || !catalog.enabled}>${this.t('run')}</button></div>`)}</div>
-      </div>
-      <div class="card">
-        <div class="toolbar"><div><h2>${this.t('executionEvidence')}</h2><p>${this.t('countLatency')}</p></div><div>${this.developmentProgress.total ? html`<span class="tag ${this.developmentProgress.status === 'error' ? 'bad' : this.developmentProgress.status === 'warning' ? 'warn' : ''}" aria-live="polite">${this.developmentProgress.completed}/${this.developmentProgress.total}</span>` : ''}${this.developmentResults.length ? html`<span class="tag">${this.developmentResults.length} ${this.t('result')}</span>` : ''}<button class="secondary" @click=${() => this.downloadDiagnostic()}>${this.t('exportDiagnostic')}</button></div></div>
-        ${this.developmentResults.length ? html`<div class="result-list">${this.developmentResults.map((result) => html`<div class="result-row"><span><strong>${this.operationText(result.operation, 'Label', result.operation)}</strong> <span class=${result.status === 'ok' ? 'ok' : result.status === 'warning' ? 'warn' : 'bad'}>${this.statusText(result.status)}</span></span><span class="mono">${result.count} ${this.t('devItems')} · ${result.duration_ms} ${this.t('devMilliseconds')} ${result.status !== 'ok' ? html`<button class="secondary" @click=${() => void this.copyDiagnostic(result)}>${this.t('copyDiagnostic')}</button><button class="secondary" @click=${() => void this.retryDevelopment(result.operation)}>${this.t('retry')}</button>` : ''}</span></div>`)}</div><pre class="dev-output">${JSON.stringify(this.developmentOutput, null, 2)}</pre>` : html`<div class="empty">${this.t('exactResponse')}</div>`}
-        ${this.developmentReports.length ? html`<h3 style="margin-top:18px">${this.t('historicalEvidenceLabel')}</h3><div class="result-list">${this.developmentReports.map((report) => html`<div class="result-row"><span><strong>${this.operationText(report.operation, 'Label', report.operation)}</strong> <span class=${report.status === 'ok' ? 'ok' : 'warn'}>${this.statusText(report.status)}</span><br><span class="muted">${new Date(report.occurred_at).toLocaleString()} · ${report.schema_fingerprint.slice(0, 12)}</span></span><span class="mono">${report.total_count} ${this.t('devItems')}${report.comparison ? ` · Δ ${report.comparison.count_delta}` : ''}${report.comparison?.schema_changed ? ` · ${this.t('devSchemaChanged')}` : ''}${report.comparison_details?.regressions?.length ? ` · ⚠ ${report.comparison_details.regressions.length} ${this.t('devRegressions')}` : ''}</span></div>`)}</div>` : ''}
-        <div class="card blocked" style="margin-top:14px"><h3>${this.t('mutationProbes')}</h3><p><span class="warn">${this.t('mutationsBlocked')}</span></p><div style="margin-top:10px"><span class="tag">${this.t('approvalRequired')}</span><span class="tag">${this.t('operatorDisabledTag')}</span><span class="tag">${this.t('noMcpMutation')}</span></div></div>
-      </div>
-    </div>`;
-  }
+  developmentView() { return renderDevelopmentView({ catalog: this.development, progress: this.developmentProgress, results: this.developmentResults, reports: this.developmentReports, output: this.developmentOutput, entity: this.developmentEntity, startTime: this.developmentStartTime, busy: this.busy, t: this.t.bind(this), statusText: this.statusText.bind(this), packText: this.packText.bind(this), operationText: this.operationText.bind(this), setEntity: (value) => { this.developmentEntity = value; }, setStartTime: (value) => { this.developmentStartTime = value; }, runAll: () => void this.runAllDevelopment(), runPack: (name) => void this.runDevelopmentPack(name), runOperation: (name) => void this.runDevelopment(name), download: () => this.downloadDiagnostic(), copyDiagnostic: (result) => void this.copyDiagnostic(result), retry: (operation) => void this.retryDevelopment(operation) }); }
 
   clientsView() { return renderClientsView({ clients: this.clients, busy: this.busy, t: this.t.bind(this), refresh: () => void this.refresh(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), rotate: (clientId) => void this.rotate(clientId), capabilitySelector: () => this.capabilitySelector() }); }
 
