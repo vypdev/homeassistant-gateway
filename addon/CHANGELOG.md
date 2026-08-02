@@ -2,6 +2,11 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.5.1
+
+- Harden the read-only entity-registry fallback for Home Assistant installations where the optional `area_id()` template helper is unavailable.
+- Keep core configuration failures explicit as `home_assistant_unavailable` instead of returning fabricated or silently empty configuration data.
+
 ## 0.5.0
 
 - Complete the Clean Architecture refactor across contracts, application jobs, Home Assistant adapters, HTTP presentation, and the frontend.
