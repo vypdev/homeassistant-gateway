@@ -206,6 +206,21 @@ def test_extended_registry_uses_template_fallback_when_rest_route_is_unavailable
     assert requests == [("GET", "/core/api/config/area_registry/list"), ("POST", "/core/api/template")]
 
 
+def test_entity_registry_template_fallback_avoids_optional_area_function() -> None:
+    template_payload: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET":
+            return httpx.Response(404)
+        template_payload.append(request.content.decode())
+        return httpx.Response(200, text='[{"entity_id":"light.salon","state":"on","attributes":{},"device_id":"device-1"}]')
+
+    result = make_client(handler).extended_read("entity_registry")
+
+    assert result[0]["entity_id"] == "light.salon"
+    assert "area_id(item.entity_id)" not in template_payload[0]
+
+
 def test_required_extended_resource_404_is_explicit() -> None:
     client = make_client(lambda request: httpx.Response(404))
 
