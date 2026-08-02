@@ -2,6 +2,11 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.5.2
+
+- Query the complete logbook when no entity filter is requested instead of probing and filtering to an arbitrary entity.
+- Harden label and entity-registry template fallbacks by avoiding optional association helpers.
+
 ## 0.5.1
 
 - Harden the read-only entity-registry fallback for Home Assistant installations where the optional `area_id()` template helper is unavailable.

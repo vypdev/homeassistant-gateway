@@ -85,6 +85,15 @@ def test_default_history_window_uses_home_assistant_utc_format() -> None:
     assert make_client(handler).history("sensor.temp") == []
 
 
+def test_logbook_without_entity_reads_all_activity() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path.startswith("/core/api/logbook/")
+        assert dict(request.url.params) == {}
+        return httpx.Response(200, json=[{"entity_id": "light.kitchen", "state": "on"}])
+
+    assert make_client(handler).logbook() == [{"entity_id": "light.kitchen", "state": "on"}]
+
+
 @pytest.mark.parametrize("status", [400, 401, 403, 404, 500])
 def test_upstream_http_statuses_are_classified_without_response_body(status: int) -> None:
     client = make_client(lambda request: httpx.Response(status, text="secret upstream body"))
@@ -219,6 +228,7 @@ def test_entity_registry_template_fallback_avoids_optional_area_function() -> No
 
     assert result[0]["entity_id"] == "light.salon"
     assert "area_id(item.entity_id)" not in template_payload[0]
+    assert "device_id(item.entity_id)" not in template_payload[0]
 
 
 def test_required_extended_resource_404_is_explicit() -> None:

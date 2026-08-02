@@ -25,7 +25,6 @@ class SupervisorHistoryReader:
         return groups
 
     def logbook(self: Any, entity_id: str | None = None, start_time: str | None = None) -> list[dict[str, Any]]:
-        entity = entity_id or self._probe_entity("logbook")
         start = start_time or self._timestamp(datetime.now(UTC) - timedelta(days=1))
-        params = {"entity": entity}
+        params = {"entity": entity_id} if entity_id else {}
         return self._bounded_list(self._get_json(f"/logbook/{quote(start, safe='')}", default=[], params=params, diagnostic_path="/logbook"))
