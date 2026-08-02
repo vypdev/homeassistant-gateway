@@ -177,7 +177,15 @@ export class GatewayApp extends LitElement {
     .shell.light aside, .shell.light .card { background: #ffffffee; border-color: #d3deea; box-shadow: 0 18px 50px #38516b14; }
     .shell.light p, .shell.light .muted, .shell.light .brand small, .shell.light .card-label, .shell.light .side-foot, .shell.light nav button { color: #607286; }
     .shell.light nav button:hover, .shell.light nav button.active { color: #17324d; background: #dceefa; }
+    .shell.light button.primary { color: #17324d; background: #b8dbe8; border-color: #9fc5d4; }
+    .shell.light button.primary:hover:not(:disabled) { background: #a8cfdf; border-color: #86b5c8; }
     .shell.light button.secondary { color: #29445d; background: #e5eef5; border-color: #b9cad9; }
+    .shell.light .result-row { border-color: #c8d6e1; background: #f8fbfd; }
+    .shell.light code, .shell.light .mono { color: #47728d; }
+    .shell.light .tag { color: #365f79; background: #e7f0f5; border-color: #c1d2de; }
+    .shell.light .ok { color: #2d9864; }
+    .shell.light .warn { color: #a66f16; }
+    .shell.light .bad { color: #b34b58; }
     .shell.light nav button.active { box-shadow: inset 2px 0 #168bd0; }
     .shell.light th, .shell.light td { border-color: #dbe5ee; } .shell.light td { color: #29445d; }
     .shell.light input, .shell.light select, .shell.light textarea { color: #243447; background: #f8fbfe; border-color: #b9cad9; }
@@ -231,6 +239,7 @@ export class GatewayApp extends LitElement {
     code, .mono { color: #9bdbff; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px; }
     .tag { display: inline-block; color: #9bdbff; background: #123651; border: 1px solid #27516a; border-radius: 999px; padding: 3px 8px; margin: 2px 3px 2px 0; font-size: 11px; }
     .ok { color: #67e2a0; } .warn { color: #ffd27d; } .bad { color: #ff8e9e; }
+    .result-row .ok, .result-row .warn, .result-row .bad { margin-left: 6px; }
     .form { display: grid; gap: 12px; }
     label { display: grid; gap: 6px; color: #8ea5bd; font-size: 12px; }
     input, select, textarea { width: 100%; border: 1px solid #2a4e6d; border-radius: 8px; padding: 10px 11px; color: #e7f0fb; background: #071522; font: inherit; }

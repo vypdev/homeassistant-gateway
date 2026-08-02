@@ -1,5 +1,5 @@
 name: Home Assistant Gateway
-version: "0.4.15"
+version: "0.4.16"
 slug: homeassistant_gateway
 description: Secure MCP gateway with observer/operator profiles for Home Assistant
 url: https://github.com/vypdev/homeassistant-gateway
@@ -27,7 +27,9 @@ options:
   log_level: info
   operator_enabled: false
   development_console_enabled: true
+  mcp_allowed_hosts: "localhost,127.0.0.1,[::1],homeassistant,homeassistant.local"
 schema:
   log_level: list(trace|debug|info|warning|error|fatal)
   operator_enabled: bool
   development_console_enabled: bool
+  mcp_allowed_hosts: str

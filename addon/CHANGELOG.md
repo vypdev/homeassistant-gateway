@@ -2,6 +2,11 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.4.16
+
+- Expose the explicit MCP Host allowlist as a Supervisor App option for direct LAN clients.
+- Preserve DNS rebinding protection instead of disabling Host validation.
+
 ## 0.4.15
 
 - Resolve Development Console translations directly from the merged locale catalogs at runtime.

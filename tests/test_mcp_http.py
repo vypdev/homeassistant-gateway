@@ -69,7 +69,7 @@ def test_mcp_streamable_http_enforces_bearer_and_capability(tmp_path) -> None:
 
 def test_mcp_direct_transport_uses_bearer_auth_without_ingress_identity(tmp_path) -> None:
     async def run() -> None:
-        app = build_app(AppSettings(tmp_path))
+        app = build_app(AppSettings(tmp_path, mcp_allowed_hosts=("localhost", "192.168.20.101")))
         async with app.router.lifespan_context(app), httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app),
             base_url="http://localhost",
@@ -78,6 +78,7 @@ def test_mcp_direct_transport_uses_bearer_auth_without_ingress_identity(tmp_path
                 "/mcp/",
                 headers={
                     "Content-Type": "application/json",
+                    "Host": "192.168.20.101:18099",
                     "Authorization": "Bearer hgw_invalid",
                     "Accept": "application/json, text/event-stream",
                 },
