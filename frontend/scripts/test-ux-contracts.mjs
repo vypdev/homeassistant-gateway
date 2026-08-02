@@ -14,5 +14,8 @@ assert.match(development, /retry/);
 assert.match(main, /prefers-reduced-motion/);
 assert.match(main, /aria-busy/);
 assert.match(styles, /:focus-visible/);
+assert.match(styles, /\.split, \.dev-grid \{ grid-template-columns: 1fr; \}/);
+assert.match(styles, /\.cards, \.split, \.dev-grid, \.pack-grid \{ grid-template-columns: 1fr; \}/);
+assert.match(styles, /\.result-row \{ flex-direction: column; \}/);
 
 console.log('frontend UX contracts: ok');
