@@ -18,6 +18,21 @@ _current_token: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "gateway_mcp_token", default=None
 )
 
+
+def _transport_allowed_hosts(hosts: tuple[str, ...]) -> list[str]:
+    """Expand host-only configuration into SDK host-with-port patterns."""
+    expanded: list[str] = []
+    for host in hosts:
+        value = host.strip()
+        if not value:
+            continue
+        expanded.append(value)
+        if value.endswith(":*"):
+            continue
+        if (value.startswith("[") and value.endswith("]")) or ":" not in value:
+            expanded.append(f"{value}:*")
+    return expanded
+
 @dataclass(frozen=True)
 class MCPApp:
     application: Any
@@ -69,7 +84,7 @@ def create_mcp_app(
         stateless_http=True,
         json_response=True,
         streamable_http_path="/",
-        transport_security=TransportSecuritySettings(allowed_hosts=list(allowed_hosts)),
+        transport_security=TransportSecuritySettings(allowed_hosts=_transport_allowed_hosts(allowed_hosts)),
     )
 
     @server.tool(

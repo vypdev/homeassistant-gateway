@@ -168,6 +168,7 @@ export class GatewayApp extends LitElement {
   @state() developmentEntity = '';
   @state() developmentStartTime = '';
   @state() selectedCapabilities = new Set<string>(['ha.read.diagnostics']);
+  @state() bootState: 'checking' | 'ready' | 'error' = 'checking';
 
   static styles = css`
     :host { display: block; color: #e7f0fb; min-height: 100vh; font: 14px/1.5 Inter, ui-sans-serif, system-ui, sans-serif; }
@@ -197,6 +198,22 @@ export class GatewayApp extends LitElement {
     .neural::after { filter: blur(1px); opacity: .7; animation-duration: 36s; animation-direction: reverse; }
     .node { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: #65d8ff; box-shadow: 0 0 0 4px #65d8ff14, 0 0 18px #65d8ffcc; animation: node-pulse 4s ease-in-out infinite; }
     .shell.light .neural { opacity: .25; } .shell.light .node { background: #168bd0; box-shadow: 0 0 0 4px #168bd014, 0 0 18px #168bd066; }
+    .boot-stage { min-height: min(620px, calc(100vh - 56px)); display: grid; place-items: center; padding: 28px; }
+    .boot-card { position: relative; width: min(520px, 100%); padding: 42px 38px; text-align: center; border: 1px solid #31536f; border-radius: 22px; background: #071522d9; box-shadow: 0 24px 70px #02081266; backdrop-filter: blur(14px); }
+    .shell.light .boot-card { border-color: #c4d5e1; background: #ffffffec; box-shadow: 0 24px 70px #38516b1c; }
+    .boot-orbit { width: 74px; height: 74px; margin: 0 auto 24px; display: grid; place-items: center; border: 1px solid #4bc9ff66; border-radius: 50%; position: relative; animation: boot-orbit 5s linear infinite; }
+    .boot-orbit::before, .boot-orbit::after { content: ''; position: absolute; border-radius: 50%; }
+    .boot-orbit::before { width: 9px; height: 9px; top: -4px; left: 31px; background: #67e2a0; box-shadow: 0 0 18px #67e2a0; }
+    .boot-orbit::after { width: 5px; height: 5px; right: 5px; bottom: 13px; background: #4bc9ff; box-shadow: 0 0 14px #4bc9ff; }
+    .boot-core { width: 22px; height: 22px; border-radius: 50%; background: #4bc9ff; box-shadow: 0 0 0 8px #4bc9ff1c, 0 0 28px #4bc9ff99; animation: boot-pulse 2.2s ease-in-out infinite; }
+    .shell.light .boot-orbit { border-color: #5b9fc066; } .shell.light .boot-orbit::before { background: #2d9864; box-shadow: 0 0 14px #2d986466; } .shell.light .boot-orbit::after { background: #3c88ac; box-shadow: 0 0 12px #3c88ac66; } .shell.light .boot-core { background: #6caec7; box-shadow: 0 0 0 8px #6caec71c, 0 0 24px #6caec766; }
+    .boot-card h1 { margin: 0; font-size: clamp(22px, 3vw, 30px); } .boot-card p { max-width: 390px; margin: 10px auto 0; }
+    .boot-status { display: inline-flex; align-items: center; gap: 8px; margin-top: 26px; color: #9fb8cc; font-size: 13px; }
+    .shell.light .boot-status { color: #607286; }
+    .boot-progress { height: 3px; margin: 22px auto 0; max-width: 300px; overflow: hidden; border-radius: 999px; background: #23415e; }
+    .boot-progress::before { content: ''; display: block; width: 42%; height: 100%; border-radius: inherit; background: #4bc9ff; animation: boot-progress 1.8s ease-in-out infinite; }
+    .shell.light .boot-progress { background: #dbe7ee; } .shell.light .boot-progress::before { background: #75aec2; }
+    .boot-retry { margin-top: 24px; }
     .grid { position: fixed; inset: 0; opacity: .16; pointer-events: none; background-image: linear-gradient(#6fa8d30d 1px, transparent 1px), linear-gradient(90deg, #6fa8d30d 1px, transparent 1px); background-size: 42px 42px; mask-image: linear-gradient(to bottom, black, transparent 85%); }
     .layout { position: relative; width: min(1360px, calc(100% - 40px)); margin: auto; display: grid; grid-template-columns: 230px 1fr; gap: 28px; padding: 28px 0; }
     aside { border: 1px solid #23415e; border-radius: 20px; background: #0b1929dd; padding: 20px 14px; height: calc(100vh - 56px); position: sticky; top: 28px; display: flex; flex-direction: column; }
@@ -268,12 +285,15 @@ export class GatewayApp extends LitElement {
     .shell.light .capability-option strong { color: #29445d; }
     .result-row { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; border: 1px solid #29465f; border-radius: 10px; padding: 12px 13px; background: #07152233; }
     .blocked { border-color: #805d35; background: #3a281233; }
+    @keyframes boot-orbit { to { transform: rotate(360deg); } }
+    @keyframes boot-pulse { 0%, 100% { transform: scale(.82); opacity: .72; } 50% { transform: scale(1.12); opacity: 1; } }
+    @keyframes boot-progress { 0% { transform: translateX(-130%); } 55%, 100% { transform: translateX(250%); } }
     @keyframes drift { from { transform: translate3d(-1%, -1%, 0) scale(1); } to { transform: translate3d(2%, 2%, 0) scale(1.04); } }
     @keyframes network-flow { from { transform: translate3d(-2%, -1%, 0) rotate(0deg); } to { transform: translate3d(2%, 1%, 0) rotate(2deg); } }
     @keyframes node-pulse { 0%, 100% { opacity: .45; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.25); } }
     @media (max-width: 1000px) { .cards { grid-template-columns: repeat(2, 1fr); } .split { grid-template-columns: 1fr; } }
     @media (max-width: 720px) { .layout { width: min(100% - 24px, 600px); display: block; padding-top: 12px; } aside { height: auto; position: static; margin-bottom: 18px; } nav { grid-template-columns: repeat(4, 1fr); } nav button { text-align: center; padding: 9px 4px; font-size: 12px; } .side-foot { display: none; } .cards { grid-template-columns: 1fr 1fr; } .topline { display: block; } .status-pill { margin-top: 16px; } }
-    @media (prefers-reduced-motion: reduce) { .shell::before, .neural::before, .neural::after, .node { animation: none; } *, *::before, *::after { transition-duration: .01ms !important; } }
+    @media (prefers-reduced-motion: reduce) { .shell::before, .neural::before, .neural::after, .node, .boot-orbit, .boot-core, .boot-progress::before { animation: none; } *, *::before, *::after { transition-duration: .01ms !important; } }
     @media (prefers-contrast: more) { .card, aside, input, select, textarea, .result-row { border-color: currentColor; } .muted, p, label, th { color: currentColor; } .tag, button.secondary { border-color: currentColor; } }
   `;
 
@@ -298,9 +318,9 @@ export class GatewayApp extends LitElement {
   get effectiveTheme() { return this.uiContext.theme === 'auto' ? (window.matchMedia?.('(prefers-color-scheme: light)').matches ? 'light' : 'dark') : this.uiContext.theme; }
 
   async refresh() {
-    this.busy = true; this.error = '';
-    try { [this.ready, this.clients, this.audit, this.development, this.developmentReports, this.uiContext, this.healthDetails] = await Promise.all([api<Ready>('/../ready'), api<Client[]>('/clients'), api<AuditEvent[]>('/audit'), api<DevelopmentCatalog>('/development/catalog'), api<DevelopmentReport[]>('/development/reports'), api<UiContext>('/ui/context'), api<HealthDetails>('/health/details')]); }
-    catch (error) { this.error = error instanceof Error ? error.message : this.t('errorLoadState'); }
+    this.busy = true; this.bootState = 'checking'; this.error = '';
+    try { [this.ready, this.clients, this.audit, this.development, this.developmentReports, this.uiContext, this.healthDetails] = await Promise.all([api<Ready>('/../ready'), api<Client[]>('/clients'), api<AuditEvent[]>('/audit'), api<DevelopmentCatalog>('/development/catalog'), api<DevelopmentReport[]>('/development/reports'), api<UiContext>('/ui/context'), api<HealthDetails>('/health/details')]); this.bootState = 'ready'; }
+    catch (error) { this.error = error instanceof Error ? error.message : this.t('errorLoadState'); this.bootState = 'error'; }
     finally { this.busy = false; }
   }
 
@@ -425,7 +445,13 @@ export class GatewayApp extends LitElement {
     const anchor = document.createElement('a'); anchor.href = url; anchor.download = `homeassistant-gateway-diagnostic-${Date.now()}.json`; anchor.click(); URL.revokeObjectURL(url);
   }
 
+  loadingView() {
+    const failed = this.bootState === 'error';
+    return html`<div class="shell ${this.effectiveTheme}"><div class="neural" aria-hidden="true"><span class="node" style="left:14%;top:24%"></span><span class="node" style="left:31%;top:12%;animation-delay:1s"></span><span class="node" style="left:52%;top:28%;animation-delay:2s"></span><span class="node" style="left:76%;top:18%;animation-delay:.5s"></span><span class="node" style="left:88%;top:44%;animation-delay:1.7s"></span><span class="node" style="left:24%;top:68%;animation-delay:2.4s"></span><span class="node" style="left:61%;top:74%;animation-delay:1.2s"></span></div><div class="grid"></div><main class="boot-stage" aria-busy=${failed ? 'false' : 'true'}><section class="boot-card" aria-live="polite"><div class="boot-orbit" aria-hidden="true"><div class="boot-core"></div></div><h1>${failed ? this.t('errorLoadState') : this.t('checkingGateway')}</h1><p>${this.t('healthDescription')}</p>${failed ? html`<div class="alert" role="alert" style="margin-top:20px">${this.error}</div><button class="secondary boot-retry" @click=${() => void this.refresh()}>${this.t('refresh')}</button>` : html`<div class="boot-status"><span class="dot"></span>${this.t('checkingGateway')}</div><div class="boot-progress" role="progressbar" aria-label=${this.t('checkingGateway')}></div>`}</section></main></div>`;
+  }
+
   render() {
+    if (this.bootState !== 'ready') return this.loadingView();
     const active = this.view;
     return html`<div class="shell ${this.effectiveTheme}"><div class="neural" aria-hidden="true"><span class="node" style="left:14%;top:24%"></span><span class="node" style="left:31%;top:12%;animation-delay:1s"></span><span class="node" style="left:52%;top:28%;animation-delay:2s"></span><span class="node" style="left:76%;top:18%;animation-delay:.5s"></span><span class="node" style="left:88%;top:44%;animation-delay:1.7s"></span><span class="node" style="left:24%;top:68%;animation-delay:2.4s"></span><span class="node" style="left:61%;top:74%;animation-delay:1.2s"></span></div><div class="grid"></div><div class="layout">
       <aside>

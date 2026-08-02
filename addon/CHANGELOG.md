@@ -2,6 +2,12 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.4.17
+
+- Normalize host-only MCP allowlist entries to accept the actual `Host: hostname:port` header.
+- Add an explicit Gateway bootstrap state with a calm neural loading background, clear failure state, and retry action.
+- Keep the animated network background present behind the loaded console.
+
 ## 0.4.16
 
 - Expose the explicit MCP Host allowlist as a Supervisor App option for direct LAN clients.
