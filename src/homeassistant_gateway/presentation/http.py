@@ -1,11 +1,10 @@
 import uuid
 from collections.abc import Awaitable, Callable
-from dataclasses import asdict
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Query, Request
-from fastapi.responses import JSONResponse, Response
+from fastapi import FastAPI, Query, Request
+from fastapi.responses import Response
 from starlette.staticfiles import StaticFiles
 
 from homeassistant_gateway.application.audit import (
@@ -25,28 +24,28 @@ from homeassistant_gateway.application.clients import (
 from homeassistant_gateway.application.development import (
     DevelopmentReportStore,
     DevelopmentToolRunner,
-    development_catalog,
-    development_packs,
 )
 from homeassistant_gateway.application.development_jobs import DevelopmentJobManager
 from homeassistant_gateway.application.home_assistant import (
     HomeAssistantReadPort,
-    HomeAssistantUnavailable,
 )
-from homeassistant_gateway.application.operator_preview import build_operator_preview
 from homeassistant_gateway.presentation.client_routes import (
     ClientRouteDependencies,
     register_client_routes,
 )
+from homeassistant_gateway.presentation.development_routes import (
+    DevelopmentRouteDependencies,
+    register_development_routes,
+)
+from homeassistant_gateway.presentation.health_routes import (
+    HealthRouteDependencies,
+    register_health_routes,
+)
 from homeassistant_gateway.presentation.http_middleware import request_identity_middleware
 from homeassistant_gateway.presentation.http_models import (
     AuditEventResponse,
-    DevelopmentRunRequest,
-    HealthResponse,
-    OperatorPreviewRequest,
-    ReadinessResponse,
 )
-from homeassistant_gateway.presentation.ui import UI_DIST, index_response
+from homeassistant_gateway.presentation.ui import UI_DIST
 
 
 def create_app(
@@ -97,106 +96,17 @@ def create_app(
     ) -> Response:
         return await request_identity_middleware(request, call_next, record_audit)
 
-    @app.get("/", response_class=Response, include_in_schema=False)
-    def index() -> Response:
-        return index_response()
+    register_health_routes(app, HealthRouteDependencies(home_assistant=home_assistant, mcp_app=mcp_app))
 
-    @app.get("/health", response_model=HealthResponse)
-    def health() -> HealthResponse:
-        return HealthResponse(status="ok")
-
-    @app.get("/ready", response_model=ReadinessResponse)
-    def readiness() -> ReadinessResponse:
-        upstream = "disabled" if home_assistant is None else ("ready" if home_assistant.health() else "unavailable")
-        return ReadinessResponse(
-            status="ready" if upstream != "unavailable" else "degraded",
-            storage="ready",
-            mcp="ready" if mcp_app is not None else "disabled",
-            home_assistant=upstream,
-        )
-
-    @app.get("/api/health/details")
-    def health_details_resource() -> dict[str, Any]:
-        if home_assistant is None:
-            return {"status": "disabled", "checks": []}
-        provider = getattr(home_assistant, "health_details", None)
-        if not callable(provider):
-            return {"status": "unknown", "checks": []}
-        result = provider()
-        return result if isinstance(result, dict) else {"status": "unknown", "checks": []}
-
-    @app.get("/api/ui/context")
-    def ui_context_resource(request: Request) -> dict[str, str]:
-        context = {"locale": "en", "theme": "auto"}
-        if home_assistant is not None:
-            try:
-                provider = getattr(home_assistant, "ui_context", None)
-                if callable(provider):
-                    provided = provider()
-                    if isinstance(provided, dict):
-                        context.update({str(key): str(value) for key, value in provided.items()})
-            except HomeAssistantUnavailable:
-                pass
-        if context["locale"] == "en":
-            accept_language = request.headers.get("accept-language", "")
-            if accept_language:
-                context["locale"] = accept_language.split(",", 1)[0].split(";", 1)[0].strip().replace("_", "-").lower() or "en"
-        return context
-
-    @app.get("/api/development/catalog")
-    def development_catalog_resource() -> dict[str, Any]:
-        upstream = "disabled" if home_assistant is None else ("ready" if home_assistant.health() else "unavailable")
-        return {
-            "enabled": development_console_enabled,
-            "upstream": upstream,
-            "operations": [asdict(item) for item in development_catalog()],
-            "packs": [asdict(item) for item in development_packs()],
-            "mutations": {
-                "status": "disabled",
-                "reason": "operator_mutations_not_implemented",
-                "approval_required": True,
-            },
-        }
-
-    @app.post("/api/development/run", status_code=202)
-    def development_run_resource(request: DevelopmentRunRequest) -> Response:
-        if not development_console_enabled:
-            raise HTTPException(status_code=403, detail="development_console_disabled")
-        if development_jobs is None:
-            raise HTTPException(status_code=503, detail="home_assistant_not_configured")
-        try:
-            job_id = development_jobs.start(request.operation, request.parameters)
-        except RuntimeError as error:
-            raise HTTPException(status_code=429, detail=str(error)) from error
-        except ValueError as error:
-            raise HTTPException(status_code=400, detail=str(error)) from error
-        return JSONResponse(
-            status_code=202,
-            headers={"Location": f"/api/development/jobs/{job_id}"},
-            content={"status": "queued", "job_id": job_id, "operation": request.operation},
-        )
-
-    @app.get("/api/development/jobs/{job_id}")
-    def development_job_resource(job_id: str) -> dict[str, Any]:
-        if development_jobs is None:
-            raise HTTPException(status_code=503, detail="home_assistant_not_configured")
-        snapshot = development_jobs.snapshot(job_id)
-        if snapshot is None:
-            raise HTTPException(status_code=404, detail="development_job_not_found")
-        return snapshot
-
-    @app.post("/api/operator/preview")
-    def operator_preview_resource(request: OperatorPreviewRequest) -> dict[str, Any]:
-        try:
-            return asdict(build_operator_preview(request.operation, request.target, request.capability, request.proposed, request.current))
-        except ValueError as error:
-            raise HTTPException(status_code=400, detail=str(error)) from error
-
-    @app.get("/api/development/reports")
-    def development_reports_resource(limit: int = Query(default=20, ge=1, le=100)) -> list[dict[str, Any]]:
-        if development_report_store is None:
-            return []
-        return [asdict(report) for report in development_report_store.list(limit)]
+    register_development_routes(
+        app,
+        DevelopmentRouteDependencies(
+            home_assistant=home_assistant,
+            development_jobs=development_jobs,
+            development_report_store=development_report_store,
+            enabled=development_console_enabled,
+        ),
+    )
 
     @app.get("/api/audit", response_model=list[AuditEventResponse])
     def audit_events(
