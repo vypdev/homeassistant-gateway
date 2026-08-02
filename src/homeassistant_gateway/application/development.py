@@ -151,11 +151,12 @@ class DevelopmentToolRunner:
         data = self._operations[operation](**safe_parameters)
         duration_ms = max(0, round((monotonic() - started) * 1000))
         return DevelopmentResult(
-            status="ok",
+            status="warning" if self._is_empty_result(data) else "ok",
             operation=operation,
             duration_ms=duration_ms,
             count=self._count(data),
             data=data,
+            reason="empty_result" if self._is_empty_result(data) else None,
         )
 
     def run_all(self) -> tuple[DevelopmentResult, ...]:
@@ -195,6 +196,15 @@ class DevelopmentToolRunner:
         if unknown:
             raise ValueError("unsupported_development_parameter")
         return {key: value for key, value in parameters.items() if value not in (None, "")}
+
+    @staticmethod
+    def _is_empty_result(data: Any) -> bool:
+        if isinstance(data, list):
+            return not data
+        if isinstance(data, dict):
+            counts = data.get("counts")
+            return isinstance(counts, dict) and bool(counts) and all(isinstance(value, int) and value == 0 for value in counts.values())
+        return False
 
     @staticmethod
     def _count(data: Any) -> int:

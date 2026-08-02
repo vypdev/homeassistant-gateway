@@ -89,6 +89,18 @@ def test_runner_supports_extended_registry_resources() -> None:
     assert result.data == [{"resource": "devices"}]
 
 
+def test_runner_warns_when_expected_list_is_empty() -> None:
+    class EmptyHomeAssistant(FakeHomeAssistant):
+        def extended_read(self, resource: str) -> list[dict[str, Any]]:
+            return []
+
+    result = DevelopmentToolRunner(EmptyHomeAssistant()).run("devices", {})
+
+    assert result.status == "warning"
+    assert result.reason == "empty_result"
+    assert result.count == 0
+
+
 def test_port_diagnostics_is_explicitly_local_only() -> None:
     result = DevelopmentToolRunner(FakeHomeAssistant(), FakePortDiagnostics()).run("gateway_ports", {})
 

@@ -2,6 +2,14 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.4.18
+
+- Run Development Console probes as bounded background jobs instead of blocking one HTTP request until every probe finishes.
+- Expose queued/running/completed job state with incremental results and progress counters.
+- Surface empty collection results as explicit warnings instead of silently treating them as successful empty data.
+- Add a read-only template fallback for Home Assistant registries when the corresponding REST registry routes are unavailable.
+- Keep the Development Console documentation focused on the operator/consumer-visible execution contract.
+
 ## 0.4.17
 
 - Normalize host-only MCP allowlist entries to accept the actual `Host: hostname:port` header.

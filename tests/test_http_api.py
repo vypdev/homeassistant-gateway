@@ -1,6 +1,7 @@
 import asyncio
 import re
 from datetime import UTC, datetime
+from time import monotonic, sleep
 
 import httpx
 
@@ -153,18 +154,30 @@ def test_health_details_is_ingress_protected_and_reports_checks() -> None:
 
 
 def test_development_run_all_returns_one_result_per_probe() -> None:
+    app = make_app(home_assistant=FakeHomeAssistant())
     response = request(
-        make_app(home_assistant=FakeHomeAssistant()),
+        app,
         "POST",
         "/api/development/run",
         headers=ingress_headers(),
         json={"operation": "all", "parameters": {}},
     )
-    assert response.status_code == 200
-    payload = response.json()
-    assert payload["status"] == "ok"
+    assert response.status_code == 202
+    queued = response.json()
+    assert queued["status"] == "queued"
+    deadline = monotonic() + 2
+    payload = None
+    while monotonic() < deadline:
+        result_response = request(app, "GET", f"/api/development/jobs/{queued['job_id']}", headers=ingress_headers())
+        payload = result_response.json()
+        if payload["status"] in {"completed", "warning", "error"}:
+            break
+        sleep(0.01)
+    assert payload is not None
+    assert payload["status"] == "warning"
     assert len(payload["results"]) == 18
-    assert {item["status"] for item in payload["results"]} == {"ok"}
+    assert {item["status"] for item in payload["results"]} == {"ok", "warning"}
+    assert all(item.get("reason") == "empty_result" for item in payload["results"] if item["status"] == "warning")
 
 
 def test_development_console_can_be_disabled_without_affecting_health() -> None:

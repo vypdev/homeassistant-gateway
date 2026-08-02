@@ -5,7 +5,8 @@ The Development Console is an Ingress-protected, observer-only verification surf
 ## Endpoints
 
 - `GET /api/development/catalog` — bounded operation and pack catalog.
-- `POST /api/development/run` — execute one operation, a pack (`pack:<name>`), or `all`.
+- `POST /api/development/run` — enqueue one operation, a pack (`pack:<name>`), or `all`; returns `202` and a bounded `job_id` immediately.
+- `GET /api/development/jobs/{job_id}` — read queued/running/completed status and incremental results for a development job.
 - `GET /api/development/reports` — sanitized persisted reports.
 - `GET /api/health/details` — independent upstream checks.
 - `GET /api/ui/context` — locale/theme compatibility context.
@@ -23,6 +24,8 @@ Diagnostic transport failures are classified without exposing upstream exception
 - `home_assistant_transport_unavailable` — remaining HTTPX transport failure.
 
 Transport failures include only the logical endpoint and bounded parameter names. History and Logbook timestamp path values and entity values are never included in diagnostics. Only transient transport failures are retried once; upstream HTTP validation failures are not retried.
+
+A successful request that returns an empty collection is not treated as a transport failure. Development probes expose it as `status="warning"`, `reason="empty_result"`, and `count=0`, so a missing registry or unexpectedly empty dataset is visible for investigation.
 
 All management endpoints require the Supervisor Ingress identity. `/health` and `/ready` remain safe health endpoints.
 

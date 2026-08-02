@@ -44,13 +44,14 @@ def test_inventory_is_bounded_and_keeps_transport_outside_application() -> None:
     assert make_client(handler).inventory()["counts"] == {"entities": 1, "services": 1}
 
 
-def test_missing_optional_configuration_endpoint_is_reported_as_empty() -> None:
+def test_missing_optional_configuration_endpoint_is_reported_as_unavailable() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/config"):
             return httpx.Response(200, json={"location_name": "Home"})
         return httpx.Response(404, json={"message": "not available"})
 
-    assert make_client(handler).configuration() == {"core": {"location_name": "Home"}, "entity_registry": [], "area_registry": []}
+    with pytest.raises(HomeAssistantUnavailable, match="home_assistant_http_404"):
+        make_client(handler).configuration()
 
 
 def test_history_and_logbook_use_bounded_query_parameters() -> None:
@@ -187,6 +188,22 @@ def test_extended_registry_matrix_uses_expected_paths() -> None:
         "/core/api/config/area_registry/list",
         "/core/api/states",
     ]
+
+
+def test_extended_registry_uses_template_fallback_when_rest_route_is_unavailable() -> None:
+    requests: list[tuple[str, str]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append((request.method, request.url.path))
+        if request.method == "GET":
+            return httpx.Response(404)
+        assert request.method == "POST"
+        assert request.url.path == "/core/api/template"
+        return httpx.Response(200, text='[{"id":"area-casa","name":"Casa","entities":["light.salon"],"devices":["device-1"]}]')
+
+    client = make_client(handler)
+    assert client.extended_read("areas") == [{"id": "area-casa", "name": "Casa", "entities": ["light.salon"], "devices": ["device-1"]}]
+    assert requests == [("GET", "/core/api/config/area_registry/list"), ("POST", "/core/api/template")]
 
 
 def test_required_extended_resource_404_is_explicit() -> None:

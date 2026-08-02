@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 from time import monotonic, sleep
 from typing import Any
@@ -147,7 +148,13 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
             "entity_registry": "/config/entity_registry/list",
         }
         if resource in registry_paths:
-            return self._bounded_list(self._get_json(registry_paths[resource], default=[], allow_not_found=True))
+            try:
+                payload = self._get_json(registry_paths[resource], default=[], allow_not_found=False)
+            except HomeAssistantUnavailable as error:
+                if error.status != 404:
+                    raise
+                payload = self._template_registry(resource)
+            return self._bounded_list(payload)
         states = self.states()
         prefixes = {"scripts": ("script.",), "scenes": ("scene.",), "helpers": ("input_",)}
         if resource in prefixes:
@@ -157,8 +164,26 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
             return [{"domain": domain} for domain in domains]
         raise ValueError("unknown_extended_resource")
 
+    def _template_registry(self, resource: str) -> list[dict[str, Any]]:
+        templates = {
+            "areas": "{% set ns = namespace(items=[]) %}{% for id in areas() %}{% set ns.items = ns.items + [{'id': id, 'name': area_name(id), 'entities': area_entities(id), 'devices': area_devices(id)}] %}{% endfor %}{{ ns.items | tojson }}",
+            "floors": "{% set ns = namespace(items=[]) %}{% for id in floors() %}{% set ns.items = ns.items + [{'id': id, 'name': floor_name(id), 'areas': floor_areas(id)}] %}{% endfor %}{{ ns.items | tojson }}",
+            "labels": "{% set ns = namespace(items=[]) %}{% for id in labels() %}{% set ns.items = ns.items + [{'id': id, 'name': label_name(id), 'entities': label_entities(id), 'devices': label_devices(id), 'areas': label_areas(id)}] %}{% endfor %}{{ ns.items | tojson }}",
+            "devices": "{% set ns = namespace(ids=[]) %}{% for item in states %}{% set id = device_id(item.entity_id) %}{% if id and id not in ns.ids %}{% set ns.ids = ns.ids + [id] %}{% endif %}{% endfor %}{% set ns.items = [] %}{% for id in ns.ids %}{% set ns.items = ns.items + [{'id': id, 'name': device_attr(id, 'name'), 'manufacturer': device_attr(id, 'manufacturer'), 'model': device_attr(id, 'model'), 'area_id': device_attr(id, 'area_id'), 'entities': device_entities(id)}] %}{% endfor %}{{ ns.items | tojson }}",
+            "entity_registry": "{% set ns = namespace(items=[]) %}{% for item in states %}{% set ns.items = ns.items + [{'entity_id': item.entity_id, 'state': item.state, 'attributes': item.attributes, 'device_id': device_id(item.entity_id), 'area_id': area_id(item.entity_id)}] %}{% endfor %}{{ ns.items | tojson }}",
+        }
+        return self._post_template(templates[resource])
+
+    def _post_template(self, template: str) -> list[dict[str, Any]]:
+        response = self._request_post("/template", {"template": template}, diagnostic_path="/template")
+        try:
+            payload = json.loads(response.text)
+        except json.JSONDecodeError as error:
+            raise HomeAssistantUnavailable("home_assistant_invalid_json", path="/template", status=response.status_code) from error
+        return payload if isinstance(payload, list) else []
+
     def ui_context(self) -> dict[str, str]:
-        core = self.configuration().get("core", {})
+        core = self._get_json("/config", default={})
         if not isinstance(core, dict):
             return {"locale": "en", "theme": "auto"}
         language = str(core.get("language") or core.get("locale") or "en").replace("_", "-").lower()
@@ -167,7 +192,11 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
 
     def configuration(self) -> dict[str, Any]:
         config = self._get_json("/config", default={})
-        return {"core": config, "entity_registry": self._get_json("/config/entity_registry/list", default=[], allow_not_found=True), "area_registry": self._get_json("/config/area_registry/list", default=[], allow_not_found=True)}
+        return {
+            "core": config,
+            "entity_registry": self.extended_read("entity_registry"),
+            "area_registry": self.extended_read("areas"),
+        }
 
     def _get_json(self, path: str, default: Any, params: dict[str, str] | None = None, allow_not_found: bool = False, diagnostic_path: str | None = None) -> Any:
         safe_path = diagnostic_path or path
@@ -182,6 +211,21 @@ class SupervisorHomeAssistantClient(HomeAssistantReadPort):
             return redact(response.json())
         except ValueError as error:
             raise HomeAssistantUnavailable("home_assistant_invalid_json", path=safe_path, status=response.status_code) from error
+
+    def _request_post(self, path: str, payload: dict[str, Any], diagnostic_path: str | None = None) -> httpx.Response:
+        request_path = diagnostic_path or path
+        try:
+            with httpx.Client(headers=self._headers, timeout=self._timeout, trust_env=False, transport=self._transport) as client:
+                response = client.post(f"{self._base_url}{path}", json=payload)
+        except httpx.ReadTimeout as error:
+            raise HomeAssistantUnavailable("home_assistant_transport_timeout", path=request_path) from error
+        except httpx.NetworkError as error:
+            raise HomeAssistantUnavailable("home_assistant_transport_network", path=request_path) from error
+        except httpx.HTTPError as error:
+            raise HomeAssistantUnavailable("home_assistant_transport_unavailable", path=request_path) from error
+        if response.status_code >= 400:
+            raise HomeAssistantUnavailable(f"home_assistant_http_{response.status_code}", path=request_path, status=response.status_code)
+        return response
 
     def _request(self, path: str, params: dict[str, str] | None = None, diagnostic_path: str | None = None) -> httpx.Response:
         request_path = diagnostic_path or path

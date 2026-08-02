@@ -26,12 +26,11 @@ from homeassistant_gateway.application.clients import (
 )
 from homeassistant_gateway.application.development import (
     DevelopmentReportStore,
-    DevelopmentResult,
     DevelopmentToolRunner,
-    build_development_report,
     development_catalog,
     development_packs,
 )
+from homeassistant_gateway.application.development_jobs import DevelopmentJobManager
 from homeassistant_gateway.application.home_assistant import (
     HomeAssistantReadPort,
     HomeAssistantUnavailable,
@@ -196,11 +195,7 @@ def create_app(
     app = FastAPI(title="Home Assistant Gateway", version="0.4.14", lifespan=lifespan)
     sink = audit_sink or NoopAuditSink()
 
-    def previous_development_report() -> Any | None:
-        if development_report_store is None:
-            return None
-        reports = development_report_store.list(1)
-        return reports[0] if reports else None
+    development_jobs = DevelopmentJobManager(development_runner, development_report_store) if development_runner is not None else None
     if UI_DIST.is_dir():
         app.mount("/assets", StaticFiles(directory=UI_DIST / "assets"), name="assets")
 
@@ -320,35 +315,28 @@ def create_app(
             },
         }
 
-    @app.post("/api/development/run")
+    @app.post("/api/development/run", status_code=202)
     def development_run_resource(request: DevelopmentRunRequest) -> dict[str, Any]:
         if not development_console_enabled:
             raise HTTPException(status_code=403, detail="development_console_disabled")
-        if development_runner is None:
+        if development_jobs is None:
             raise HTTPException(status_code=503, detail="home_assistant_not_configured")
         try:
-            if request.operation == "all":
-                results = development_runner.run_all()
-                report = build_development_report("all", results, previous_development_report())
-                if development_report_store:
-                    development_report_store.save(report)
-                return {"status": "ok", "operation": "all", "report": asdict(report), "results": [asdict(item) for item in results]}
-            if request.operation.startswith("pack:"):
-                operation = request.operation
-                results = development_runner.run_pack(operation.removeprefix("pack:"))
-                report = build_development_report(operation, results, previous_development_report())
-                if development_report_store:
-                    development_report_store.save(report)
-                return {"status": "ok", "operation": operation, "report": asdict(report), "results": [asdict(item) for item in results]}
-            result = development_runner.run(request.operation, request.parameters)
-            report = build_development_report(request.operation, (result,), previous_development_report())
-            if development_report_store:
-                development_report_store.save(report)
-            return {**asdict(result), "report": asdict(report)}
-        except HomeAssistantUnavailable as error:
-            return asdict(DevelopmentResult(status="unavailable", operation=request.operation, duration_ms=0, count=0, reason=str(error)))
+            job_id = development_jobs.start(request.operation, request.parameters)
+        except RuntimeError as error:
+            raise HTTPException(status_code=429, detail=str(error)) from error
         except ValueError as error:
             raise HTTPException(status_code=400, detail=str(error)) from error
+        return {"status": "queued", "job_id": job_id, "operation": request.operation}
+
+    @app.get("/api/development/jobs/{job_id}")
+    def development_job_resource(job_id: str) -> dict[str, Any]:
+        if development_jobs is None:
+            raise HTTPException(status_code=503, detail="home_assistant_not_configured")
+        snapshot = development_jobs.snapshot(job_id)
+        if snapshot is None:
+            raise HTTPException(status_code=404, detail="development_job_not_found")
+        return snapshot
 
     @app.post("/api/operator/preview")
     def operator_preview_resource(request: OperatorPreviewRequest) -> dict[str, Any]:

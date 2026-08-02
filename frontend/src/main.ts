@@ -164,6 +164,7 @@ export class GatewayApp extends LitElement {
   @state() healthDetails: HealthDetails = { status: 'unknown', checks: [] };
   @state() localeOverride = localStorage.getItem('gateway-locale') ?? '';
   @state() developmentResults: DevelopmentResult[] = [];
+  @state() developmentProgress = { status: 'idle', completed: 0, total: 0 };
   @state() developmentOutput: unknown = null;
   @state() developmentEntity = '';
   @state() developmentStartTime = '';
@@ -355,7 +356,7 @@ export class GatewayApp extends LitElement {
     return TRANSLATIONS[this.locale]?.[`cap${keys[name] ?? name}${suffix}`] ?? fallback;
   }
 
-  statusText(status: string) { return this.t(`status${status.charAt(0).toUpperCase()}${status.slice(1)}`); }
+  statusText(status: string) { return this.t(status === 'warning' ? 'statusPartial' : `status${status.charAt(0).toUpperCase()}${status.slice(1)}`); }
 
   operationText(operation: string, field: 'Label' | 'Description', fallback: string) {
     const key = `op${operation === 'entity_registry' ? 'EntityRegistry' : operation === 'gateway_ports' ? 'GatewayPorts' : operation.charAt(0).toUpperCase() + operation.slice(1)}${field}`;
@@ -400,35 +401,43 @@ export class GatewayApp extends LitElement {
     try { this.developmentReports = await api<DevelopmentReport[]>('/development/reports'); } catch { /* execution result remains visible */ }
   }
 
+  async watchDevelopmentJob(jobId: string) {
+    while (true) {
+      const snapshot = await api<{ status: string; results: DevelopmentResult[]; progress: number; completed: number; total: number }>(`/development/jobs/${jobId}`);
+      this.developmentProgress = { status: snapshot.status, completed: snapshot.completed, total: snapshot.total };
+      this.developmentResults = snapshot.results;
+      this.developmentOutput = snapshot.results;
+      if (snapshot.status === 'completed' || snapshot.status === 'warning' || snapshot.status === 'error') {
+        await this.loadDevelopmentReports();
+        return snapshot;
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 250));
+    }
+  }
+
+  async startDevelopmentJob(operation: string, parameters: Record<string, string>, errorKey: string) {
+    this.busy = true; this.error = ''; this.developmentProgress = { status: 'queued', completed: 0, total: 0 };
+    try {
+      const queued = await api<{ job_id: string }>('/development/run', { method: 'POST', body: JSON.stringify({ operation, parameters }) });
+      await this.watchDevelopmentJob(queued.job_id);
+    } catch (error) { this.error = error instanceof Error ? error.message : this.t(errorKey); }
+    finally { this.busy = false; }
+  }
+
   async runDevelopment(operation: string) {
-    this.busy = true; this.error = '';
     const parameters: Record<string, string> = {};
     const definition = this.development?.operations.find((item) => item.name === operation);
     if (definition?.supports_entity_id && this.developmentEntity) parameters.entity_id = this.developmentEntity;
     if (definition?.supports_start_time && this.developmentStartTime) parameters.start_time = this.developmentStartTime;
-    try {
-      const result = await api<DevelopmentResult>('/development/run', { method: 'POST', body: JSON.stringify({ operation, parameters }) });
-      this.developmentResults = [result]; this.developmentOutput = result.data ?? result; await this.loadDevelopmentReports();
-    } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorProbe'); }
-    finally { this.busy = false; }
+    await this.startDevelopmentJob(operation, parameters, 'errorProbe');
   }
 
   async runAllDevelopment() {
-    this.busy = true; this.error = '';
-    try {
-      const result = await api<{ status: string; operation: string; results: DevelopmentResult[] }>('/development/run', { method: 'POST', body: JSON.stringify({ operation: 'all', parameters: {} }) });
-      this.developmentResults = result.results; this.developmentOutput = result.results; await this.loadDevelopmentReports();
-    } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorProbes'); }
-    finally { this.busy = false; }
+    await this.startDevelopmentJob('all', {}, 'errorProbes');
   }
 
   async runDevelopmentPack(pack: string) {
-    this.busy = true; this.error = '';
-    try {
-      const result = await api<{ status: string; operation: string; results: DevelopmentResult[] }>('/development/run', { method: 'POST', body: JSON.stringify({ operation: `pack:${pack}`, parameters: {} }) });
-      this.developmentResults = result.results; this.developmentOutput = result.results; await this.loadDevelopmentReports();
-    } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorPack'); }
-    finally { this.busy = false; }
+    await this.startDevelopmentJob(`pack:${pack}`, {}, 'errorPack');
   }
 
   async copyDiagnostic(result: DevelopmentResult) {
@@ -493,8 +502,8 @@ export class GatewayApp extends LitElement {
         <div class="result-list">${catalog?.operations.map((operation) => html`<div class="result-row"><div><strong>${this.operationText(operation.name, 'Label', operation.label)}</strong><br><span class="muted">${this.operationText(operation.name, 'Description', operation.description)}</span></div><button class="secondary" @click=${() => void this.runDevelopment(operation.name)} ?disabled=${this.busy || !catalog.enabled}>${this.t('run')}</button></div>`)}</div>
       </div>
       <div class="card">
-        <div class="toolbar"><div><h2>${this.t('executionEvidence')}</h2><p>${this.t('countLatency')}</p></div><div>${this.developmentResults.length ? html`<span class="tag">${this.developmentResults.length} ${this.t('result')}</span>` : ''}<button class="secondary" @click=${() => this.downloadDiagnostic()}>${this.t('exportDiagnostic')}</button></div></div>
-        ${this.developmentResults.length ? html`<div class="result-list">${this.developmentResults.map((result) => html`<div class="result-row"><span><strong>${this.operationText(result.operation, 'Label', result.operation)}</strong> <span class=${result.status === 'ok' ? 'ok' : 'bad'}>${this.statusText(result.status)}</span></span><span class="mono">${result.count} ${this.t('devItems')} · ${result.duration_ms} ${this.t('devMilliseconds')} ${result.status !== 'ok' ? html`<button class="secondary" @click=${() => void this.copyDiagnostic(result)}>${this.t('copyDiagnostic')}</button><button class="secondary" @click=${() => void this.retryDevelopment(result.operation)}>${this.t('retry')}</button>` : ''}</span></div>`)}</div><pre class="dev-output">${JSON.stringify(this.developmentOutput, null, 2)}</pre>` : html`<div class="empty">${this.t('exactResponse')}</div>`}
+        <div class="toolbar"><div><h2>${this.t('executionEvidence')}</h2><p>${this.t('countLatency')}</p></div><div>${this.developmentProgress.total ? html`<span class="tag ${this.developmentProgress.status === 'error' ? 'bad' : this.developmentProgress.status === 'warning' ? 'warn' : ''}" aria-live="polite">${this.developmentProgress.completed}/${this.developmentProgress.total}</span>` : ''}${this.developmentResults.length ? html`<span class="tag">${this.developmentResults.length} ${this.t('result')}</span>` : ''}<button class="secondary" @click=${() => this.downloadDiagnostic()}>${this.t('exportDiagnostic')}</button></div></div>
+        ${this.developmentResults.length ? html`<div class="result-list">${this.developmentResults.map((result) => html`<div class="result-row"><span><strong>${this.operationText(result.operation, 'Label', result.operation)}</strong> <span class=${result.status === 'ok' ? 'ok' : result.status === 'warning' ? 'warn' : 'bad'}>${this.statusText(result.status)}</span></span><span class="mono">${result.count} ${this.t('devItems')} · ${result.duration_ms} ${this.t('devMilliseconds')} ${result.status !== 'ok' ? html`<button class="secondary" @click=${() => void this.copyDiagnostic(result)}>${this.t('copyDiagnostic')}</button><button class="secondary" @click=${() => void this.retryDevelopment(result.operation)}>${this.t('retry')}</button>` : ''}</span></div>`)}</div><pre class="dev-output">${JSON.stringify(this.developmentOutput, null, 2)}</pre>` : html`<div class="empty">${this.t('exactResponse')}</div>`}
         ${this.developmentReports.length ? html`<h3 style="margin-top:18px">${this.t('historicalEvidenceLabel')}</h3><div class="result-list">${this.developmentReports.map((report) => html`<div class="result-row"><span><strong>${this.operationText(report.operation, 'Label', report.operation)}</strong> <span class=${report.status === 'ok' ? 'ok' : 'warn'}>${this.statusText(report.status)}</span><br><span class="muted">${new Date(report.occurred_at).toLocaleString()} · ${report.schema_fingerprint.slice(0, 12)}</span></span><span class="mono">${report.total_count} ${this.t('devItems')}${report.comparison ? ` · Δ ${report.comparison.count_delta}` : ''}${report.comparison?.schema_changed ? ` · ${this.t('devSchemaChanged')}` : ''}${report.comparison_details?.regressions?.length ? ` · ⚠ ${report.comparison_details.regressions.length} ${this.t('devRegressions')}` : ''}</span></div>`)}</div>` : ''}
         <div class="card blocked" style="margin-top:14px"><h3>${this.t('mutationProbes')}</h3><p><span class="warn">${this.t('mutationsBlocked')}</span></p><div style="margin-top:10px"><span class="tag">${this.t('approvalRequired')}</span><span class="tag">${this.t('operatorDisabledTag')}</span><span class="tag">${this.t('noMcpMutation')}</span></div></div>
       </div>
