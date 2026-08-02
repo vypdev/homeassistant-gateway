@@ -2,6 +2,11 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.5.3
+
+- Remove the browser default body margin so the UI fills the Ingress viewport without an unintended light frame.
+- Add a UX contract covering the global viewport reset and horizontal overflow guard.
+
 ## 0.5.2
 
 - Query the complete logbook when no entity filter is requested instead of probing and filtering to an arbitrary entity.

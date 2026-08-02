@@ -5,7 +5,11 @@ const root = new URL('../src/', import.meta.url);
 const development = await readFile(new URL('development-view.ts', root), 'utf8');
 const main = await readFile(new URL('main.ts', root), 'utf8');
 const overview = await readFile(new URL('overview-view.ts', root), 'utf8');
+const index = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const styles = main;
+
+assert.match(index, /html, body \{ margin: 0;/);
+assert.match(index, /body \{ overflow-x: hidden; \}/);
 
 assert.match(development, /empty_result/);
 assert.match(development, /role=\"status\" aria-live=\"polite\"/);
