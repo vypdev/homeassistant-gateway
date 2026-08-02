@@ -38,6 +38,23 @@ The catalog includes `gateway_ports`. It performs only bounded checks from insid
 
 This operation never invokes a shell, scans arbitrary ports, runs `nmap`/`ss`, probes arbitrary LAN addresses, or reads credentials. A successful local check does not prove that a host port is published. Verify the external mapping from a separate machine using the port declared by the App metadata.
 
+## MCP Host allowlist configuration
+
+`mcp_allowed_hosts` is a **global transport setting**, not a per-client permission list. It validates the HTTP `Host` value used to reach the Gateway before the Bearer token is resolved.
+
+In the Supervisor App configuration, enter a comma-separated list of destination hosts, without ports:
+
+```text
+localhost,127.0.0.1,[::1],homeassistant,homeassistant.local,192.168.20.101
+```
+
+Use the host or IP that appears in the MCP URL:
+
+- URL `http://192.168.20.101:18099/mcp/` → allow `192.168.20.101`;
+- URL `http://ai01.lan:18099/mcp/` → allow `ai01.lan`.
+
+This is **not** the source IP of the machine running Hermes or OpenClaw. Do not add the MCP port (`:18099`) and do not use `*`; the latter disables the DNS-rebinding protection. Client identity, Bearer tokens and capabilities are configured separately and remain per client.
+
 ## Upstream health contract
 
 `GET /api/health/details` returns a bounded object:

@@ -29,6 +29,14 @@ Disable it with the App option `development_console_enabled: false` or `GATEWAY_
 
 The Supervisor App exposes the management UI through Ingress and also publishes the read-only MCP transport on the Home Assistant host port `18099` for native MCP clients such as Hermes. Connect to `http://<home-assistant-host>:18099/mcp/` with an observer client Bearer token. No operator mutation is enabled yet; operator mutations remain disabled and no write tools are registered.
 
+For direct MCP access, configure the App option `mcp_allowed_hosts` as a comma-separated list of **destination hosts** used in client URLs, without ports. For example:
+
+```text
+localhost,127.0.0.1,[::1],homeassistant,homeassistant.local,192.168.20.101
+```
+
+This is a global HTTP transport allowlist, not a per-client permission list and not the source-IP allowlist of Hermes/OpenClaw. If a client uses `http://ai01.lan:18099/mcp/`, add `ai01.lan`; if it uses `http://192.168.20.101:18099/mcp/`, add `192.168.20.101`. Do not use `*` or include `:18099`. Client tokens and capabilities remain separate per client.
+
 
 ## Design goals
 
