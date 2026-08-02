@@ -1,5 +1,6 @@
 import { LitElement, css, html } from 'lit';
 import { api } from './api';
+import { loadDevelopmentReports, queueDevelopmentJob, watchDevelopmentJob } from './development-service';
 import { property, state } from 'lit/decorators.js';
 import { EXTRA_TRANSLATIONS } from './i18n-extra';
 import { DEVELOPMENT_TRANSLATIONS } from './i18n-development';
@@ -373,32 +374,21 @@ export class GatewayApp extends LitElement {
   }
 
   async loadDevelopmentReports() {
-    try { this.developmentReports = await api<DevelopmentReport[]>('/development/reports'); } catch { /* execution result remains visible */ }
-  }
-
-  async watchDevelopmentJob(jobId: string) {
-    const startedAt = Date.now();
-    let delay = 250;
-    while (Date.now() - startedAt < 300_000) {
-      const snapshot = await api<{ status: string; results: DevelopmentResult[]; progress: number; completed: number; total: number }>(`/development/jobs/${jobId}`);
-      this.developmentProgress = { status: snapshot.status, completed: snapshot.completed, total: snapshot.total };
-      this.developmentResults = snapshot.results;
-      this.developmentOutput = snapshot.results;
-      if (snapshot.status === 'completed' || snapshot.status === 'warning' || snapshot.status === 'error') {
-        await this.loadDevelopmentReports();
-        return snapshot;
-      }
-      await new Promise((resolve) => window.setTimeout(resolve, delay));
-      delay = Math.min(delay * 2, 1000);
-    }
-    throw new Error('development_job_timeout');
+    try { this.developmentReports = await loadDevelopmentReports(); } catch { /* execution result remains visible */ }
   }
 
   async startDevelopmentJob(operation: string, parameters: Record<string, string>, errorKey: string) {
     this.busy = true; this.error = ''; this.developmentProgress = { status: 'queued', completed: 0, total: 0 };
     try {
-      const queued = await api<{ job_id: string }>('/development/run', { method: 'POST', body: JSON.stringify({ operation, parameters }) });
-      await this.watchDevelopmentJob(queued.job_id);
+      const jobId = await queueDevelopmentJob(operation, parameters);
+      await watchDevelopmentJob(jobId, {
+        onSnapshot: (snapshot) => {
+          this.developmentProgress = { status: snapshot.status, completed: snapshot.completed, total: snapshot.total };
+          this.developmentResults = snapshot.results;
+          this.developmentOutput = snapshot.results;
+        },
+        onFinished: () => this.loadDevelopmentReports(),
+      });
     } catch (error) { this.error = error instanceof Error ? error.message : this.t(errorKey); }
     finally { this.busy = false; }
   }
