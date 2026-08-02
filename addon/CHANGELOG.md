@@ -2,6 +2,12 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.4.10
+
+- Publish the observer MCP transport on host port `18099/tcp` mapped to the internal add-on port `8099`.
+- Avoid reusing the internal Ingress port as the external host port.
+- Update Hermes integration documentation to use `http://<home-assistant-host>:18099/mcp/`.
+
 ## 0.4.9
 
 - Publish host port `8099/tcp` for native MCP clients such as Hermes.

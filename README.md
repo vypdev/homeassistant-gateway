@@ -27,7 +27,7 @@ Mutation probes are shown as blocked and require the separate operator design: t
 
 Disable it with the App option `development_console_enabled: false` or `GATEWAY_DEVELOPMENT_CONSOLE_ENABLED=false`.
 
-The Supervisor App exposes the management UI through Ingress and also publishes the read-only MCP transport on the Home Assistant host port `8099` for native MCP clients such as Hermes. Connect to `http://<home-assistant-host>:8099/mcp/` with an observer client Bearer token. No operator mutation is enabled yet; operator mutations remain disabled and no write tools are registered.
+The Supervisor App exposes the management UI through Ingress and also publishes the read-only MCP transport on the Home Assistant host port `18099` for native MCP clients such as Hermes. Connect to `http://<home-assistant-host>:18099/mcp/` with an observer client Bearer token. No operator mutation is enabled yet; operator mutations remain disabled and no write tools are registered.
 
 
 ## Design goals
