@@ -4,7 +4,7 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Query, Request, status
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, Response
 from starlette.staticfiles import StaticFiles
 
@@ -34,19 +34,16 @@ from homeassistant_gateway.application.home_assistant import (
     HomeAssistantUnavailable,
 )
 from homeassistant_gateway.application.operator_preview import build_operator_preview
-from homeassistant_gateway.presentation.auth_headers import parse_bearer_token
+from homeassistant_gateway.presentation.client_routes import (
+    ClientRouteDependencies,
+    register_client_routes,
+)
 from homeassistant_gateway.presentation.http_middleware import request_identity_middleware
 from homeassistant_gateway.presentation.http_models import (
     AuditEventResponse,
-    ClientResponse,
-    CreateClientRequest,
     DevelopmentRunRequest,
-    EvaluatePolicyRequest,
     HealthResponse,
-    IssuedClientResponse,
-    MCPDiscoveryResponse,
     OperatorPreviewRequest,
-    PolicyDecisionResponse,
     ReadinessResponse,
 )
 from homeassistant_gateway.presentation.ui import UI_DIST, index_response
@@ -210,83 +207,17 @@ def create_app(
             return []
         return [AuditEventResponse.from_domain(event) for event in audit_reader.list(limit=limit, decision=decision)]
 
-    @app.get("/api/clients", response_model=list[ClientResponse])
-    def list_client_resources() -> list[ClientResponse]:
-        return [ClientResponse.from_domain(client) for client in list_clients.execute()]
-
-    @app.get("/api/mcp/discovery", response_model=MCPDiscoveryResponse)
-    def mcp_discovery_resource(request: Request) -> MCPDiscoveryResponse:
-        token = parse_bearer_token(request.headers.get("authorization"))
-        client = authenticate_client.execute(token or "")
-        if client is None:
-            raise HTTPException(status_code=401, detail="invalid_client_token")
-        return MCPDiscoveryResponse(
-            server_name="homeassistant-gateway-observer",
-            transport="streamable-http",
-            endpoint="/mcp/",
-            client_id=client.client_id,
-            profile=client.profile,
-            capabilities=client.capabilities,
-            tools=("gateway_diagnostics", "ha_inventory", "ha_states", "ha_automations", "ha_configuration", "ha_services", "ha_events", "ha_history", "ha_logbook", "ha_devices", "ha_areas", "ha_floors", "ha_labels", "ha_entity_registry", "ha_scripts", "ha_scenes", "ha_helpers", "ha_integrations"),
-        )
-
-    @app.get("/api/client/me", response_model=ClientResponse)
-    def client_identity_resource(request: Request) -> ClientResponse:
-        token = parse_bearer_token(request.headers.get("authorization"))
-        client = authenticate_client.execute(token or "")
-        if client is None:
-            raise HTTPException(status_code=401, detail="invalid_client_token")
-        return ClientResponse.from_domain(client)
-
-    @app.post("/api/policy/evaluate", response_model=PolicyDecisionResponse)
-    def evaluate_policy_resource(request: EvaluatePolicyRequest) -> PolicyDecisionResponse:
-        decision = authorize_request.execute(
-            client_id=request.client_id,
-            capability=request.capability,
-            mutation=request.mutation,
-        )
-        return PolicyDecisionResponse(
-            decision=decision.decision,
-            reason=decision.reason,
-        )
-
-    @app.post(
-        "/api/clients",
-        response_model=IssuedClientResponse,
-        status_code=status.HTTP_201_CREATED,
+    register_client_routes(
+        app,
+        ClientRouteDependencies(
+            issue_client=issue_client,
+            list_clients=list_clients,
+            revoke_client=revoke_client,
+            rotate_client=rotate_client,
+            authenticate_client=authenticate_client,
+            authorize_request=authorize_request,
+        ),
     )
-    def issue_client_resource(request: CreateClientRequest) -> IssuedClientResponse:
-        try:
-            issued = issue_client.execute(
-                client_id=request.client_id,
-                display_name=request.display_name,
-                profile=request.profile,
-                capabilities=request.capabilities,
-            )
-        except ValueError as error:
-            reason = str(error)
-            if reason == "client_already_exists":
-                raise HTTPException(status_code=409, detail=reason) from error
-            if reason in {"operator_disabled", "observer_operator_capability_conflict"}:
-                raise HTTPException(status_code=403, detail=reason) from error
-            raise HTTPException(status_code=400, detail=reason) from error
-
-        client = ClientResponse.from_domain(issued.client)
-        return IssuedClientResponse(**client.model_dump(), token=issued.token)
-
-    @app.post("/api/clients/{client_id}/revoke", status_code=status.HTTP_204_NO_CONTENT)
-    def revoke_client_resource(client_id: str) -> Response:
-        revoke_client.execute(client_id)
-        return Response(status_code=status.HTTP_204_NO_CONTENT)
-
-    @app.post("/api/clients/{client_id}/rotate", response_model=IssuedClientResponse, status_code=status.HTTP_201_CREATED)
-    def rotate_client_resource(client_id: str) -> IssuedClientResponse:
-        try:
-            issued = rotate_client.execute(client_id)
-        except ValueError as error:
-            raise HTTPException(status_code=404, detail=str(error)) from error
-        client = ClientResponse.from_domain(issued.client)
-        return IssuedClientResponse(**client.model_dump(), token=issued.token)
 
     if mcp_app is not None:
         app.mount("/mcp", mcp_app)
