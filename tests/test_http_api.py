@@ -18,6 +18,11 @@ from homeassistant_gateway.infrastructure.security.tokens import SecureTokenIssu
 from homeassistant_gateway.presentation.http import create_app
 
 
+class FakePortDiagnostics:
+    def run(self):
+        return {"status": "ok", "checks": []}
+
+
 class InMemoryClientRepository:
     def __init__(self) -> None:
         self.items = {}
@@ -101,7 +106,7 @@ def make_app(audit_sink=None, home_assistant=None, development_console_enabled=T
         audit_sink=audit_sink,
         audit_reader=audit_sink,
         home_assistant=home_assistant,
-        development_runner=DevelopmentToolRunner(home_assistant) if home_assistant else None,
+        development_runner=DevelopmentToolRunner(home_assistant, FakePortDiagnostics()) if home_assistant else None,
         development_console_enabled=development_console_enabled,
     )
 
@@ -125,7 +130,7 @@ def test_development_catalog_requires_ingress_and_lists_probes() -> None:
     response = request(app, "GET", "/api/development/catalog", headers=ingress_headers())
     assert response.status_code == 200
     assert response.json()["enabled"] is True
-    assert len(response.json()["operations"]) == 17
+    assert len(response.json()["operations"]) == 18
     assert len(response.json()["packs"]) == 4
     assert response.json()["mutations"]["status"] == "disabled"
 
@@ -158,7 +163,7 @@ def test_development_run_all_returns_one_result_per_probe() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert payload["status"] == "ok"
-    assert len(payload["results"]) == 17
+    assert len(payload["results"]) == 18
     assert {item["status"] for item in payload["results"]} == {"ok"}
 
 

@@ -14,6 +14,7 @@ from homeassistant_gateway.application.clients import (
 )
 from homeassistant_gateway.application.development import DevelopmentToolRunner
 from homeassistant_gateway.application.observer import ObserverDiagnostics
+from homeassistant_gateway.infrastructure.local_port_diagnostics import LocalGatewayPortDiagnostics
 from homeassistant_gateway.infrastructure.security.tokens import SecureTokenIssuer
 from homeassistant_gateway.infrastructure.storage.sqlite_audit import SQLiteAuditRepository
 from homeassistant_gateway.infrastructure.storage.sqlite_clients import SQLiteClientRepository
@@ -84,7 +85,7 @@ def build_app(settings: AppSettings) -> FastAPI:
         audit_reader=audit_repository,
         mcp_app=mcp_bundle.application,
         home_assistant=home_assistant,
-        development_runner=DevelopmentToolRunner(home_assistant) if home_assistant else None,
+        development_runner=DevelopmentToolRunner(home_assistant, LocalGatewayPortDiagnostics()) if home_assistant else None,
         development_report_store=development_report_store,
         development_console_enabled=settings.development_console_enabled,
         lifespan=mcp_bundle.lifespan,

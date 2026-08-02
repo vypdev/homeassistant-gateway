@@ -5,7 +5,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-
 LANGUAGES = ("en", "es", "fr", "it", "de", "pt", "zh", "ja", "ru", "hi", "ar")
 ROOT = Path(__file__).parents[1]
 MAIN = ROOT / "frontend" / "src" / "main.ts"

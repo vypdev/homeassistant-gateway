@@ -12,6 +12,11 @@ from homeassistant_gateway.application.development import (
 )
 
 
+class FakePortDiagnostics:
+    def run(self) -> dict[str, Any]:
+        return {"status": "warning", "checks": [{"name": "host_port_publication", "status": "warning", "reason": "not_verifiable_from_app_container"}]}
+
+
 class FakeHomeAssistant:
     def inventory(self) -> dict[str, Any]:
         return {"entities": [{"entity_id": "light.kitchen"}], "services": [], "counts": {"entities": 1, "services": 0}}
@@ -63,6 +68,7 @@ def test_catalog_exposes_every_internal_observer_probe() -> None:
         "scenes",
         "helpers",
         "integrations",
+        "gateway_ports",
     ]
 
 
@@ -81,6 +87,15 @@ def test_runner_supports_extended_registry_resources() -> None:
 
     assert result.status == "ok"
     assert result.data == [{"resource": "devices"}]
+
+
+def test_port_diagnostics_is_explicitly_local_only() -> None:
+    result = DevelopmentToolRunner(FakeHomeAssistant(), FakePortDiagnostics()).run("gateway_ports", {})
+
+    assert result.status == "ok"
+    assert result.operation == "gateway_ports"
+    assert result.data["status"] == "warning"
+    assert result.data["checks"][0]["reason"] == "not_verifiable_from_app_container"
 
 
 def test_build_development_report_compares_previous_schema() -> None:

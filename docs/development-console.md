@@ -26,6 +26,18 @@ Transport failures include only the logical endpoint and bounded parameter names
 
 All management endpoints require the Supervisor Ingress identity. `/health` and `/ready` remain safe health endpoints.
 
+## Local port and MCP transport diagnostics
+
+The catalog includes `gateway_ports`. It performs only bounded checks from inside the Gateway container:
+
+- verifies that the configured internal listener accepts a local TCP connection;
+- checks `GET /health` locally and expects `200`;
+- checks `/mcp/` locally without credentials and expects the authentication boundary (`401`);
+- reports the configured bind host and internal port;
+- marks Supervisor host-port publication and LAN firewall reachability as `not_verifiable_from_app_container`.
+
+This operation never invokes a shell, scans arbitrary ports, runs `nmap`/`ss`, probes arbitrary LAN addresses, or reads credentials. A successful local check does not prove that a host port is published. Verify the external mapping from a separate machine using the port declared by the App metadata.
+
 ## Upstream health contract
 
 `GET /api/health/details` returns a bounded object:

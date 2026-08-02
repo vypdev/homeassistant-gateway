@@ -290,6 +290,10 @@ export class GatewayApp extends LitElement {
     return TRANSLATIONS[this.locale]?.[`cap${keys[name] ?? name}${suffix}`] ?? fallback;
   }
 
+  operationText(operation: string, field: 'Label' | 'Description', fallback: string) {
+    return operation === 'gateway_ports' ? this.t(`gatewayPorts${field}`) : fallback;
+  }
+
   capabilitySelector() {
     return html`<div class="capability-toolbar"><span class="muted">${this.selectedCapabilities.size} ${this.t('selectedCapabilities')}</span><span><button type="button" class="secondary" @click=${() => this.selectObserverCapabilities()}>${this.t('selectAllObserver')}</button> <button type="button" class="secondary" @click=${() => this.clearCapabilities()}>${this.t('clearSelection')}</button></span></div><div class="capability-grid">${CAPABILITY_DEFINITIONS.map((item) => html`<label class="capability-option ${item.group === 'operator' ? 'operator' : ''}"><input type="checkbox" .checked=${this.selectedCapabilities.has(item.name)} ?disabled=${item.group === 'operator'} @change=${(event: Event) => this.toggleCapability(item.name, (event.target as HTMLInputElement).checked)} /><span><strong>${this.capabilityText(item.name, 'Label', item.label)} · <code>${item.name}</code></strong><small>${this.capabilityText(item.name, 'Description', item.description)}</small></span></label>`)}</div>`;
   }
@@ -406,7 +410,7 @@ export class GatewayApp extends LitElement {
           <label>${this.t('entityFilter')}<input .value=${this.developmentEntity} @input=${(event: Event) => { this.developmentEntity = (event.target as HTMLInputElement).value; }} placeholder="light.kitchen (optional)" /></label>
           <label>${this.t('startTime')}<input .value=${this.developmentStartTime} @input=${(event: Event) => { this.developmentStartTime = (event.target as HTMLInputElement).value; }} placeholder="2026-08-01T00:00:00Z (optional)" /></label>
         </div>
-        <div class="result-list">${catalog?.operations.map((operation) => html`<div class="result-row"><div><strong>${operation.label}</strong><br><span class="muted">${operation.description}</span></div><button class="secondary" @click=${() => void this.runDevelopment(operation.name)} ?disabled=${this.busy || !catalog.enabled}>${this.t('run')}</button></div>`)}</div>
+        <div class="result-list">${catalog?.operations.map((operation) => html`<div class="result-row"><div><strong>${this.operationText(operation.name, 'Label', operation.label)}</strong><br><span class="muted">${this.operationText(operation.name, 'Description', operation.description)}</span></div><button class="secondary" @click=${() => void this.runDevelopment(operation.name)} ?disabled=${this.busy || !catalog.enabled}>${this.t('run')}</button></div>`)}</div>
       </div>
       <div class="card">
         <div class="toolbar"><div><h2>${this.t('executionEvidence')}</h2><p>${this.t('countLatency')}</p></div><div>${this.developmentResults.length ? html`<span class="tag">${this.developmentResults.length} ${this.t('result')}</span>` : ''}<button class="secondary" @click=${() => this.downloadDiagnostic()}>${this.t('exportDiagnostic')}</button></div></div>

@@ -2,6 +2,14 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.4.11
+
+- Add bounded Development Console checks for the local Gateway listener and MCP authentication boundary.
+- Explicitly report that Supervisor host-port publication and LAN firewall reachability require an external check.
+- Keep diagnostics shell-free, observer-only, credential-free, and limited to the Gateway's own local endpoints.
+- Localize the new port/MCP diagnostic operation in all 11 supported locales.
+- Add focused success, failure, sanitization, API catalog, and run-all regression coverage.
+
 ## 0.4.10
 
 - Publish the observer MCP transport on host port `18099/tcp` mapped to the internal add-on port `8099`.

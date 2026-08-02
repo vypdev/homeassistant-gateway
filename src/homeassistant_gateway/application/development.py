@@ -12,6 +12,7 @@ from homeassistant_gateway.application.home_assistant import (
     HomeAssistantReadPort,
     HomeAssistantUnavailable,
 )
+from homeassistant_gateway.application.port_diagnostics import PortDiagnosticsPort
 
 
 @dataclass(frozen=True)
@@ -103,6 +104,7 @@ def development_catalog() -> tuple[DevelopmentOperation, ...]:
         DevelopmentOperation("scenes", "Scenes", "Scene entities derived from current states."),
         DevelopmentOperation("helpers", "Helpers", "Input helpers derived from current states."),
         DevelopmentOperation("integrations", "Integrations", "Integration domains derived from entity states."),
+        DevelopmentOperation("gateway_ports", "Gateway ports and MCP transport", "Bounded local checks for the gateway listener and MCP authentication boundary."),
     )
 
 
@@ -124,8 +126,9 @@ def development_packs() -> tuple[DevelopmentPack, ...]:
 
 
 class DevelopmentToolRunner:
-    def __init__(self, home_assistant: HomeAssistantReadPort) -> None:
+    def __init__(self, home_assistant: HomeAssistantReadPort, port_diagnostics: PortDiagnosticsPort | None = None) -> None:
         self._home_assistant = home_assistant
+        self._port_diagnostics = port_diagnostics
         self._operations: dict[str, Callable[..., Any]] = {
             "inventory": home_assistant.inventory,
             "states": home_assistant.states,
@@ -135,7 +138,8 @@ class DevelopmentToolRunner:
             "events": home_assistant.events,
             "history": home_assistant.history,
             "logbook": home_assistant.logbook,
-            **{operation.name: (lambda resource=operation.name: home_assistant.extended_read(resource)) for operation in development_catalog() if operation.name not in {"inventory", "states", "automations", "configuration", "services", "events", "history", "logbook"}},
+            **{operation.name: (lambda resource=operation.name: home_assistant.extended_read(resource)) for operation in development_catalog() if operation.name not in {"inventory", "states", "automations", "configuration", "services", "events", "history", "logbook", "gateway_ports"}},
+            "gateway_ports": lambda: self._port_diagnostics.run() if self._port_diagnostics is not None else {"status": "error", "reason": "port_diagnostics_not_configured"},
         }
 
     def run(self, operation: str, parameters: dict[str, Any]) -> DevelopmentResult:
