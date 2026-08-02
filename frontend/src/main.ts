@@ -8,6 +8,7 @@ import { navigationView } from './navigation-view';
 import { neuralBackground } from './shell-view';
 import { overviewView, healthView, topologyView } from './overview-view';
 import { auditView } from './audit-view';
+import { clientsView as renderClientsView } from './clients-view';
 import { policyView as renderPolicyView } from './policy-view';
 import { mcpView as renderMcpView } from './mcp-view';
 import { loadDevelopmentReports, queueDevelopmentJob, watchDevelopmentJob } from './development-service';
@@ -453,7 +454,7 @@ export class GatewayApp extends LitElement {
     </div>`;
   }
 
-  clientsView() { return html`<div class="split"><div class="card"><div class="toolbar"><div><h2>${this.t('registeredClients')}</h2><p>${this.t('tokensNotListed')}</p></div><button class="secondary" @click=${() => void this.refresh()} ?disabled=${this.busy}>${this.t('refresh')}</button></div>${this.clients.length ? html`<div class="table-wrap"><table><thead><tr><th>${this.t('identity')}</th><th>${this.t('profile')}</th><th>${this.t('capabilities')}</th><th>${this.t('status')}</th><th></th></tr></thead><tbody>${this.clients.map((client) => html`<tr><td><strong>${client.display_name}</strong><br><span class="mono">${client.client_id}</span></td><td><span class="tag">${client.profile}</span></td><td>${client.capabilities.map((capability) => html`<span class="tag">${capability}</span>`)}</td><td class=${client.status === 'active' ? 'ok' : 'bad'}>${client.status}</td><td>${client.status === 'active' ? html`<button class="danger" @click=${() => void this.revoke(client.client_id)} ?disabled=${this.busy}>${this.t('revoke')}</button><button class="secondary" @click=${() => void this.rotate(client.client_id)} ?disabled=${this.busy}>${this.t('rotate')}</button>` : ''}</td></tr>`)}</tbody></table></div>` : html`<div class="empty">${this.t('noClientsIssued')}</div>`}</div><div class="card"><h2>${this.t('issueObserverClient')}</h2><p style="margin-bottom:16px">${this.t('tokenShownOnce')}</p><form class="form" @submit=${this.createClient}><label>${this.t('clientId')}<input name="client_id" required maxlength="128" placeholder="nido-observer" /></label><label>${this.t('displayName')}<input name="display_name" required maxlength="256" placeholder="Nido house monitor" /></label><label>Profile<select name="profile"><option value="observer">observer · read-only</option><option value="operator" disabled>operator · disabled</option></select></label><label>${this.t('capabilities')}<small class="muted">${this.t('capabilitiesHelp')}</small>${this.capabilitySelector()}</label><div class="form-actions"><button class="primary" ?disabled=${this.busy}>${this.t('issueClient')}</button></div></form></div></div>`; }
+  clientsView() { return renderClientsView({ clients: this.clients, busy: this.busy, t: this.t.bind(this), refresh: () => void this.refresh(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), rotate: (clientId) => void this.rotate(clientId), capabilitySelector: () => this.capabilitySelector() }); }
 
   auditView() { return auditView({ audit: this.audit, t: this.t.bind(this), loadAudit: (decision) => void this.loadAudit(decision) }); }
 
