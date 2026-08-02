@@ -2,6 +2,17 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.5.0
+
+- Complete the Clean Architecture refactor across contracts, application jobs, Home Assistant adapters, HTTP presentation, and the frontend.
+- Add bounded asynchronous Development Console jobs with polling, progress, expiration, timeout, cancellation, retry, and incremental results.
+- Extract frontend views and services into typed modules while preserving the observer-only management UI contract.
+- Add runtime i18n and UX gates for all 233 keys across 11 locales, including empty-result handling, keyboard focus, reduced motion, and live status announcements.
+- Add route-composition, frontend runtime, and frontend UX contract tests to CI.
+- Complete consumer, troubleshooting, architecture, and release documentation.
+- Preserve direct authenticated MCP transport on `/mcp/`, Supervisor Ingress protection for management routes, and the 18-tool observer read-only surface.
+- Keep rollback compatibility with the stable `0.4.20` image.
+
 ## 0.4.20
 
 - Extract development domain models into a dedicated application module while preserving public imports.
