@@ -1,138 +1,29 @@
 # Architecture
 
-## Scope
-
-`homeassistant-gateway` is a Home Assistant-native integration that exposes a curated MCP interface for inspection and, only when explicitly enabled, controlled operation.
-
-It is not a generic HTTP proxy, shell bridge, Docker controller, or replacement for Home Assistant's authorization model.
-
-## Layers
+Primary: Home Assistant App. The Gateway follows a pragmatic Clean Architecture boundary. A future companion custom integration may provide optional in-HA helpers, but it is not required by the Gateway runtime.
 
 ```text
-custom_components/homeassistant_gateway/presentation
-  Home Assistant config flow, panel, MCP tool schemas, response DTOs
-              ↓
-application
-  discovery, analysis, policy evaluation, approval, mutation use cases
-              ↓
-domain
-  profiles, capabilities, authorization decisions, audit events, safe identifiers
-              ↑
-infrastructure
-  Home Assistant service/state adapters, secure storage, audit persistence, MCP server
-              ↑
-composition
-  integration setup and dependency wiring only
+presentation → application ports/use cases → infrastructure adapters
+                                      ↘ sanitized persistence
 ```
 
-Dependency direction points inward. Domain and application code must not import Home Assistant, HTTP, MCP, subprocess, filesystem, or vendor-specific modules.
+## Boundaries
 
-- Domain code contains policies, capabilities, identifiers, and decisions. The first domain slice is `src/homeassistant_gateway/domain/policy.py`.
-- The first implemented application slice is `src/homeassistant_gateway/application/clients.py`: issue, list, and revoke client use cases through injected repository/token/clock ports.
-- Plaintext tokens are returned only in the one-time `IssuedClient` result; the application persists only a token digest through the injected repository boundary.
-- Infrastructure now provides `SecureTokenIssuer` and `SQLiteClientRepository`; both are adapters behind application ports.
-- SQLite lives in the App's private data directory, creates its parent with mode `0700`, and keeps the database at mode `0600`.
-- Composition root: `src/homeassistant_gateway/composition.py` constructs the graph explicitly from `AppSettings`.
-- Runtime entrypoint: `python -m homeassistant_gateway.main` or the installed `homeassistant-gateway` command. Environment variables are read only at this executable boundary.
+- `presentation`: FastAPI, MCP transport, Ingress identity, request/response mapping and static UI.
+- `application`: read-only use cases, authorization decisions, development probes, job/report contracts and domain models.
+- `infrastructure`: Supervisor/Home Assistant HTTP adapter, SQLite stores, local port diagnostics and local job execution.
+- `composition.py`: dependency wiring and runtime profile selection.
 
-## HTTP presentation boundary
+The Supervisor adapter may implement several small Home Assistant capabilities, but application use cases must depend on ports rather than HTTPX, SQLite or FastAPI.
 
-The current HTTP adapter is a thin FastAPI presentation layer around injected application use cases. Its tested contract is:
+## Runtime guarantees
 
-- `GET /health` for a safe liveness response;
-- `GET /ready` for a public readiness response;
-- `GET /api/clients` without token digests;
-- `POST /api/clients` returning the plaintext token only once;
-- `POST /api/clients/{client_id}/revoke` with idempotent revocation.
-- `POST /api/policy/evaluate` returning a typed allow/deny/approval-required decision without executing any Home Assistant operation.
-- `GET /api/client/me` requiring a client `Authorization: Bearer` token and returning only non-secret client metadata.
+Development jobs are process-local, bounded and non-durable. They expose terminal errors, expire after a bounded age, are retained for a limited period and shut down with the application. A restart intentionally removes active jobs; durable queues are out of scope until multi-worker execution or restart recovery becomes a requirement.
 
-Capability policy is evaluated from the persisted client's profile and granted capabilities. Observer clients remain read-only; operator mutations can only produce `approval_required` when globally enabled, and are never executed by this endpoint.
+## Security boundary
 
-Every HTTP request also receives a bounded `X-Request-ID` and emits a sanitized audit event containing only identity, method, path, decision, outcome, status code, and timestamp. Request bodies, query strings, tokens, and digests are excluded.
+MCP transport authentication and Supervisor Ingress authentication are separate. Read-only capabilities are resolved per declared client. Diagnostics are sanitized and never include credentials, arbitrary upstream response bodies, shell output or unrestricted network probing.
 
-This is an internal/local contract for the App and Ingress boundary. Supervisor Ingress authenticates the Home Assistant user and forwards `X-Remote-User-Id` (with the associated name/display-name headers). The middleware requires the user ID for every non-health route. Before a production runtime is exposed, the composition root must bind it to the private interface and keep the Supervisor Ingress boundary intact. The API must not be published as a public unauthenticated port. See the [official App security contract](https://developers.home-assistant.io/docs/apps/security/).
+## Evolution rule
 
-## Home Assistant deployment shape
-
-### Primary: Home Assistant App (formerly add-on)
-
-The primary distribution is a Home Assistant App installed from the project's GitHub repository through Supervisor. This is the correct boundary for a long-running MCP server that must start with Home Assistant and expose its own web UI.
-
-The App provides:
-
-- automatic startup and Supervisor lifecycle management;
-- an Ingress-protected web UI;
-- MCP transport bound to a local/protected interface;
-- client identities, token issuance, revocation, profiles, capabilities, and audit storage;
-- a narrow Home Assistant API/WebSocket adapter using the Supervisor-provided Home Assistant access boundary;
-- health/readiness endpoints and safe diagnostics.
-
-The App must not expose a public unauthenticated port by default. No Docker socket access is required.
-
-### Optional: companion custom integration
-
-A companion custom integration may be added later for native Home Assistant registration, entities, services, config flow/options flow, and a sidebar panel. It is not the primary credential or MCP server boundary. Keeping the long-running server in an App avoids embedding an HTTP/MCP server lifecycle inside Home Assistant Core.
-
-### Configuration and raw files
-
-The supported read model uses Home Assistant's authenticated REST API through the Supervisor-provided `SUPERVISOR_TOKEN`. The adapter applies bounded timeouts, `trust_env=False`, explicit upstream errors and recursive redaction of secret-like fields. Raw `/config` access is not enabled by default.
-
-## Capability model
-
-Capabilities are explicit, versioned identifiers, for example:
-
-- `ha.read.states`
-- `ha.read.entities`
-- `ha.read.devices`
-- `ha.read.areas`
-- `ha.read.automations`
-- `ha.read.scripts`
-- `ha.read.scenes`
-- `ha.read.services`
-- `ha.read.config_entries`
-- `ha.read.diagnostics`
-- `ha.operator.automation_update`
-- `ha.operator.service_call`
-
-The observer profile may include only `ha.read.*`. Operator capabilities are never implied by profile name alone; each client identity receives an explicit capability set.
-
-## MCP contract
-
-The MCP layer exposes bounded tools grouped by intent rather than raw Home Assistant internals:
-
-1. `ha_inventory`: complete, paginated-safe inventory of areas, devices, entities, integrations, and services.
-2. `ha_states`: filtered state read with stable identifiers and redacted attributes.
-3. `ha_automations`: automation definitions, triggers, conditions, actions, mode, and enabled state.
-4. `ha_configuration`: safe configuration metadata and integration diagnostics without secrets.
-5. `ha_analysis_context`: a consistent read snapshot for analysis workflows.
-6. `gateway_diagnostics`: initial Streamable HTTP observer tool, authenticated with a client bearer token and gated by `ha.read.diagnostics`.
-7. `ha_inventory`: bounded entity/service inventory gated by `ha.read.entities`.
-8. `ha_states`: bounded state reads gated by `ha.read.states`.
-9. `ha_automations`: automation entity reads gated by `ha.read.automations`.
-10. `ha_configuration`: safe configuration/registry metadata gated by `ha.read.config_entries`.
-11. Operator tools are added only after the observer contract and approval model are verified.
-
-Every tool has a schema, capability requirement, timeout, output-size limit, redaction rule, and audit classification.
-
-The MCP transport is Streamable HTTP at `/mcp/`. It uses the official Python MCP SDK, stateless sessions, bearer authentication resolved against the gateway's client digest store, and DNS-rebinding protection with an explicit host allowlist.
-
-## Credential flow
-1. User opens Home Assistant's integration UI.
-2. Config flow validates the target/authentication method without printing secret material.
-3. Credentials are stored through a dedicated Home Assistant storage adapter.
-4. The UI shows presence and rotation status, never the secret value.
-5. MCP clients authenticate with a client identity/profile, not with the upstream Home Assistant credential.
-6. Rotation revokes old client material and emits an audit event.
-
-## Analysis model
-
-Analysis must use a bounded read snapshot, not an unconstrained sequence of calls. The gateway should provide:
-
-- a consistent snapshot identifier;
-- collection timestamps and source availability;
-- redaction and completeness metadata;
-- pagination and truncation indicators;
-- explicit unsupported/unknown values.
-
-This prevents OpenClaw or Hermes from confusing missing data with a healthy state.
+Prefer additive ports, adapters and contract tests over broad rewrites. Public MCP names, observer semantics and existing configuration keys must remain compatible unless a migration is documented.

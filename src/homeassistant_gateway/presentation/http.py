@@ -38,6 +38,7 @@ from homeassistant_gateway.application.home_assistant import (
 from homeassistant_gateway.application.operator_preview import build_operator_preview
 from homeassistant_gateway.domain.clients import Client
 from homeassistant_gateway.domain.policy import Decision, Profile
+from homeassistant_gateway.presentation.auth_headers import parse_bearer_token
 from homeassistant_gateway.presentation.ui import UI_DIST, index_response
 
 
@@ -164,17 +165,6 @@ class MCPDiscoveryResponse(BaseModel):
     tools: tuple[str, ...]
 
 
-def parse_bearer_token(header: str | None) -> str | None:
-    if not header:
-        return None
-    scheme, separator, credentials = header.partition(" ")
-    if scheme.lower() != "bearer" or not separator or not credentials:
-        return None
-    if credentials != credentials.strip() or " " in credentials:
-        return None
-    return credentials
-
-
 def create_app(
     issue_client: IssueClient,
     list_clients: ListClients,
@@ -196,6 +186,8 @@ def create_app(
     sink = audit_sink or NoopAuditSink()
 
     development_jobs = DevelopmentJobManager(development_runner, development_report_store) if development_runner is not None else None
+    if development_jobs is not None:
+        app.router.on_shutdown.append(development_jobs.shutdown)
     if UI_DIST.is_dir():
         app.mount("/assets", StaticFiles(directory=UI_DIST / "assets"), name="assets")
 
@@ -316,7 +308,7 @@ def create_app(
         }
 
     @app.post("/api/development/run", status_code=202)
-    def development_run_resource(request: DevelopmentRunRequest) -> dict[str, Any]:
+    def development_run_resource(request: DevelopmentRunRequest) -> Response:
         if not development_console_enabled:
             raise HTTPException(status_code=403, detail="development_console_disabled")
         if development_jobs is None:
@@ -327,7 +319,11 @@ def create_app(
             raise HTTPException(status_code=429, detail=str(error)) from error
         except ValueError as error:
             raise HTTPException(status_code=400, detail=str(error)) from error
-        return {"status": "queued", "job_id": job_id, "operation": request.operation}
+        return JSONResponse(
+            status_code=202,
+            headers={"Location": f"/api/development/jobs/{job_id}"},
+            content={"status": "queued", "job_id": job_id, "operation": request.operation},
+        )
 
     @app.get("/api/development/jobs/{job_id}")
     def development_job_resource(job_id: str) -> dict[str, Any]:

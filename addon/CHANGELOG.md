@@ -2,6 +2,16 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.4.19
+
+- Guarantee terminal states for unexpected development probe and report persistence failures.
+- Add bounded job expiration, executor shutdown on application shutdown and redacted error codes.
+- Restore previous-report comparisons for asynchronous jobs.
+- Persist and migrate `comparison_details` in SQLite development reports.
+- Add polling timeout/backoff and `Location` headers for accepted jobs.
+- Add consumer, troubleshooting and architecture documentation.
+- Decouple MCP Bearer parsing from the main HTTP presentation module.
+
 ## 0.4.18
 
 - Run Development Console probes as bounded background jobs instead of blocking one HTTP request until every probe finishes.

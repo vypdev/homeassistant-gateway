@@ -21,7 +21,8 @@ CREATE TABLE IF NOT EXISTS development_reports (
     total_count INTEGER NOT NULL,
     schema_fingerprint TEXT NOT NULL,
     results_json TEXT NOT NULL,
-    comparison_json TEXT
+    comparison_json TEXT,
+    comparison_details_json TEXT
 )
 """
 
@@ -35,6 +36,9 @@ class SQLiteDevelopmentReportStore(DevelopmentReportStore):
         self._database.touch(mode=0o600, exist_ok=True)
         with self._connect() as connection:
             connection.execute(_SCHEMA)
+            columns = {row["name"] for row in connection.execute("PRAGMA table_info(development_reports)")}
+            if "comparison_details_json" not in columns:
+                connection.execute("ALTER TABLE development_reports ADD COLUMN comparison_details_json TEXT")
 
     def save(self, report: DevelopmentReport) -> None:
         with self._connect() as connection:
@@ -42,8 +46,8 @@ class SQLiteDevelopmentReportStore(DevelopmentReportStore):
                 """
                 INSERT OR REPLACE INTO development_reports
                 (report_id, occurred_at, operation, status, duration_ms, total_count,
-                 schema_fingerprint, results_json, comparison_json)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 schema_fingerprint, results_json, comparison_json, comparison_details_json)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     report.report_id,
@@ -55,6 +59,7 @@ class SQLiteDevelopmentReportStore(DevelopmentReportStore):
                     report.schema_fingerprint,
                     json.dumps([asdict(item) for item in report.results], sort_keys=True, default=str),
                     json.dumps(report.comparison, sort_keys=True) if report.comparison is not None else None,
+                    json.dumps(report.comparison_details, sort_keys=True) if report.comparison_details is not None else None,
                 ),
             )
 
@@ -77,6 +82,7 @@ class SQLiteDevelopmentReportStore(DevelopmentReportStore):
     def _from_row(row: sqlite3.Row) -> DevelopmentReport:
         results = tuple(DevelopmentResult(**item) for item in json.loads(row["results_json"]))
         comparison = json.loads(row["comparison_json"]) if row["comparison_json"] else None
+        comparison_details = json.loads(row["comparison_details_json"]) if row["comparison_details_json"] else None
         return DevelopmentReport(
             report_id=row["report_id"],
             occurred_at=row["occurred_at"],
@@ -87,4 +93,5 @@ class SQLiteDevelopmentReportStore(DevelopmentReportStore):
             schema_fingerprint=row["schema_fingerprint"],
             results=results,
             comparison=comparison,
+            comparison_details=comparison_details,
         )

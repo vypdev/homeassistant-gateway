@@ -12,7 +12,7 @@ from homeassistant_gateway.application.home_assistant import (
     HomeAssistantUnavailable,
 )
 from homeassistant_gateway.application.observer import ObserverDiagnostics
-from homeassistant_gateway.presentation.http import parse_bearer_token
+from homeassistant_gateway.presentation.auth_headers import parse_bearer_token
 
 _current_token: contextvars.ContextVar[str | None] = contextvars.ContextVar(
     "gateway_mcp_token", default=None

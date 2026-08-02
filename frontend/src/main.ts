@@ -402,7 +402,9 @@ export class GatewayApp extends LitElement {
   }
 
   async watchDevelopmentJob(jobId: string) {
-    while (true) {
+    const startedAt = Date.now();
+    let delay = 250;
+    while (Date.now() - startedAt < 300_000) {
       const snapshot = await api<{ status: string; results: DevelopmentResult[]; progress: number; completed: number; total: number }>(`/development/jobs/${jobId}`);
       this.developmentProgress = { status: snapshot.status, completed: snapshot.completed, total: snapshot.total };
       this.developmentResults = snapshot.results;
@@ -411,8 +413,10 @@ export class GatewayApp extends LitElement {
         await this.loadDevelopmentReports();
         return snapshot;
       }
-      await new Promise((resolve) => window.setTimeout(resolve, 250));
+      await new Promise((resolve) => window.setTimeout(resolve, delay));
+      delay = Math.min(delay * 2, 1000);
     }
+    throw new Error('development_job_timeout');
   }
 
   async startDevelopmentJob(operation: string, parameters: Record<string, string>, errorKey: string) {
