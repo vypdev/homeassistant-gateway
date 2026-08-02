@@ -1,6 +1,10 @@
 import { LitElement, css, html } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { EXTRA_TRANSLATIONS } from './i18n-extra';
+import { DEVELOPMENT_TRANSLATIONS } from './i18n-development';
+import { DEVELOPMENT_EXTRA_TRANSLATIONS } from './i18n-development-extra';
+import { UI_TRANSLATIONS } from './i18n-ui';
+import { UI_EXTRA_TRANSLATIONS } from './i18n-ui-extra';
 import { FINAL_TRANSLATIONS } from './i18n-final';
 
 type Profile = 'observer' | 'operator';
@@ -97,6 +101,22 @@ const TRANSLATIONS: Record<string, Record<string, string>> = {
 for (const [locale, entries] of Object.entries(EXTRA_TRANSLATIONS)) {
   TRANSLATIONS[locale] = { ...(TRANSLATIONS[locale] ?? {}), ...entries };
 }
+for (const [locale, entries] of Object.entries(DEVELOPMENT_TRANSLATIONS)) {
+  TRANSLATIONS[locale] = { ...(TRANSLATIONS[locale] ?? {}), ...entries };
+}
+
+for (const [locale, entries] of Object.entries(DEVELOPMENT_EXTRA_TRANSLATIONS)) {
+  TRANSLATIONS[locale] = { ...(TRANSLATIONS[locale] ?? {}), ...entries };
+}
+
+for (const [locale, entries] of Object.entries(UI_TRANSLATIONS)) {
+  TRANSLATIONS[locale] = { ...(TRANSLATIONS[locale] ?? {}), ...entries };
+}
+
+for (const [locale, entries] of Object.entries(UI_EXTRA_TRANSLATIONS)) {
+  TRANSLATIONS[locale] = { ...(TRANSLATIONS[locale] ?? {}), ...entries };
+}
+
 for (const [locale, entries] of Object.entries(FINAL_TRANSLATIONS)) {
   TRANSLATIONS[locale] = { ...(TRANSLATIONS[locale] ?? {}), ...entries };
 }
@@ -255,7 +275,7 @@ export class GatewayApp extends LitElement {
   async refresh() {
     this.busy = true; this.error = '';
     try { [this.ready, this.clients, this.audit, this.development, this.developmentReports, this.uiContext, this.healthDetails] = await Promise.all([api<Ready>('/../ready'), api<Client[]>('/clients'), api<AuditEvent[]>('/audit'), api<DevelopmentCatalog>('/development/catalog'), api<DevelopmentReport[]>('/development/reports'), api<UiContext>('/ui/context'), api<HealthDetails>('/health/details')]); }
-    catch (error) { this.error = error instanceof Error ? error.message : 'Unable to load gateway state'; }
+    catch (error) { this.error = error instanceof Error ? error.message : this.t('errorLoadState'); }
     finally { this.busy = false; }
   }
 
@@ -269,7 +289,7 @@ export class GatewayApp extends LitElement {
     try {
       const result = await api<Client & { token: string }>('/clients', { method: 'POST', body: JSON.stringify({ client_id: data.get('client_id'), display_name: data.get('display_name'), profile: data.get('profile'), capabilities: [...this.selectedCapabilities] }) });
       this.issuedToken = result.token; form.reset(); this.selectedCapabilities = new Set(['ha.read.diagnostics']); await this.refresh();
-    } catch (error) { this.error = error instanceof Error ? error.message : 'Unable to issue client'; }
+    } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorIssueClient'); }
     finally { this.busy = false; }
   }
 
@@ -290,8 +310,17 @@ export class GatewayApp extends LitElement {
     return TRANSLATIONS[this.locale]?.[`cap${keys[name] ?? name}${suffix}`] ?? fallback;
   }
 
+  statusText(status: string) { return this.t(`status${status.charAt(0).toUpperCase()}${status.slice(1)}`); }
+
   operationText(operation: string, field: 'Label' | 'Description', fallback: string) {
-    return operation === 'gateway_ports' ? this.t(`gatewayPorts${field}`) : fallback;
+    const key = `op${operation === 'entity_registry' ? 'EntityRegistry' : operation === 'gateway_ports' ? 'GatewayPorts' : operation.charAt(0).toUpperCase() + operation.slice(1)}${field}`;
+    return this.t(key) === key ? fallback : this.t(key);
+  }
+
+  packText(pack: string, field: 'Label' | 'Description', fallback: string) {
+    const names: Record<string, string> = { basic_inventory: 'Basic', automation_diagnostics: 'Automation', mcp_readiness: 'Mcp', data_completeness: 'Completeness' };
+    const key = `pack${names[pack] ?? pack}${field}`;
+    return this.t(key) === key ? fallback : this.t(key);
   }
 
   capabilitySelector() {
@@ -299,18 +328,18 @@ export class GatewayApp extends LitElement {
   }
 
   async revoke(clientId: string) {
-    if (!window.confirm(`Revoke client ${clientId}? This cannot be undone.`)) return;
+    if (!window.confirm(this.t('revokeConfirm').replace('{client}', clientId))) return;
     this.busy = true;
     try { await api<void>(`/clients/${encodeURIComponent(clientId)}/revoke`, { method: 'POST' }); await this.refresh(); }
-    catch (error) { this.error = error instanceof Error ? error.message : 'Unable to revoke client'; }
+    catch (error) { this.error = error instanceof Error ? error.message : this.t('errorRevokeClient'); }
     finally { this.busy = false; }
   }
 
   async rotate(clientId: string) {
-    if (!window.confirm(`Rotate credentials for ${clientId}? The current token will stop working.`)) return;
+    if (!window.confirm(this.t('rotateConfirm').replace('{client}', clientId))) return;
     this.busy = true; this.error = '';
     try { const result = await api<Client & { token: string }>(`/clients/${encodeURIComponent(clientId)}/rotate`, { method: 'POST' }); this.issuedToken = result.token; await this.refresh(); }
-    catch (error) { this.error = error instanceof Error ? error.message : 'Unable to rotate client'; }
+    catch (error) { this.error = error instanceof Error ? error.message : this.t('errorRotateClient'); }
     finally { this.busy = false; }
   }
 
@@ -318,7 +347,7 @@ export class GatewayApp extends LitElement {
     event.preventDefault(); const form = event.target as HTMLFormElement; const token = String(new FormData(form).get('token') ?? '');
     this.busy = true; this.error = '';
     try { this.discovery = await api<Discovery>('/mcp/discovery', { headers: { Authorization: `Bearer ${token}` } }); }
-    catch (error) { this.error = error instanceof Error ? error.message : 'Unable to load discovery'; }
+    catch (error) { this.error = error instanceof Error ? error.message : this.t('errorDiscovery'); }
     finally { this.busy = false; }
   }
 
@@ -335,7 +364,7 @@ export class GatewayApp extends LitElement {
     try {
       const result = await api<DevelopmentResult>('/development/run', { method: 'POST', body: JSON.stringify({ operation, parameters }) });
       this.developmentResults = [result]; this.developmentOutput = result.data ?? result; await this.loadDevelopmentReports();
-    } catch (error) { this.error = error instanceof Error ? error.message : 'Unable to run development probe'; }
+    } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorProbe'); }
     finally { this.busy = false; }
   }
 
@@ -344,7 +373,7 @@ export class GatewayApp extends LitElement {
     try {
       const result = await api<{ status: string; operation: string; results: DevelopmentResult[] }>('/development/run', { method: 'POST', body: JSON.stringify({ operation: 'all', parameters: {} }) });
       this.developmentResults = result.results; this.developmentOutput = result.results; await this.loadDevelopmentReports();
-    } catch (error) { this.error = error instanceof Error ? error.message : 'Unable to run development probes'; }
+    } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorProbes'); }
     finally { this.busy = false; }
   }
 
@@ -353,7 +382,7 @@ export class GatewayApp extends LitElement {
     try {
       const result = await api<{ status: string; operation: string; results: DevelopmentResult[] }>('/development/run', { method: 'POST', body: JSON.stringify({ operation: `pack:${pack}`, parameters: {} }) });
       this.developmentResults = result.results; this.developmentOutput = result.results; await this.loadDevelopmentReports();
-    } catch (error) { this.error = error instanceof Error ? error.message : 'Unable to run development pack'; }
+    } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorPack'); }
     finally { this.busy = false; }
   }
 
@@ -376,7 +405,7 @@ export class GatewayApp extends LitElement {
     return html`<div class="shell ${this.effectiveTheme}"><div class="neural" aria-hidden="true"><span class="node" style="left:14%;top:24%"></span><span class="node" style="left:31%;top:12%;animation-delay:1s"></span><span class="node" style="left:52%;top:28%;animation-delay:2s"></span><span class="node" style="left:76%;top:18%;animation-delay:.5s"></span><span class="node" style="left:88%;top:44%;animation-delay:1.7s"></span><span class="node" style="left:24%;top:68%;animation-delay:2.4s"></span><span class="node" style="left:61%;top:74%;animation-delay:1.2s"></span></div><div class="grid"></div><div class="layout">
       <aside>
         <div class="brand"><div class="brand-mark">⌁</div><div><strong>${this.t('gateway')}</strong><small> ${this.t('controlPlane')}</small></div></div>
-        <nav aria-label="Gateway navigation">
+        <nav aria-label=${this.t('navigation')}>
           ${this.nav('overview', '◈', this.t('overview'))}${this.nav('development', '⚗', this.t('development'))}${this.nav('clients', '◎', this.t('clients'))}${this.nav('policy', '◇', this.t('policy'))}${this.nav('mcp', '⌁', this.t('mcp'))}${this.nav('audit', '◌', this.t('audit'))}
         </nav>
         <div class="side-foot"><div class="ok">● ${this.t('observerFirst')}</div><div>${this.t('operatorDisabled')}</div></div>
@@ -393,42 +422,42 @@ export class GatewayApp extends LitElement {
   pageTitle() { return ({ overview: this.t('overviewTitle'), development: this.t('developmentTitle'), clients: this.t('clientsTitle'), policy: this.t('policyTitle'), mcp: this.t('mcpTitle'), audit: this.t('auditTitle') } as Record<View, string>)[this.view]; }
   subtitle() { return ({ overview: this.t('overviewSubtitle'), development: this.t('developmentSubtitle'), clients: this.t('clientsSubtitle'), policy: this.t('policySubtitle'), mcp: this.t('mcpSubtitle'), audit: this.t('auditSubtitle') } as Record<View, string>)[this.view]; }
 
-  overview() { const active = this.clients.filter((client) => client.status === 'active').length; return html`<section class="cards"><div class="card"><span class="card-label">${this.t('storage')}</span><strong class="metric ok">${this.ready?.storage ?? '—'}</strong><p>${this.t('privateState')}</p></div><div class="card"><span class="card-label">${this.t('homeAssistant')}</span><strong class="metric ${this.ready?.home_assistant === 'ready' ? 'ok' : 'warn'}">${this.ready?.home_assistant ?? '—'}</strong><p>${this.t('supervisorUpstream')}</p></div><div class="card"><span class="card-label">${this.t('activeClients')}</span><strong class="metric">${active}</strong><p>${this.t('bearerIdentities')}</p></div><div class="card"><span class="card-label">${this.t('auditEvents')}</span><strong class="metric">${this.audit.length}</strong><p>${this.t('sanitizedRecords')}</p></div></section><div class="split"><div class="card wide"><h2>${this.t('systemPosture')}</h2><p>${this.t('postureDescription')}</p><div style="margin-top:22px"><span class="tag">Ingress trusted identity</span><span class="tag">SHA-256 token digests</span><span class="tag">read-only MCP</span></div></div><div class="card wide"><h2>${this.t('quickActions')}</h2><div class="form-actions" style="justify-content:flex-start; margin-top:24px"><button class="primary" @click=${() => this.setView('clients')}>${this.t('manageClients')}</button><button class="secondary" @click=${() => this.setView('audit')}>${this.t('viewAudit')}</button></div></div></div>`; }
+  overview() { const active = this.clients.filter((client) => client.status === 'active').length; return html`<section class="cards"><div class="card"><span class="card-label">${this.t('storage')}</span><strong class="metric ok">${this.ready?.storage ?? '—'}</strong><p>${this.t('privateState')}</p></div><div class="card"><span class="card-label">${this.t('homeAssistant')}</span><strong class="metric ${this.ready?.home_assistant === 'ready' ? 'ok' : 'warn'}">${this.statusText(this.ready?.home_assistant ?? 'unknown')}</strong><p>${this.t('supervisorUpstream')}</p></div><div class="card"><span class="card-label">${this.t('activeClients')}</span><strong class="metric">${active}</strong><p>${this.t('bearerIdentities')}</p></div><div class="card"><span class="card-label">${this.t('auditEvents')}</span><strong class="metric">${this.audit.length}</strong><p>${this.t('sanitizedRecords')}</p></div></section><div class="split"><div class="card wide"><h2>${this.t('systemPosture')}</h2><p>${this.t('postureDescription')}</p><div style="margin-top:22px"><span class="tag">${this.t('ingressTrusted')}</span><span class="tag">${this.t('tokenDigests')}</span><span class="tag">${this.t('readOnlyMcp')}</span></div></div><div class="card wide"><h2>${this.t('quickActions')}</h2><div class="form-actions" style="justify-content:flex-start; margin-top:24px"><button class="primary" @click=${() => this.setView('clients')}>${this.t('manageClients')}</button><button class="secondary" @click=${() => this.setView('audit')}>${this.t('viewAudit')}</button></div></div></div>`; }
 
-  healthPanel() { return html`<section class="card" style="margin-top:14px"><div class="toolbar"><div><h2>${this.t('upstreamHealth')}</h2><p>${this.t('healthDescription')}</p></div><span class="tag ${this.healthDetails.status === 'ready' ? 'ok' : this.healthDetails.status === 'degraded' ? 'warn' : 'bad'}">${this.healthDetails.status}</span></div><div class="result-list">${this.healthDetails.checks.map((check) => html`<div class="result-row"><span><strong>${check.name}</strong> <span class=${check.status === 'ok' ? 'ok' : 'bad'}>${check.status}</span></span><span class="mono">${check.latency_ms} ms · ${check.http_status ?? 'transport'}${check.code ? ` · ${check.code}` : ''}</span></div>`)}</div></section>`; }
+  healthPanel() { return html`<section class="card" style="margin-top:14px"><div class="toolbar"><div><h2>${this.t('upstreamHealth')}</h2><p>${this.t('healthDescription')}</p></div><span class="tag ${this.healthDetails.status === 'ready' ? 'ok' : this.healthDetails.status === 'degraded' ? 'warn' : 'bad'}">${this.statusText(this.healthDetails.status)}</span></div><div class="result-list">${this.healthDetails.checks.map((check) => html`<div class="result-row"><span><strong>${check.name}</strong> <span class=${check.status === 'ok' ? 'ok' : 'bad'}>${this.statusText(check.status)}</span></span><span class="mono">${check.latency_ms} ms · ${check.http_status ?? 'transport'}${check.code ? ` · ${check.code}` : ''}</span></div>`)}</div></section>`; }
 
-  topologyPanel() { const status = (name: string) => this.healthDetails.checks.find((check) => check.name === name)?.status ?? 'unknown'; const node = (label: string, value: string) => html`<div class="card" style="text-align:center"><strong>${label}</strong><div class="tag ${value === 'ok' || value === 'ready' ? 'ok' : value === 'unknown' ? '' : 'warn'}" style="margin-top:10px">${value}</div></div>`; return html`<section class="card" style="margin-top:14px"><div class="toolbar"><div><h2>${this.t('systemTopology')}</h2><p>${this.t('topologyDescription')}</p></div><span class="mono">Ingress → gateway → upstream</span></div><div class="cards" style="grid-template-columns:repeat(5,minmax(0,1fr));margin:0"><div class="card" style="text-align:center"><strong>Ingress</strong><div class="tag ok" style="margin-top:10px">trusted</div></div>${node('Gateway', this.ready?.status ?? 'unknown')}${node('Core', status('core'))}${node('Recorder', status('recorder'))}${node('Logbook', status('logbook'))}</div></section>`; }
+  topologyPanel() { const status = (name: string) => this.healthDetails.checks.find((check) => check.name === name)?.status ?? 'unknown'; const node = (label: string, value: string) => html`<div class="card" style="text-align:center"><strong>${label}</strong><div class="tag ${value === 'ok' || value === 'ready' ? 'ok' : value === 'unknown' ? '' : 'warn'}" style="margin-top:10px">${this.statusText(value)}</div></div>`; return html`<section class="card" style="margin-top:14px"><div class="toolbar"><div><h2>${this.t('systemTopology')}</h2><p>${this.t('topologyDescription')}</p></div><span class="mono">${this.t('topologyIngress')} → ${this.t('topologyGateway')} → ${this.t('topologyUpstream')}</span></div><div class="cards" style="grid-template-columns:repeat(5,minmax(0,1fr));margin:0"><div class="card" style="text-align:center"><strong>${this.t('topologyIngress')}</strong><div class="tag ok" style="margin-top:10px">${this.t('trusted')}</div></div>${node(this.t('topologyGateway'), this.ready?.status ?? 'unknown')}${node(this.t('topologyCore'), status('core'))}${node(this.t('topologyRecorder'), status('recorder'))}${node(this.t('topologyLogbook'), status('logbook'))}</div></section>`; }
 
   developmentView() {
     const catalog = this.development;
     return html`<div class="dev-grid">
       <div class="card">
         <div class="toolbar"><div><h2>${this.t('observerProbes')}</h2><p>${this.t('internalSurface')}</p></div><button class="primary" @click=${() => void this.runAllDevelopment()} ?disabled=${this.busy || !catalog?.enabled}>${this.t('runAll')}</button></div>
-        <div class="pack-grid">${catalog?.packs.map((pack) => html`<button class="secondary" @click=${() => void this.runDevelopmentPack(pack.name)} ?disabled=${this.busy || !catalog.enabled}><strong>${pack.label}</strong><small>${pack.description}</small></button>`)}</div>
-        <p>${this.t('upstreamHealth')}: <span class=${catalog?.upstream === 'ready' ? 'ok' : 'warn'}>${catalog?.upstream ?? 'loading'}</span>.</p>
+        <div class="pack-grid">${catalog?.packs.map((pack) => html`<button class="secondary" @click=${() => void this.runDevelopmentPack(pack.name)} ?disabled=${this.busy || !catalog.enabled}><strong>${this.packText(pack.name, 'Label', pack.label)}</strong><small>${this.packText(pack.name, 'Description', pack.description)}</small></button>`)}</div>
+        <p>${this.t('devUpstreamStatus')}: <span class=${catalog?.upstream === 'ready' ? 'ok' : 'warn'}>${this.statusText(catalog?.upstream ?? 'loading')}</span>.</p>
         <div class="form" style="margin-top:16px">
-          <label>${this.t('entityFilter')}<input .value=${this.developmentEntity} @input=${(event: Event) => { this.developmentEntity = (event.target as HTMLInputElement).value; }} placeholder="light.kitchen (optional)" /></label>
-          <label>${this.t('startTime')}<input .value=${this.developmentStartTime} @input=${(event: Event) => { this.developmentStartTime = (event.target as HTMLInputElement).value; }} placeholder="2026-08-01T00:00:00Z (optional)" /></label>
+          <label>${this.t('entityFilter')}<input .value=${this.developmentEntity} @input=${(event: Event) => { this.developmentEntity = (event.target as HTMLInputElement).value; }} placeholder=${this.t('devEntityPlaceholder')} /></label>
+          <label>${this.t('startTime')}<input .value=${this.developmentStartTime} @input=${(event: Event) => { this.developmentStartTime = (event.target as HTMLInputElement).value; }} placeholder=${this.t('devStartTimePlaceholder')} /></label>
         </div>
         <div class="result-list">${catalog?.operations.map((operation) => html`<div class="result-row"><div><strong>${this.operationText(operation.name, 'Label', operation.label)}</strong><br><span class="muted">${this.operationText(operation.name, 'Description', operation.description)}</span></div><button class="secondary" @click=${() => void this.runDevelopment(operation.name)} ?disabled=${this.busy || !catalog.enabled}>${this.t('run')}</button></div>`)}</div>
       </div>
       <div class="card">
         <div class="toolbar"><div><h2>${this.t('executionEvidence')}</h2><p>${this.t('countLatency')}</p></div><div>${this.developmentResults.length ? html`<span class="tag">${this.developmentResults.length} ${this.t('result')}</span>` : ''}<button class="secondary" @click=${() => this.downloadDiagnostic()}>${this.t('exportDiagnostic')}</button></div></div>
-        ${this.developmentResults.length ? html`<div class="result-list">${this.developmentResults.map((result) => html`<div class="result-row"><span><strong>${result.operation}</strong> <span class=${result.status === 'ok' ? 'ok' : 'bad'}>${result.status}</span></span><span class="mono">${result.count} items · ${result.duration_ms} ms ${result.status !== 'ok' ? html`<button class="secondary" @click=${() => void this.copyDiagnostic(result)}>${this.t('copyDiagnostic')}</button><button class="secondary" @click=${() => void this.retryDevelopment(result.operation)}>${this.t('retry')}</button>` : ''}</span></div>`)}</div><pre class="dev-output">${JSON.stringify(this.developmentOutput, null, 2)}</pre>` : html`<div class="empty">${this.t('exactResponse')}</div>`}
-        ${this.developmentReports.length ? html`<h3 style="margin-top:18px">${this.t('historicalEvidenceLabel')}</h3><div class="result-list">${this.developmentReports.map((report) => html`<div class="result-row"><span><strong>${report.operation}</strong> <span class=${report.status === 'ok' ? 'ok' : 'warn'}>${report.status}</span><br><span class="muted">${new Date(report.occurred_at).toLocaleString()} · ${report.schema_fingerprint.slice(0, 12)}</span></span><span class="mono">${report.total_count} items${report.comparison ? ` · Δ ${report.comparison.count_delta}` : ''}${report.comparison?.schema_changed ? ' · schema changed' : ''}${report.comparison_details?.regressions?.length ? ` · ⚠ ${report.comparison_details.regressions.length} regression(s)` : ''}</span></div>`)}</div>` : ''}
+        ${this.developmentResults.length ? html`<div class="result-list">${this.developmentResults.map((result) => html`<div class="result-row"><span><strong>${this.operationText(result.operation, 'Label', result.operation)}</strong> <span class=${result.status === 'ok' ? 'ok' : 'bad'}>${this.statusText(result.status)}</span></span><span class="mono">${result.count} ${this.t('devItems')} · ${result.duration_ms} ${this.t('devMilliseconds')} ${result.status !== 'ok' ? html`<button class="secondary" @click=${() => void this.copyDiagnostic(result)}>${this.t('copyDiagnostic')}</button><button class="secondary" @click=${() => void this.retryDevelopment(result.operation)}>${this.t('retry')}</button>` : ''}</span></div>`)}</div><pre class="dev-output">${JSON.stringify(this.developmentOutput, null, 2)}</pre>` : html`<div class="empty">${this.t('exactResponse')}</div>`}
+        ${this.developmentReports.length ? html`<h3 style="margin-top:18px">${this.t('historicalEvidenceLabel')}</h3><div class="result-list">${this.developmentReports.map((report) => html`<div class="result-row"><span><strong>${this.operationText(report.operation, 'Label', report.operation)}</strong> <span class=${report.status === 'ok' ? 'ok' : 'warn'}>${this.statusText(report.status)}</span><br><span class="muted">${new Date(report.occurred_at).toLocaleString()} · ${report.schema_fingerprint.slice(0, 12)}</span></span><span class="mono">${report.total_count} ${this.t('devItems')}${report.comparison ? ` · Δ ${report.comparison.count_delta}` : ''}${report.comparison?.schema_changed ? ` · ${this.t('devSchemaChanged')}` : ''}${report.comparison_details?.regressions?.length ? ` · ⚠ ${report.comparison_details.regressions.length} ${this.t('devRegressions')}` : ''}</span></div>`)}</div>` : ''}
         <div class="card blocked" style="margin-top:14px"><h3>${this.t('mutationProbes')}</h3><p><span class="warn">${this.t('mutationsBlocked')}</span></p><div style="margin-top:10px"><span class="tag">${this.t('approvalRequired')}</span><span class="tag">${this.t('operatorDisabledTag')}</span><span class="tag">${this.t('noMcpMutation')}</span></div></div>
       </div>
     </div>`;
   }
 
-  clientsView() { return html`<div class="split"><div class="card"><div class="toolbar"><div><h2>${this.t('registeredClients')}</h2><p>${this.t('tokensNotListed')}</p></div><button class="secondary" @click=${() => void this.refresh()} ?disabled=${this.busy}>${this.t('refresh')}</button></div>${this.clients.length ? html`<div class="table-wrap"><table><thead><tr><th>${this.t('identity')}</th><th>${this.t('profile')}</th><th>${this.t('capabilities')}</th><th>${this.t('status')}</th><th></th></tr></thead><tbody>${this.clients.map((client) => html`<tr><td><strong>${client.display_name}</strong><br><span class="mono">${client.client_id}</span></td><td><span class="tag">${client.profile}</span></td><td>${client.capabilities.map((capability) => html`<span class="tag">${capability}</span>`)}</td><td class=${client.status === 'active' ? 'ok' : 'bad'}>${client.status}</td><td>${client.status === 'active' ? html`<button class="danger" @click=${() => void this.revoke(client.client_id)} ?disabled=${this.busy}>${this.t('revoke')}</button><button class="secondary" @click=${() => void this.rotate(client.client_id)} ?disabled=${this.busy}>${this.t('rotate')}</button>` : ''}</td></tr>`)}</tbody></table></div>` : html`<div class="empty">${this.t('noClientsIssued')}</div>`}</div><div class="card"><h2>${this.t('issueObserverClient')}</h2><p style="margin-bottom:16px">${this.t('tokenShownOnce')}</p><form class="form" @submit=${this.createClient}><label>${this.t('clientId')}<input name="client_id" required maxlength="128" placeholder="nido-observer" /></label><label>Display name<input name="display_name" required maxlength="256" placeholder="Nido house monitor" /></label><label>Profile<select name="profile"><option value="observer">observer · read-only</option><option value="operator" disabled>operator · disabled</option></select></label><label>Capabilities<small class="muted">${this.t('capabilitiesHelp')}</small>${this.capabilitySelector()}</label><div class="form-actions"><button class="primary" ?disabled=${this.busy}>${this.t('issueClient')}</button></div></form></div></div>`; }
+  clientsView() { return html`<div class="split"><div class="card"><div class="toolbar"><div><h2>${this.t('registeredClients')}</h2><p>${this.t('tokensNotListed')}</p></div><button class="secondary" @click=${() => void this.refresh()} ?disabled=${this.busy}>${this.t('refresh')}</button></div>${this.clients.length ? html`<div class="table-wrap"><table><thead><tr><th>${this.t('identity')}</th><th>${this.t('profile')}</th><th>${this.t('capabilities')}</th><th>${this.t('status')}</th><th></th></tr></thead><tbody>${this.clients.map((client) => html`<tr><td><strong>${client.display_name}</strong><br><span class="mono">${client.client_id}</span></td><td><span class="tag">${client.profile}</span></td><td>${client.capabilities.map((capability) => html`<span class="tag">${capability}</span>`)}</td><td class=${client.status === 'active' ? 'ok' : 'bad'}>${client.status}</td><td>${client.status === 'active' ? html`<button class="danger" @click=${() => void this.revoke(client.client_id)} ?disabled=${this.busy}>${this.t('revoke')}</button><button class="secondary" @click=${() => void this.rotate(client.client_id)} ?disabled=${this.busy}>${this.t('rotate')}</button>` : ''}</td></tr>`)}</tbody></table></div>` : html`<div class="empty">${this.t('noClientsIssued')}</div>`}</div><div class="card"><h2>${this.t('issueObserverClient')}</h2><p style="margin-bottom:16px">${this.t('tokenShownOnce')}</p><form class="form" @submit=${this.createClient}><label>${this.t('clientId')}<input name="client_id" required maxlength="128" placeholder="nido-observer" /></label><label>${this.t('displayName')}<input name="display_name" required maxlength="256" placeholder="Nido house monitor" /></label><label>Profile<select name="profile"><option value="observer">observer · read-only</option><option value="operator" disabled>operator · disabled</option></select></label><label>${this.t('capabilities')}<small class="muted">${this.t('capabilitiesHelp')}</small>${this.capabilitySelector()}</label><div class="form-actions"><button class="primary" ?disabled=${this.busy}>${this.t('issueClient')}</button></div></form></div></div>`; }
 
-  auditView() { return html`<div class="card"><div class="toolbar"><div><h2>${this.t('auditEvents')}</h2><p>${this.t('auditNotStored')}</p></div><div><select @change=${(event: Event) => this.loadAudit((event.target as HTMLSelectElement).value)}><option value="">${this.t('allDecisions')}</option><option value="allowed">${this.t('allowed')}</option><option value="denied">${this.t('denied')}</option><option value="approval_required">${this.t('approvalRequiredOption')}</option></select></div></div>${this.audit.length ? html`<div class="table-wrap"><table><thead><tr><th>Time</th><th>Action</th><th>Target</th><th>Decision</th><th>Outcome</th><th>Request ID</th></tr></thead><tbody>${this.audit.map((event) => html`<tr><td class="mono">${new Date(event.occurred_at).toLocaleString()}</td><td>${event.action}</td><td class="mono">${event.target}</td><td class=${event.decision === 'allowed' ? 'ok' : event.decision === 'denied' ? 'bad' : 'warn'}>${event.decision}</td><td>${event.outcome} · ${event.status_code}</td><td class="mono">${event.request_id}</td></tr>`)}</tbody></table></div>` : html`<div class="empty">${this.t('noAudit')}</div>`}</div>`; }
+  auditView() { return html`<div class="card"><div class="toolbar"><div><h2>${this.t('auditEvents')}</h2><p>${this.t('auditNotStored')}</p></div><div><select @change=${(event: Event) => this.loadAudit((event.target as HTMLSelectElement).value)}><option value="">${this.t('allDecisions')}</option><option value="allowed">${this.t('allowed')}</option><option value="denied">${this.t('denied')}</option><option value="approval_required">${this.t('approvalRequiredOption')}</option></select></div></div>${this.audit.length ? html`<div class="table-wrap"><table><thead><tr><th>${this.t('time')}</th><th>${this.t('action')}</th><th>${this.t('target')}</th><th>${this.t('decision')}</th><th>${this.t('outcome')}</th><th>${this.t('requestId')}</th></tr></thead><tbody>${this.audit.map((event) => html`<tr><td class="mono">${new Date(event.occurred_at).toLocaleString()}</td><td>${event.action}</td><td class="mono">${event.target}</td><td class=${event.decision === 'allowed' ? 'ok' : event.decision === 'denied' ? 'bad' : 'warn'}>${event.decision}</td><td>${event.outcome} · ${event.status_code}</td><td class="mono">${event.request_id}</td></tr>`)}</tbody></table></div>` : html`<div class="empty">${this.t('noAudit')}</div>`}</div>`; }
 
-  async loadAudit(decision: string) { this.busy = true; try { this.audit = await api<AuditEvent[]>(`/audit?limit=100${decision ? `&decision=${encodeURIComponent(decision)}` : ''}`); } catch (error) { this.error = error instanceof Error ? error.message : 'Unable to load audit'; } finally { this.busy = false; } }
-  policyView() { return html`<div class="split"><div class="card"><h2>${this.t('policyMatrix')}</h2><p>${this.t('policySubtitle')}</p><div style="margin-top:20px"><div class="tag">read capability → allowed</div><div class="tag">missing capability → denied</div><div class="tag">observer mutation → denied</div><div class="tag">operator → globally disabled</div></div></div><div class="card"><h2>${this.t('evaluateRequest')}</h2><form class="form" @submit=${this.evaluatePolicy}><label>Client<select name="client_id">${this.clients.map((client) => html`<option value=${client.client_id}>${client.display_name} · ${client.client_id}</option>`)}</select></label><label>Capability<input name="capability" value="ha.read.diagnostics" required /></label><label><span><input name="mutation" type="checkbox" style="width:auto; margin-right:7px" /> mutation request</span></label><div class="form-actions"><button class="primary" ?disabled=${this.busy}>Evaluate</button></div></form></div></div>`; }
-  async evaluatePolicy(event: Event) { event.preventDefault(); const data = new FormData(event.target as HTMLFormElement); this.busy = true; try { const result = await api<{ decision: string; reason: string }>('/policy/evaluate', { method: 'POST', body: JSON.stringify({ client_id: data.get('client_id'), capability: data.get('capability'), mutation: data.has('mutation') }) }); window.alert(`${result.decision}: ${result.reason}`); } catch (error) { this.error = error instanceof Error ? error.message : 'Unable to evaluate policy'; } finally { this.busy = false; } }
-  mcpView() { return html`<div class="split"><div class="card"><h2>${this.t('streamableHttp')}</h2><p>${this.t('authenticatedEndpoint')}</p><div class="token mono" style="margin-top:20px">/mcp/</div><p>Transport: <span class="ok">${this.ready?.mcp ?? 'unknown'}</span></p><p style="margin-top:8px">Tool: <code>gateway_diagnostics</code></p></div><div class="card"><h2>${this.t('discovery')}</h2><p style="margin-bottom:16px">${this.t('mcpSubtitle')}</p><form class="form" @submit=${this.loadDiscovery}><label>${this.t('bearerToken')}<input name="token" type="password" required placeholder="hgw_…" /></label><div class="form-actions"><button class="primary" ?disabled=${this.busy}>${this.t('loadDiscovery')}</button></div></form>${this.discovery ? html`<div style="margin-top:18px"><span class="tag">${this.discovery.client_id}</span><span class="tag">${this.discovery.profile}</span>${this.discovery.capabilities.map((item) => html`<span class="tag">${item}</span>`)}</div>` : ''}</div></div>`; }
+  async loadAudit(decision: string) { this.busy = true; try { this.audit = await api<AuditEvent[]>(`/audit?limit=100${decision ? `&decision=${encodeURIComponent(decision)}` : ''}`); } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorAudit'); } finally { this.busy = false; } }
+  policyView() { return html`<div class="split"><div class="card"><h2>${this.t('policyMatrix')}</h2><p>${this.t('policySubtitle')}</p><div style="margin-top:20px"><div class="tag">${this.t('policyReadAllowed')}</div><div class="tag">${this.t('policyMissingDenied')}</div><div class="tag">${this.t('policyMutationDenied')}</div><div class="tag">${this.t('policyOperatorDisabled')}</div></div></div><div class="card"><h2>${this.t('evaluateRequest')}</h2><form class="form" @submit=${this.evaluatePolicy}><label>${this.t('client')}<select name="client_id">${this.clients.map((client) => html`<option value=${client.client_id}>${client.display_name} · ${client.client_id}</option>`)}</select></label><label>${this.t('capability')}<input name="capability" value="ha.read.diagnostics" required /></label><label><span><input name="mutation" type="checkbox" style="width:auto; margin-right:7px" /> ${this.t('mutationRequest')}</span></label><div class="form-actions"><button class="primary" ?disabled=${this.busy}>${this.t('evaluate')}</button></div></form></div></div>`; }
+  async evaluatePolicy(event: Event) { event.preventDefault(); const data = new FormData(event.target as HTMLFormElement); this.busy = true; try { const result = await api<{ decision: string; reason: string }>('/policy/evaluate', { method: 'POST', body: JSON.stringify({ client_id: data.get('client_id'), capability: data.get('capability'), mutation: data.has('mutation') }) }); window.alert(`${result.decision}: ${result.reason}`); } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorPolicy'); } finally { this.busy = false; } }
+  mcpView() { return html`<div class="split"><div class="card"><h2>${this.t('streamableHttp')}</h2><p>${this.t('authenticatedEndpoint')}</p><div class="token mono" style="margin-top:20px">/mcp/</div><p>${this.t('transport')}: <span class="ok">${this.ready?.mcp ?? 'unknown'}</span></p><p style="margin-top:8px">${this.t('tool')}: <code>gateway_diagnostics</code></p></div><div class="card"><h2>${this.t('discovery')}</h2><p style="margin-bottom:16px">${this.t('mcpSubtitle')}</p><form class="form" @submit=${this.loadDiscovery}><label>${this.t('bearerToken')}<input name="token" type="password" required placeholder="hgw_…" /></label><div class="form-actions"><button class="primary" ?disabled=${this.busy}>${this.t('loadDiscovery')}</button></div></form>${this.discovery ? html`<div style="margin-top:18px"><span class="tag">${this.discovery.client_id}</span><span class="tag">${this.discovery.profile}</span>${this.discovery.capabilities.map((item) => html`<span class="tag">${item}</span>`)}</div>` : ''}</div></div>`; }
   tokenModal() { return html`<div class="modal-backdrop" role="dialog" aria-modal="true"><div class="modal"><div class="eyebrow">${this.t('oneTimeCredential')}</div><h2>${this.t('tokenOnce')}</h2><p>${this.t('tokenOnlyOnce')}</p><div class="token mono">${this.issuedToken}</div><div class="form-actions"><button class="secondary" @click=${() => navigator.clipboard?.writeText(this.issuedToken)}>${this.t('copyToken')}</button><button class="primary" @click=${() => { this.issuedToken = ''; }}>${this.t('savedIt')}</button></div></div></div>`; }
 }
 

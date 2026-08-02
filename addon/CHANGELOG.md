@@ -2,6 +2,13 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.4.13
+
+- Complete the Development Console localization across all 11 supported locales.
+- Localize probe and pack labels/descriptions, statuses, filters, errors, historical evidence, and dynamic health/topology states.
+- Remove remaining hardcoded user-facing labels from Overview, Clients, Policy, MCP, Audit, and accessibility attributes.
+- Extend the i18n gate to cover the new modular catalogs and verify 233 keys in every locale.
+
 ## 0.4.12
 
 - Correct the Supervisor port mapping order to `container-port/tcp: host-port`.

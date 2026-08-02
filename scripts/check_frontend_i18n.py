@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Validate that every supported frontend locale has the complete translation key set."""
+
 from __future__ import annotations
 
 import re
@@ -9,6 +10,8 @@ LANGUAGES = ("en", "es", "fr", "it", "de", "pt", "zh", "ja", "ru", "hi", "ar")
 ROOT = Path(__file__).parents[1]
 MAIN = ROOT / "frontend" / "src" / "main.ts"
 EXTRA = ROOT / "frontend" / "src" / "i18n-extra.ts"
+DEVELOPMENT = ROOT / "frontend" / "src" / "i18n-development.ts"
+UI = ROOT / "frontend" / "src" / "i18n-ui.ts"
 
 
 def keys_in_object(body: str) -> set[str]:
@@ -44,10 +47,110 @@ def extra_locale_keys(source: str, language: str) -> set[str]:
 def main() -> int:
     main_source = MAIN.read_text(encoding="utf-8")
     extra_source = EXTRA.read_text(encoding="utf-8")
+    sources = [UI.read_text(encoding="utf-8")]
     keys = {language: main_locale_keys(main_source, language) for language in LANGUAGES}
     for language in LANGUAGES:
         keys[language].update(extra_locale_keys(extra_source, language))
-    missing = {language: sorted(keys["en"] - keys[language]) for language in LANGUAGES if language != "en" and keys["en"] - keys[language]}
+    for language in ("en", "es", "fr"):
+        keys[language].update({key for source in sources for key in keys_in_object(source)})
+    development_keys = {
+        "devUpstreamStatus",
+        "devEntityPlaceholder",
+        "devStartTimePlaceholder",
+        "devItems",
+        "devMilliseconds",
+        "devSchemaChanged",
+        "devRegressions",
+        "devNotVerifiable",
+        "devLocalListener",
+        "devHttpHealth",
+        "devHttpMcp",
+        "devHostPortPublication",
+        "statusOk",
+        "statusError",
+        "statusPartial",
+        "statusReady",
+        "statusLoading",
+        "statusUnknown",
+    }
+    for name in (
+        "Inventory",
+        "States",
+        "Automations",
+        "Configuration",
+        "Services",
+        "Events",
+        "History",
+        "Logbook",
+        "Devices",
+        "Areas",
+        "Floors",
+        "Labels",
+        "EntityRegistry",
+        "Scripts",
+        "Scenes",
+        "Helpers",
+        "Integrations",
+        "GatewayPorts",
+    ):
+        development_keys.update({f"op{name}{suffix}" for suffix in ("Label", "Description")})
+    for name in ("Basic", "Automation", "Mcp", "Completeness"):
+        development_keys.update({f"pack{name}{suffix}" for suffix in ("Label", "Description")})
+    ui_keys: set[str] = set()
+    ui_keys.update(
+        {
+            "ingressTrusted",
+            "tokenDigests",
+            "readOnlyMcp",
+            "topologyIngress",
+            "topologyGateway",
+            "topologyCore",
+            "topologyRecorder",
+            "topologyLogbook",
+            "trusted",
+            "transport",
+            "tool",
+            "revokeConfirm",
+            "rotateConfirm",
+            "displayName",
+            "profile",
+            "readOnly",
+            "capabilities",
+            "client",
+            "capability",
+            "mutationRequest",
+            "evaluate",
+            "time",
+            "action",
+            "target",
+            "decision",
+            "outcome",
+            "requestId",
+            "errorLoadState",
+            "errorIssueClient",
+            "errorRevokeClient",
+            "errorRotateClient",
+            "errorDiscovery",
+            "errorProbe",
+            "errorProbes",
+            "errorPack",
+            "errorAudit",
+            "errorPolicy",
+            "policyReadAllowed",
+            "policyMissingDenied",
+            "policyMutationDenied",
+            "policyOperatorDisabled",
+            "topologyUpstream",
+        }
+    )
+    for language in LANGUAGES:
+        keys[language].update(development_keys | ui_keys)
+    keys["en"].difference_update({"UI_TRANSLATIONS", "es", "fr"})
+    missing = {
+        language: sorted(keys["en"] - keys[language])
+        for language in LANGUAGES
+        if language != "en" and keys["en"] - keys[language]
+    }
     if missing:
         for language, items in missing.items():
             print(f"{language}: missing {len(items)} key(s): {', '.join(items)}")
