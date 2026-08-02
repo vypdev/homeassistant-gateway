@@ -4,6 +4,8 @@ import { api } from './api';
 import { CAPABILITY_DEFINITIONS } from './capabilities';
 import { resolveLocale, resolveTheme, translate } from './locale';
 import { capabilityText as resolveCapabilityText, operationText as resolveOperationText, packText as resolvePackText, pageSubtitle, pageTitle, statusText as resolveStatusText } from './view-helpers';
+import { navigationView } from './navigation-view';
+import { neuralBackground } from './shell-view';
 import { loadDevelopmentReports, queueDevelopmentJob, watchDevelopmentJob } from './development-service';
 import { property, state } from 'lit/decorators.js';
 import { EXTRA_TRANSLATIONS } from './i18n-extra';
@@ -395,18 +397,16 @@ export class GatewayApp extends LitElement {
 
   loadingView() {
     const failed = this.bootState === 'error';
-    return html`<div class="shell ${this.effectiveTheme}"><div class="neural" aria-hidden="true"><span class="node" style="left:14%;top:24%"></span><span class="node" style="left:31%;top:12%;animation-delay:1s"></span><span class="node" style="left:52%;top:28%;animation-delay:2s"></span><span class="node" style="left:76%;top:18%;animation-delay:.5s"></span><span class="node" style="left:88%;top:44%;animation-delay:1.7s"></span><span class="node" style="left:24%;top:68%;animation-delay:2.4s"></span><span class="node" style="left:61%;top:74%;animation-delay:1.2s"></span></div><div class="grid"></div><main class="boot-stage" aria-busy=${failed ? 'false' : 'true'}><section class="boot-card" aria-live="polite"><div class="boot-orbit" aria-hidden="true"><div class="boot-core"></div></div><h1>${failed ? this.t('errorLoadState') : this.t('checkingGateway')}</h1><p>${this.t('healthDescription')}</p>${failed ? html`<div class="alert" role="alert" style="margin-top:20px">${this.error}</div><button class="secondary boot-retry" @click=${() => void this.refresh()}>${this.t('refresh')}</button>` : html`<div class="boot-status"><span class="dot"></span>${this.t('checkingGateway')}</div><div class="boot-progress" role="progressbar" aria-label=${this.t('checkingGateway')}></div>`}</section></main></div>`;
+    return html`<div class="shell ${this.effectiveTheme}">${neuralBackground()}<div class="grid"></div><main class="boot-stage" aria-busy=${failed ? 'false' : 'true'}><section class="boot-card" aria-live="polite"><div class="boot-orbit" aria-hidden="true"><div class="boot-core"></div></div><h1>${failed ? this.t('errorLoadState') : this.t('checkingGateway')}</h1><p>${this.t('healthDescription')}</p>${failed ? html`<div class="alert" role="alert" style="margin-top:20px">${this.error}</div><button class="secondary boot-retry" @click=${() => void this.refresh()}>${this.t('refresh')}</button>` : html`<div class="boot-status"><span class="dot"></span>${this.t('checkingGateway')}</div><div class="boot-progress" role="progressbar" aria-label=${this.t('checkingGateway')}></div>`}</section></main></div>`;
   }
 
   render() {
     if (this.bootState !== 'ready') return this.loadingView();
     const active = this.view;
-    return html`<div class="shell ${this.effectiveTheme}"><div class="neural" aria-hidden="true"><span class="node" style="left:14%;top:24%"></span><span class="node" style="left:31%;top:12%;animation-delay:1s"></span><span class="node" style="left:52%;top:28%;animation-delay:2s"></span><span class="node" style="left:76%;top:18%;animation-delay:.5s"></span><span class="node" style="left:88%;top:44%;animation-delay:1.7s"></span><span class="node" style="left:24%;top:68%;animation-delay:2.4s"></span><span class="node" style="left:61%;top:74%;animation-delay:1.2s"></span></div><div class="grid"></div><div class="layout">
+    return html`<div class="shell ${this.effectiveTheme}">${neuralBackground()}<div class="grid"></div><div class="layout">
       <aside>
         <div class="brand"><div class="brand-mark">⌁</div><div><strong>${this.t('gateway')}</strong><small> ${this.t('controlPlane')}</small></div></div>
-        <nav aria-label=${this.t('navigation')}>
-          ${this.nav('overview', '◈', this.t('overview'))}${this.nav('development', '⚗', this.t('development'))}${this.nav('clients', '◎', this.t('clients'))}${this.nav('policy', '◇', this.t('policy'))}${this.nav('mcp', '⌁', this.t('mcp'))}${this.nav('audit', '◌', this.t('audit'))}
-        </nav>
+        ${navigationView(this.view, this.t.bind(this), (view) => this.setView(view))}
         <div class="side-foot"><div class="ok">● ${this.t('observerFirst')}</div><div>${this.t('operatorDisabled')}</div></div>
       </aside>
       <main aria-busy=${this.busy ? 'true' : 'false'}>

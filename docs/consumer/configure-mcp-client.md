@@ -8,13 +8,23 @@ Usa el destino real incluido en la URL, por ejemplo:
 http://192.168.20.101:18099/mcp/
 ```
 
-El valor `192.168.20.101` debe aparecer en `mcp_allowed_hosts`. La allowlist valida el `Host` de destino; no valida la IP de origen del cliente. No se añade el puerto.
+El hostname o IP de destino debe aparecer en `mcp_allowed_hosts`. La allowlist valida el `Host` de destino; no valida la IP de origen del cliente. En la configuración se escribe el host sin puerto. La App acepta internamente el puerto publicado que use el cliente.
 
-## Autenticación
+Si el cliente conecta mediante otro DNS, añade ese DNS. No añadas la IP de `ai01.lan` salvo que sea el destino usado en la URL.
 
-Cada cliente tiene su propio Bearer token. No compartas tokens entre Hermes, OpenClaw u otros agentes y no los incluyas en tickets, capturas ni conversaciones.
+## Crear el cliente
 
-La evaluación ocurre en este orden:
+Desde la UI protegida por Supervisor Ingress:
+
+1. abre **Clients**;
+2. elige un nombre visible independiente;
+3. selecciona el perfil `observer`;
+4. concede solo las capabilities necesarias;
+5. guarda el Bearer token una sola vez en el gestor seguro del cliente.
+
+No pegues tokens en tickets, capturas, repositorios o conversaciones. La rotación invalida el token anterior y muestra uno nuevo una única vez.
+
+## Orden de autenticación y autorización
 
 ```text
 Host permitido
@@ -22,16 +32,29 @@ Host permitido
 → cliente declarado
 → perfil observer/operator
 → capabilities autorizadas
+→ herramienta MCP read-only
 ```
+
+Un token válido no concede automáticamente todas las herramientas.
 
 ## Perfil observer
 
-El perfil `observer` solo expone herramientas de lectura. Es el perfil recomendado para agentes domésticos y automatizaciones de consulta.
+El perfil `observer` solo expone operaciones de lectura. No ejecuta servicios, scripts, automatizaciones ni cambios de configuración.
+
+Las herramientas efectivas se comprueban mediante `tools/list`. La referencia completa está en la [guía de consumidor](README.md).
 
 ## Prueba mínima
 
 - `GET /mcp/` sin token → `401` esperado.
-- MCP `initialize` con token válido → respuesta `200`.
-- `tools/list` → solo herramientas autorizadas para ese cliente.
+- MCP `initialize` con token válido → `200`.
+- `tools/list` → solo herramientas autorizadas.
+- una llamada de lectura → respuesta `ok`, `warning` o `error` sanitizada.
 
 La consola de desarrollo está protegida por Supervisor Ingress y no se publica mediante el endpoint MCP directo.
+
+## Rotación y revocación
+
+- **Rotate**: genera un token nuevo y deja inutilizable el anterior.
+- **Revoke**: desactiva el cliente y sus tokens.
+- Si un agente pierde el token, no se puede recuperar: rota el cliente.
+- Si un token aparece en un log o captura, revócalo inmediatamente.
