@@ -3,7 +3,7 @@ from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import FastAPI, Query, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import Response
 from starlette.staticfiles import StaticFiles
 
@@ -29,6 +29,10 @@ from homeassistant_gateway.application.development_jobs import DevelopmentJobMan
 from homeassistant_gateway.application.home_assistant import (
     HomeAssistantReadPort,
 )
+from homeassistant_gateway.presentation.audit_routes import (
+    AuditRouteDependencies,
+    register_audit_routes,
+)
 from homeassistant_gateway.presentation.client_routes import (
     ClientRouteDependencies,
     register_client_routes,
@@ -42,9 +46,6 @@ from homeassistant_gateway.presentation.health_routes import (
     register_health_routes,
 )
 from homeassistant_gateway.presentation.http_middleware import request_identity_middleware
-from homeassistant_gateway.presentation.http_models import (
-    AuditEventResponse,
-)
 from homeassistant_gateway.presentation.ui import UI_DIST
 
 
@@ -108,14 +109,7 @@ def create_app(
         ),
     )
 
-    @app.get("/api/audit", response_model=list[AuditEventResponse])
-    def audit_events(
-        limit: int = Query(default=100, ge=1, le=1000),
-        decision: str | None = Query(default=None, max_length=64),
-    ) -> list[AuditEventResponse]:
-        if audit_reader is None:
-            return []
-        return [AuditEventResponse.from_domain(event) for event in audit_reader.list(limit=limit, decision=decision)]
+    register_audit_routes(app, AuditRouteDependencies(audit_reader=audit_reader))
 
     register_client_routes(
         app,
