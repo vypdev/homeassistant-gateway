@@ -165,6 +165,8 @@ def test_development_run_all_returns_one_result_per_probe() -> None:
     assert response.status_code == 202
     queued = response.json()
     assert queued["status"] == "queued"
+    assert response.headers["location"] == f"/api/development/jobs/{queued['job_id']}"
+    assert request(app, "GET", response.headers["location"]).status_code == 401
     deadline = monotonic() + 2
     payload = None
     while monotonic() < deadline:
