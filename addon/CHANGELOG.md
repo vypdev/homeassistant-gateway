@@ -2,6 +2,12 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.4.14
+
+- Allow direct authenticated MCP transport on `/mcp/` without Supervisor Ingress identity headers.
+- Keep the management UI and administrative APIs protected by Supervisor Ingress identity.
+- Add an end-to-end regression proving direct MCP requests use Bearer observer authentication.
+
 ## 0.4.13
 
 - Complete the Development Console localization across all 11 supported locales.

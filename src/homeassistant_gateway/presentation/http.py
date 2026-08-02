@@ -193,7 +193,7 @@ def create_app(
     lifespan: Any | None = None,
 ) -> FastAPI:
     """Build the HTTP adapter around already-wired application use cases."""
-    app = FastAPI(title="Home Assistant Gateway", version="0.4.12", lifespan=lifespan)
+    app = FastAPI(title="Home Assistant Gateway", version="0.4.14", lifespan=lifespan)
     sink = audit_sink or NoopAuditSink()
 
     def previous_development_report() -> Any | None:
@@ -232,7 +232,8 @@ def create_app(
         )
         request.state.request_id = request_id
 
-        if request.url.path not in {"/health", "/ready"}:
+        direct_mcp_transport = request.url.path in {"/mcp", "/mcp/"}
+        if request.url.path not in {"/health", "/ready"} and not direct_mcp_transport:
             remote_user_id = request.headers.get("x-remote-user-id")
             if not remote_user_id:
                 response = JSONResponse(
