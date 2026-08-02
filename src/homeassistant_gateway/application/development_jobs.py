@@ -121,6 +121,10 @@ class DevelopmentJobManager:
 
         try:
             for operation in job.operations:
+                with self._lock:
+                    self._expire_locked(job)
+                    if job.status == "error":
+                        return
                 try:
                     result = self._runner.run(operation, job.parameters if len(job.operations) == 1 else {})
                 except HomeAssistantUnavailable:
@@ -172,7 +176,7 @@ class DevelopmentJobManager:
         reference = job.started_at or job.created_at
         if time() - reference >= self.MAX_JOB_AGE_SECONDS:
             job.status = "error"
-            job.error = "development_job_expired"
+            job.error = "development_job_timeout" if job.started_at is not None else "development_job_expired"
             job.finished_at = time()
 
     def _prune_locked(self) -> None:

@@ -82,6 +82,23 @@ def test_expired_job_is_terminal_and_redacted() -> None:
         manager.shutdown()
 
 
+def test_running_job_timeout_has_terminal_timeout_reason() -> None:
+    manager = DevelopmentJobManager(FakeRunner())
+    manager.MAX_JOB_AGE_SECONDS = 0
+    try:
+        with manager._lock:
+            job = _Job(job_id="timed-out", operation="states", operations=("states",))
+            job.started_at = job.created_at - 1
+            job.status = "running"
+            manager._jobs[job.job_id] = job
+        snapshot = manager.snapshot("timed-out")
+        assert snapshot is not None
+        assert snapshot["status"] == "error"
+        assert snapshot["error"] == "development_job_timeout"
+    finally:
+        manager.shutdown()
+
+
 def test_queued_job_can_be_cancelled_without_running() -> None:
     runner = BlockingRunner()
     manager = DevelopmentJobManager(runner)
