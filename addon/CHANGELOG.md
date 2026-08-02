@@ -2,6 +2,12 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.4.12
+
+- Correct the Supervisor port mapping order to `container-port/tcp: host-port`.
+- Publish container port `8099/tcp` on Home Assistant host port `18099`.
+- Keep the management UI on Ingress and the direct MCP transport observer-only.
+
 ## 0.4.11
 
 - Add bounded Development Console checks for the local Gateway listener and MCP authentication boundary.
