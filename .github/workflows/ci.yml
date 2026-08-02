@@ -37,6 +37,8 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install frontend dependencies
         run: npm ci --no-audit --no-fund
+      - name: Test frontend runtime helpers
+        run: npm run test:runtime
       - name: Type-check frontend
         run: npm run check
       - name: Check frontend translation coverage

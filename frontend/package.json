@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "check": "tsc --noEmit"
+    "check": "tsc --noEmit",
+    "test:runtime": "node scripts/test-runtime.mjs"
   },
   "dependencies": {
     "lit": "^3.3.0",
