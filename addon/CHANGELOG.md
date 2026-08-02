@@ -2,6 +2,11 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.5.4
+
+- Preserve sanitized Home Assistant upstream error code, logical path and HTTP status in MCP read results for actionable diagnostics.
+- Never expose upstream response bodies or authentication material.
+
 ## 0.5.3
 
 - Remove the browser default body margin so the UI fills the Ingress viewport without an unintended light frame.

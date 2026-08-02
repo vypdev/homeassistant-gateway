@@ -120,8 +120,13 @@ def create_mcp_app(
             return denied
         try:
             return {"status": "ok", "data": operation()}
-        except HomeAssistantUnavailable:
-            return {"status": "unavailable", "reason": "home_assistant_unavailable"}
+        except HomeAssistantUnavailable as error:
+            result: dict[str, Any] = {"status": "unavailable", "reason": "home_assistant_unavailable", "code": error.code}
+            if error.path is not None:
+                result["path"] = error.path
+            if error.status is not None:
+                result["http_status"] = error.status
+            return result
 
     @server.tool(
         name="ha_inventory",
