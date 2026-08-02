@@ -18,6 +18,14 @@ The operator client should be used only for targeted workflows and should suppor
 - correlation IDs;
 - emergency revocation.
 
+For native MCP clients such as Hermes, use the published Home Assistant host port instead of the browser-only Ingress URL:
+
+```text
+http://<home-assistant-host>:8099/mcp/
+```
+
+Send the dedicated observer client token as `Authorization: Bearer <observer-token>`. The port publishes only the gateway's authenticated MCP transport; the management UI remains behind Supervisor Ingress.
+
 ## Observer MCP tools
 
 The published observer server registers these read-only tools:

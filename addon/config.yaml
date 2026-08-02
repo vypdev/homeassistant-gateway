@@ -1,5 +1,5 @@
 name: Home Assistant Gateway
-version: "0.4.8"
+version: "0.4.9"
 slug: homeassistant_gateway
 description: Secure MCP gateway with observer/operator profiles for Home Assistant
 url: https://github.com/vypdev/homeassistant-gateway
@@ -13,6 +13,10 @@ boot: auto
 init: false
 ingress: true
 ingress_port: 8099
+ports:
+  8099/tcp: 8099
+ports_description:
+  8099/tcp: MCP Streamable HTTP (observer-only)
 panel_icon: mdi:shield-home
 panel_title: Gateway
 homeassistant_api: true

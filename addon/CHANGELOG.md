@@ -2,6 +2,13 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.4.9
+
+- Publish host port `8099/tcp` for native MCP clients such as Hermes.
+- Keep the management UI behind Supervisor Ingress.
+- Document the direct authenticated observer endpoint at `/mcp/`.
+- Keep operator mutations disabled and do not register write tools.
+
 ## 0.4.8
 
 - Add an understandable grouped capabilities selector with observer preset and blocked operator capabilities.
