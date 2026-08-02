@@ -2,6 +2,13 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.4.7
+
+- Add a bounded live smoke harness for Supervisor Ingress, API, readiness, and optional MCP checks.
+- Add live smoke documentation with explicit contract, artifact, and live evidence levels.
+- Scan the published multi-architecture image for HIGH and CRITICAL vulnerabilities in Release App.
+- Run the live smoke harness in CI in explicit skip mode when no live target is configured.
+
 ## 0.4.6
 
 - Reject invalid or unbounded Supervisor adapter `max_items` values.

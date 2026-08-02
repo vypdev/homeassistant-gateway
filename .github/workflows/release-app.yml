@@ -102,6 +102,16 @@ jobs:
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
             org.opencontainers.image.revision=${{ github.sha }}
 
+      - name: Scan published image
+        if: steps.version.outputs.new_release == 'true'
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
+          format: table
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: 1
+
       - name: Create GitHub Release
         if: steps.version.outputs.new_release == 'true'
         env:
