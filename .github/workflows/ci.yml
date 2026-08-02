@@ -39,6 +39,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Test frontend runtime helpers
         run: npm run test:runtime
+      - name: Test frontend UX contracts
+        run: npm run test:ux
       - name: Type-check frontend
         run: npm run check
       - name: Check frontend translation coverage

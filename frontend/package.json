@@ -5,7 +5,8 @@
   "scripts": {
     "build": "vite build",
     "check": "tsc --noEmit",
-    "test:runtime": "node scripts/test-runtime.mjs"
+    "test:runtime": "node scripts/test-runtime.mjs",
+    "test:ux": "node scripts/test-ux-contracts.mjs"
   },
   "dependencies": {
     "lit": "^3.3.0",
