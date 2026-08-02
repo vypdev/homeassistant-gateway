@@ -8,36 +8,22 @@ import { UI_TRANSLATIONS } from './i18n-ui';
 import { UI_EXTRA_TRANSLATIONS } from './i18n-ui-extra';
 import { FINAL_TRANSLATIONS } from './i18n-final';
 
-type Profile = 'observer' | 'operator';
-type Client = {
-  client_id: string;
-  display_name: string;
-  profile: Profile;
-  capabilities: string[];
-  created_at: string;
-  status: string;
-  revoked_at: string | null;
-};
-type Ready = { status: string; storage: string; mcp: string; home_assistant: string };
-type HealthCheck = { name: string; status: string; latency_ms: number; http_status: number | null; code: string | null };
-type HealthDetails = { status: string; checks: HealthCheck[] };
-type AuditEvent = { event_id: string; occurred_at: string; request_id: string; remote_user_id: string | null; action: string; target: string; decision: string; outcome: string; status_code: number };
-type Discovery = { server_name: string; transport: string; endpoint: string; client_id: string; profile: Profile; capabilities: string[]; tools: string[] };
-type DevelopmentOperation = { name: string; label: string; description: string; kind: string; supports_entity_id: boolean; supports_start_time: boolean };
-type DevelopmentPack = { name: string; label: string; description: string; operations: string[] };
-type DevelopmentResult = { status: string; operation: string; duration_ms: number; count: number; data?: unknown; reason?: string | null };
-type DevelopmentReport = { report_id: string; occurred_at: string; operation: string; status: string; duration_ms: number; total_count: number; schema_fingerprint: string; comparison?: { previous_report_id: string; count_delta: number; schema_changed: boolean } | null; comparison_details?: { regressions?: { operation: string; kind: string; from: string; to: string }[] } | null };
-type DevelopmentCatalog = { enabled: boolean; upstream: string; operations: DevelopmentOperation[]; packs: DevelopmentPack[]; mutations: { status: string; reason: string; approval_required: boolean } };
-type UiContext = { locale: string; theme: 'light' | 'dark' | 'auto' };
-
-type View = 'overview' | 'clients' | 'policy' | 'mcp' | 'audit' | 'development';
-
-type CapabilityDefinition = {
-  name: string;
-  group: 'observer' | 'operator';
-  label: string;
-  description: string;
-};
+import {
+  type AuditEvent,
+  type CapabilityDefinition,
+  type Client,
+  type DevelopmentCatalog,
+  type DevelopmentOperation,
+  type DevelopmentPack,
+  type DevelopmentReport,
+  type DevelopmentResult,
+  type Discovery,
+  type HealthDetails,
+  type Profile,
+  type Ready,
+  type UiContext,
+  type View,
+} from './models';
 
 const CAPABILITY_DEFINITIONS: CapabilityDefinition[] = [
   { name: 'ha.read.diagnostics', group: 'observer', label: 'Gateway diagnostics', description: 'Read gateway health, readiness, capabilities and sanitized diagnostics.' },

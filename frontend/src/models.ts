@@ -1,0 +1,23 @@
+export type Profile = 'observer' | 'operator';
+export type Client = {
+  client_id: string;
+  display_name: string;
+  profile: Profile;
+  capabilities: string[];
+  created_at: string;
+  status: string;
+  revoked_at: string | null;
+};
+export type Ready = { status: string; storage: string; mcp: string; home_assistant: string };
+export type HealthCheck = { name: string; status: string; latency_ms: number; http_status: number | null; code: string | null };
+export type HealthDetails = { status: string; checks: HealthCheck[] };
+export type AuditEvent = { event_id: string; occurred_at: string; request_id: string; remote_user_id: string | null; action: string; target: string; decision: string; outcome: string; status_code: number };
+export type Discovery = { server_name: string; transport: string; endpoint: string; client_id: string; profile: Profile; capabilities: string[]; tools: string[] };
+export type DevelopmentOperation = { name: string; label: string; description: string; kind: string; supports_entity_id: boolean; supports_start_time: boolean };
+export type DevelopmentPack = { name: string; label: string; description: string; operations: string[] };
+export type DevelopmentResult = { status: string; operation: string; duration_ms: number; count: number; data?: unknown; reason?: string | null };
+export type DevelopmentReport = { report_id: string; occurred_at: string; operation: string; status: string; duration_ms: number; total_count: number; schema_fingerprint: string; comparison?: { previous_report_id: string; count_delta: number; schema_changed: boolean } | null; comparison_details?: { regressions?: { operation: string; kind: string; from: string; to: string }[] } | null };
+export type DevelopmentCatalog = { enabled: boolean; upstream: string; operations: DevelopmentOperation[]; packs: DevelopmentPack[]; mutations: { status: string; reason: string; approval_required: boolean } };
+export type UiContext = { locale: string; theme: 'light' | 'dark' | 'auto' };
+export type View = 'overview' | 'clients' | 'policy' | 'mcp' | 'audit' | 'development';
+export type CapabilityDefinition = { name: string; group: 'observer' | 'operator'; label: string; description: string };
