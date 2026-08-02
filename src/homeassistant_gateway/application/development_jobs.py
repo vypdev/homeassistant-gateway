@@ -45,12 +45,15 @@ class DevelopmentJobManager:
         self._executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="development-probe")
         self._jobs: dict[str, _Job] = {}
         self._lock = Lock()
+        self._shutdown = False
 
     def start(self, operation: str, parameters: dict[str, Any] | None = None) -> str:
         operations = self._resolve_operations(operation)
         safe_parameters = parameters or {}
         with self._lock:
             self._prune_locked()
+            if self._shutdown:
+                raise RuntimeError("development_jobs_shutdown")
             if sum(job.status in {"queued", "running"} for job in self._jobs.values()) >= self.MAX_ACTIVE_JOBS:
                 raise RuntimeError("development_jobs_busy")
             job_id = uuid4().hex
@@ -66,7 +69,7 @@ class DevelopmentJobManager:
             self._expire_locked(job)
             total = len(job.operations)
             completed = len(job.results)
-            if job.status in {"completed", "warning", "error"}:
+            if job.status in {"completed", "warning", "error", "cancelled"}:
                 progress = 100
             else:
                 progress = round(completed / total * 100) if total else 100
@@ -80,6 +83,19 @@ class DevelopmentJobManager:
                 "results": [asdict(result) for result in job.results],
                 "error": job.error,
             }
+
+    def cancel(self, job_id: str) -> bool:
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if job is None or job.status != "queued":
+                return False
+            job.status = "cancelled"
+            job.finished_at = time()
+            return True
+
+    def cleanup(self) -> None:
+        with self._lock:
+            self._prune_locked()
 
     def _resolve_operations(self, operation: str) -> tuple[str, ...]:
         catalog_names = {item.name for item in development_catalog()}
@@ -98,7 +114,7 @@ class DevelopmentJobManager:
     def _execute(self, job_id: str) -> None:
         with self._lock:
             job = self._jobs.get(job_id)
-            if job is None or job.status == "error":
+            if job is None or job.status != "queued":
                 return
             job.status = "running"
             job.started_at = time()
@@ -146,6 +162,8 @@ class DevelopmentJobManager:
 
     def shutdown(self) -> None:
         """Stop accepting new work and cancel queued jobs during app shutdown."""
+        with self._lock:
+            self._shutdown = True
         self._executor.shutdown(wait=False, cancel_futures=True)
 
     def _expire_locked(self, job: _Job) -> None:

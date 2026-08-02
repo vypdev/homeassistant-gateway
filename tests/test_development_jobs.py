@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from threading import Event
 from time import monotonic, sleep
 
 from homeassistant_gateway.application.development import DevelopmentReport, DevelopmentResult
@@ -13,6 +14,17 @@ class FakeRunner:
     def run(self, operation: str, parameters: dict[str, object]) -> DevelopmentResult:
         if self.error is not None:
             raise self.error
+        return DevelopmentResult("ok", operation, 1, 1, data=[{"operation": operation}])
+
+
+class BlockingRunner:
+    def __init__(self) -> None:
+        self.started = Event()
+        self.release = Event()
+
+    def run(self, operation: str, parameters: dict[str, object]) -> DevelopmentResult:
+        self.started.set()
+        self.release.wait(timeout=2)
         return DevelopmentResult("ok", operation, 1, 1, data=[{"operation": operation}])
 
 
@@ -68,3 +80,37 @@ def test_expired_job_is_terminal_and_redacted() -> None:
         assert snapshot["error"] == "development_job_expired"
     finally:
         manager.shutdown()
+
+
+def test_queued_job_can_be_cancelled_without_running() -> None:
+    runner = BlockingRunner()
+    manager = DevelopmentJobManager(runner)
+    manager.MAX_ACTIVE_JOBS = 3
+    try:
+        first_id = manager.start("states")
+        assert runner.started.wait(timeout=1)
+        second_id = manager.start("states")
+        queued_id = manager.start("states")
+        assert manager.cancel(queued_id) is True
+        snapshot = manager.snapshot(queued_id)
+        assert snapshot is not None
+        assert snapshot["status"] == "cancelled"
+        assert manager.cancel(first_id) is False
+        assert manager.cancel(second_id) is False
+        runner.release.set()
+        assert wait_for_terminal(manager, first_id)["status"] == "completed"
+        assert wait_for_terminal(manager, second_id)["status"] == "completed"
+    finally:
+        runner.release.set()
+        manager.shutdown()
+
+
+def test_shutdown_rejects_new_jobs() -> None:
+    manager = DevelopmentJobManager(FakeRunner())
+    manager.shutdown()
+    try:
+        manager.start("states")
+    except RuntimeError as error:
+        assert str(error) == "development_jobs_shutdown"
+    else:
+        raise AssertionError("shutdown must reject new jobs")
