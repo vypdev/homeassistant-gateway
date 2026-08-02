@@ -2,6 +2,15 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.4.8
+
+- Add an understandable grouped capabilities selector with observer preset and blocked operator capabilities.
+- Complete frontend localization coverage for English, Spanish, French, German, Portuguese, Italian, Chinese, Japanese, Russian, Hindi, and Arabic.
+- Add CI validation that every supported locale contains the complete translation key set.
+- Localize client management, audit, policy, MCP discovery, diagnostics, token, and empty-state UI content.
+- Keep operator mutations preview-only, approval-gated, and disabled; no write tools are registered in this release.
+- Verify frontend type-check/build, 80 backend tests, i18n coverage, and repository formatting.
+
 ## 0.4.7
 
 - Add a bounded live smoke harness for Supervisor Ingress, API, readiness, and optional MCP checks.

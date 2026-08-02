@@ -39,5 +39,8 @@ jobs:
         run: npm ci --no-audit --no-fund
       - name: Type-check frontend
         run: npm run check
+      - name: Check frontend translation coverage
+        working-directory: .
+        run: python scripts/check_frontend_i18n.py
       - name: Build frontend
         run: npm run build

@@ -21,4 +21,10 @@ The App UI is served through Home Assistant Supervisor Ingress. It must not requ
 
 ## Ingress
 
+## Capability selector
+
+Client provisioning uses a grouped checklist instead of a comma-separated free-text field. Each capability shows its stable identifier and a human-readable description. The observer preset selects the complete read-only catalog, while operator capabilities remain visibly disabled while `operator_enabled=false`.
+
+The UI still submits the explicit `string[]` capability contract to the API. The client token therefore receives only the checked capabilities; no capability is inferred from a display name or prompt.
+
 The server must honor the ingress base path and forwarded headers. It must not construct absolute URLs from an assumed `/` root. WebSocket and SSE endpoints must be tested through ingress, not only through localhost.
