@@ -83,6 +83,8 @@ This roadmap describes the current Supervisor App and its read-only MCP observer
 
 ## Operator boundary
 
+The disabled operator safety framework is documented in [`operator-profile.md`](operator-profile.md). It provides bounded approval, replay protection, emergency control, validation and typed mutation boundaries without registering a write adapter.
+
 Operator functionality remains preview-only. Enabling real mutations is a separate future decision and requires, at minimum:
 
 - explicit capability allowlists;

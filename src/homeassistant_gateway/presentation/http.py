@@ -63,6 +63,7 @@ def create_app(
     development_runner: DevelopmentToolRunner | None = None,
     development_report_store: DevelopmentReportStore | None = None,
     development_console_enabled: bool = True,
+    operator_enabled: bool = False,
     lifespan: Any | None = None,
 ) -> FastAPI:
     """Build the HTTP adapter around already-wired application use cases."""
@@ -106,6 +107,7 @@ def create_app(
             development_jobs=development_jobs,
             development_report_store=development_report_store,
             enabled=development_console_enabled,
+            operator_enabled=operator_enabled,
         ),
     )
 

@@ -202,6 +202,21 @@ def test_operator_preview_requires_ingress_and_never_executes() -> None:
     assert response.json()["execution"] == "disabled"
 
 
+def test_operator_status_is_ingress_protected_and_has_no_mutation_tools() -> None:
+    app = make_app(home_assistant=FakeHomeAssistant())
+    assert request(app, "GET", "/api/operator/status").status_code == 401
+    response = request(app, "GET", "/api/operator/status", headers=ingress_headers())
+    assert response.status_code == 200
+    assert response.json() == {
+        "profile": "operator",
+        "operator_enabled": False,
+        "execution": "disabled",
+        "registered_mutation_tools": [],
+        "capabilities": [],
+        "reason": "operator_mutations_not_implemented",
+    }
+
+
 def test_ingress_responses_include_security_headers() -> None:
     response = request(make_app(), "GET", "/", headers=ingress_headers())
     assert response.headers["x-content-type-options"] == "nosniff"

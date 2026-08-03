@@ -11,6 +11,7 @@ The Development Console is an Ingress-protected, observer-only verification surf
 - `GET /api/health/details` — independent upstream checks.
 - `GET /api/ui/context` — locale/theme compatibility context.
 - `POST /api/operator/preview` — validation/diff preview only; execution remains disabled.
+- `GET /api/operator/status` — effective operator state and registered mutation tools; currently reports an empty mutation catalog.
 
 ## Asynchronous job contract
 
@@ -132,3 +133,5 @@ Preview operations are allowlisted and capability-matched:
 - `ha.update_config` → `ha.write.configuration`.
 
 The preview rejects oversized state maps and fields whose names indicate tokens, passwords, secrets, cookies, authorization or API keys. Every response declares approval, idempotency and rollback as requirements. No service call, configuration write or automation write is performed.
+
+The operator safety framework is documented in [`operator-profile.md`](operator-profile.md). It remains disabled even if the feature flag is configured: no mutation adapter is registered until the Home Assistant contract, approval, idempotency, audit, rollback and live verification gates are closed.

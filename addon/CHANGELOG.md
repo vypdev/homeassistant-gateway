@@ -2,6 +2,12 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.5.11
+
+- Add a disabled operator safety framework with bounded one-time approvals, idempotency replay protection, emergency control and typed mutation boundaries.
+- Add the Ingress-only `/api/operator/status` contract and keep the mutation tool catalog empty until official Home Assistant mutation contracts and live gates are verified.
+- Document the operator activation gates, Home Assistant API research and explicit non-goals.
+
 ## 0.5.10
 
 - Add the read-only `ha_automation_config` MCP tool.

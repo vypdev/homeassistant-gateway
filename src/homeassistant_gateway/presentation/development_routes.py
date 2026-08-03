@@ -26,6 +26,7 @@ class DevelopmentRouteDependencies:
     development_jobs: DevelopmentJobManager | None
     development_report_store: DevelopmentReportStore | None
     enabled: bool
+    operator_enabled: bool = False
 
 
 def register_development_routes(app: FastAPI, dependencies: DevelopmentRouteDependencies) -> None:
@@ -37,7 +38,23 @@ def register_development_routes(app: FastAPI, dependencies: DevelopmentRouteDepe
             "upstream": upstream,
             "operations": [asdict(item) for item in development_catalog()],
             "packs": [asdict(item) for item in development_packs()],
-            "mutations": {"status": "disabled", "reason": "operator_mutations_not_implemented", "approval_required": True},
+            "mutations": {
+                "status": "disabled",
+                "reason": "operator_mutations_not_implemented",
+                "approval_required": True,
+                "operator_enabled": dependencies.operator_enabled,
+            },
+        }
+
+    @app.get("/api/operator/status")
+    def operator_status_resource() -> dict[str, Any]:
+        return {
+            "profile": "operator",
+            "operator_enabled": dependencies.operator_enabled,
+            "execution": "disabled",
+            "registered_mutation_tools": [],
+            "capabilities": [],
+            "reason": "operator_mutations_not_implemented",
         }
 
     @app.post("/api/development/run", status_code=202)

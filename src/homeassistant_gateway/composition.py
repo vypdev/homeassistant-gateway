@@ -88,5 +88,6 @@ def build_app(settings: AppSettings) -> FastAPI:
         development_runner=DevelopmentToolRunner(home_assistant, LocalGatewayPortDiagnostics()) if home_assistant else None,
         development_report_store=development_report_store,
         development_console_enabled=settings.development_console_enabled,
+        operator_enabled=settings.operator_enabled,
         lifespan=mcp_bundle.lifespan,
     )
