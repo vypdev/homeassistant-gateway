@@ -1,12 +1,12 @@
-# Developer Console: trazabilidad de lecturas
+# Development Console: read traceability
 
-## Objetivo
+## Purpose
 
-La Developer Console permite verificar las operaciones de lectura del gateway y localizar si un resultado correcto, vacío, warning o error se produce en la aplicación, el transporte o Home Assistant. La trazabilidad es diagnóstica y read-only: no habilita operaciones de escritura ni amplía las capacidades MCP.
+The Development Console verifies gateway read operations and helps locate whether a successful, empty, warning or error result originated in the application, transport or Home Assistant. Traceability is diagnostic and read-only: it does not enable write operations or expand MCP capabilities.
 
-## Contrato de resultado
+## Result contract
 
-Cada resultado de desarrollo puede incluir:
+Each development result may include:
 
 ```json
 {
@@ -32,25 +32,25 @@ Cada resultado de desarrollo puede incluir:
 }
 ```
 
-### Campos
+### Fields
 
-- `status`: resultado semántico de la operación.
-  - `ok`: lectura válida con datos.
-  - `warning`: lectura válida pero vacía o parcial.
-  - `error`: no se pudo completar la lectura.
-- `count`: número de elementos normalizados por la aplicación.
-- `reason`: razón estable y localizada por la interfaz (`empty_result`, error de upstream, parámetro inválido, etc.).
-- `details`: información técnica estructurada y sanitizada. Puede incluir código, estado HTTP, ruta lógica y nombres de parámetros, pero no valores de parámetros sensibles.
-- `trace`: pasos ordenados de la operación.
-  - `phase`: fase (`connect`, `auth`, `command`, `normalize`, `fallback`, `error`, `execute`).
-  - `transport`: canal (`websocket`, `rest`, `template`, `application`, `upstream`).
-  - `command`: comando lógico de Home Assistant, nunca un frame completo.
-  - `path`: ruta lógica sin query values ni tokens.
-  - `attempt`: número de intento acotado.
-  - `code`: código estable sanitizado.
-  - `detail`: explicación técnica estable, no una excepción cruda.
+- `status`: semantic operation result.
+  - `ok`: valid read with data.
+  - `warning`: valid but empty or partial read.
+  - `error`: the read could not be completed.
+- `count`: number of items normalized by the application.
+- `reason`: stable reason localized by the interface (`empty_result`, upstream error, invalid parameter, and so on).
+- `details`: structured, sanitized technical information. It may include a code, HTTP status, logical path and parameter names, but never sensitive parameter values.
+- `trace`: ordered operation steps.
+  - `phase`: phase (`connect`, `auth`, `command`, `normalize`, `fallback`, `error`, `execute`).
+  - `transport`: channel (`websocket`, `rest`, `template`, `application`, `upstream`).
+  - `command`: logical Home Assistant command, never a complete frame.
+  - `path`: logical path without query values or tokens.
+  - `attempt`: bounded attempt number.
+  - `code`: sanitized stable code.
+  - `detail`: stable technical explanation, never a raw exception.
 
-La fase actual implementa WebSocket primario para:
+The current phase uses WebSocket as the primary transport for:
 
 - `config/device_registry/list`;
 - `config/area_registry/list`;
@@ -61,40 +61,39 @@ La fase actual implementa WebSocket primario para:
 - `history/history_during_period`;
 - `logbook/get`.
 
-`states`, `services`, `events` y las comprobaciones de salud conservan REST en esta primera fase. No se declara completada la migración total hasta cubrirlos con contratos equivalentes.
+`states`, `services`, `events` and health checks retain REST in this first phase. The migration is not considered complete until equivalent contracts cover them.
 
+## Interface
 
-## Interfaz
+The console shows:
 
-La consola muestra:
+- a count of problematic results (`error` + `warning`);
+- a button to copy only those incidents;
+- an individual copy button for each problematic result;
+- an expandable traceability panel per operation;
+- duration, attempts, transport, command, path and technical code;
+- structured details when an error exists;
+- a complete result export through general diagnostics.
 
-- contador de resultados problemáticos (`error` + `warning`);
-- botón para copiar únicamente esas incidencias;
-- botón de copia individual para cada resultado problemático;
-- panel desplegable de trazabilidad por operación;
-- duración, intentos, transporte, comando, ruta y código técnico;
-- detalles estructurados cuando existe un error;
-- resultado completo exportable mediante el diagnóstico general.
+Copying incidents does not re-run the operation. It uses only already collected results and excludes successful operations.
 
-La copia de incidencias no ejecuta de nuevo la operación. Usa exclusivamente los resultados ya obtenidos y no incluye operaciones correctas.
+## Security and privacy
 
-## Seguridad y privacidad
+The following must never enter the trace, export or clipboard:
 
-Nunca deben entrar en la traza, exportación ni portapapeles:
+- `SUPERVISOR_TOKEN` or MCP tokens;
+- passwords, cookies, keys or credentials;
+- complete WebSocket frames;
+- complete error response bodies;
+- sensitive filter values;
+- dynamic query strings;
+- states or attributes not required to explain the error.
 
-- `SUPERVISOR_TOKEN` o tokens MCP;
-- contraseñas, cookies, claves o credenciales;
-- frames WebSocket completos;
-- cuerpos completos de respuestas de error;
-- valores de filtros sensibles;
-- query strings dinámicas;
-- estados o atributos no necesarios para explicar el error.
+Tests must demonstrate that errors and copied diagnostics contain only allowlisted fields.
 
-Las pruebas deben demostrar que los errores y copias solo contienen campos allowlisted.
+## Verification
 
-## Verificación
-
-Gates locales relevantes:
+Relevant local gates:
 
 ```bash
 .venv/bin/pytest tests/test_development.py tests/test_http_api.py -q
@@ -107,20 +106,20 @@ npm run check
 npm run build
 ```
 
-La prueba de contrato UX verifica que la consola conserva la separación entre resultados correctos, warnings y errores y que renderiza la trazabilidad. La validación de i18n verifica las 11 locales y la resolución runtime de los catálogos.
+The UX contract test verifies that the console preserves the separation between successful results, warnings and errors and renders traceability. The i18n validation checks all 11 locales and runtime catalog resolution.
 
-## Migración WebSocket
+## WebSocket migration
 
-Durante la migración hacia `ws://supervisor/core/websocket`, las fases esperadas son:
+During migration to `ws://supervisor/core/websocket`, the expected phases are:
 
 ```text
 connect → auth → command → normalize
 ```
 
-Si falla el transporte y la política permite fallback:
+If transport fails and policy permits fallback:
 
 ```text
 connect → auth/command(error) → fallback(rest|template) → normalize
 ```
 
-Un resultado WebSocket vacío correctamente autenticado no debe convertirse automáticamente en fallback. Un fallo de autenticación nunca debe presentarse como `empty_result`. La consola debe permitir distinguir ambos casos.
+A correctly authenticated empty WebSocket result must not automatically trigger fallback. An authentication failure must never be presented as `empty_result`. The console must distinguish both cases.

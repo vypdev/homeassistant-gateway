@@ -1,46 +1,46 @@
-# Home Assistant Gateway — guía de consumidor
+# Home Assistant Gateway — consumer guide
 
-Home Assistant Gateway es una App gestionada por Home Assistant Supervisor que expone una superficie MCP **read-only** para clientes como Hermes u OpenClaw.
+Home Assistant Gateway is a Home Assistant Supervisor add-on that exposes a **read-only** MCP surface for clients such as Hermes and OpenClaw.
 
-La administración web permanece detrás de **Supervisor Ingress**. El transporte MCP puede exponerse directamente por HTTP mediante `/mcp/`, siempre protegido por Bearer token y `mcp_allowed_hosts`.
+Web administration remains behind **Supervisor Ingress**. MCP transport can be exposed directly over HTTP through `/mcp/`, always protected by a Bearer token and `mcp_allowed_hosts`.
 
-## Qué permite
+## What it allows
 
-- consultar inventario, estados, registros, historial y diagnósticos acotados;
-- descubrir las herramientas MCP autorizadas del perfil `observer`;
-- verificar la conectividad desde la Development Console;
-- revisar resultados parciales, colecciones vacías y reportes históricos;
-- mantener tokens independientes por cliente.
+- query bounded inventory, states, registries, history and diagnostics;
+- discover the authorized MCP tools for the `observer` profile;
+- verify connectivity from the Development Console;
+- review partial results, empty collections and historical reports;
+- maintain independent tokens per client.
 
-## Qué no permite
+## What it does not allow
 
-- ejecutar servicios de Home Assistant;
-- modificar automatizaciones o configuraciones;
-- ejecutar shell, Docker socket, SSH o escaneos de red;
-- usar un token de un cliente para acceder a otro;
-- recuperar tokens almacenados: se muestran únicamente durante su emisión o rotación.
+- call Home Assistant services;
+- modify automations or configuration;
+- run shell commands, access the Docker socket, use SSH or scan the network;
+- use one client's token to access another client;
+- retrieve stored tokens: they are shown only during issuance or rotation.
 
-## Instalación rápida
+## Quick installation
 
-1. Añade el repositorio de la App en Home Assistant.
-2. Instala **Home Assistant Gateway** desde Supervisor.
-3. Configura el puerto MCP y reinicia la App.
-4. Configura `mcp_allowed_hosts` con los destinos que usarán los clientes, sin `*` global.
-5. Crea un cliente independiente con perfil `observer` y las capabilities mínimas.
-6. Configura el cliente MCP con la URL `/mcp/` y su Bearer token.
+1. Add the App repository in Home Assistant.
+2. Install **Home Assistant Gateway** from Supervisor.
+3. Configure the MCP port and restart the App.
+4. Configure `mcp_allowed_hosts` with the destinations used by clients, without a global `*`.
+5. Create an independent client with the `observer` profile and minimum capabilities.
+6. Configure the MCP client with the `/mcp/` URL and its Bearer token.
 
-## Ingress frente a MCP directo
+## Ingress versus direct MCP
 
-| Superficie | Uso | Protección |
+| Surface | Use | Protection |
 |---|---|---|
-| Supervisor Ingress | UI, administración y APIs `/api/*` | identidad de Supervisor Ingress |
-| `/mcp/` directo | transporte MCP para agentes | `Host` permitido + Bearer + policy del cliente |
+| Supervisor Ingress | UI, administration and `/api/*` APIs | Supervisor Ingress identity |
+| Direct `/mcp/` | MCP transport for agents | allowed `Host` + Bearer + client policy |
 
-El puerto MCP directo no publica la consola administrativa. Una respuesta `401` en `/mcp/` sin token es esperada y confirma que la autenticación está activa.
+The direct MCP port does not publish the administration console. A `401` response from `/mcp/` without a token is expected and confirms that authentication is active.
 
-## Perfil observer y herramientas
+## Observer profile and tools
 
-El perfil `observer` es read-only y puede exponer hasta estas 18 herramientas, según las capabilities del cliente:
+The `observer` profile is read-only and can expose up to these 18 tools, depending on the client's capabilities:
 
 ```text
 gateway_diagnostics
@@ -63,25 +63,25 @@ ha_services
 ha_events
 ```
 
-La lista efectiva debe verificarse con `tools/list`; la conectividad del modelo no demuestra permisos.
+The effective list must be verified with `tools/list`; model connectivity does not prove permissions.
 
-## Comportamiento de resultados
+## Result behavior
 
-- `ok`: lectura correcta, incluso si contiene cero elementos cuando el recurso no usa la semántica `empty_result`.
-- `warning` con `reason="empty_result"`: consulta válida que no encontró elementos.
-- `error`: fallo de transporte, upstream, formato o autorización.
-- jobs de Development Console: locales al proceso, bounded y no durables; se pierden al reiniciar la App.
+- `ok`: successful read, including zero items when the resource does not use `empty_result` semantics.
+- `warning` with `reason="empty_result"`: valid query that found no items.
+- `error`: transport, upstream, format or authorization failure.
+- Development Console jobs: process-local, bounded and non-durable; they disappear when the App restarts.
 
-## Verificación mínima
+## Minimum verification
 
-1. `GET /mcp/` sin token → `401` esperado.
-2. MCP `initialize` autenticado → `200`.
-3. `tools/list` → herramientas autorizadas para ese cliente.
-4. UI por Ingress → `/health` y consola disponibles dentro de Supervisor.
+1. `GET /mcp/` without a token → expected `401`.
+2. Authenticated MCP `initialize` → `200`.
+3. `tools/list` → tools authorized for that client.
+4. Ingress UI → `/health` and the console available inside Supervisor.
 
-Consulta también:
+See also:
 
-- [Configuración de clientes MCP](configure-mcp-client.md)
-- [Solución de problemas](troubleshooting.md)
-- [Modelo de seguridad](../security-model.md)
-- [Arquitectura](../architecture.md)
+- [Configure an MCP client](configure-mcp-client.md)
+- [Troubleshooting](troubleshooting.md)
+- [Security model](../security-model.md)
+- [Architecture](../architecture.md)

@@ -3,115 +3,115 @@
 [![CI](https://github.com/vypdev/homeassistant-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/vypdev/homeassistant-gateway/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/vypdev/homeassistant-gateway?sort=semver)](https://github.com/vypdev/homeassistant-gateway/releases)
 
-**Home Assistant Gateway** es un add-on de Home Assistant que ofrece una interfaz MCP segura, acotada y auditable para que clientes como Hermes u OpenClaw consulten una instalación de Home Assistant.
+**Home Assistant Gateway** is a Home Assistant add-on that provides a secure, bounded and auditable MCP interface for clients such as Hermes and OpenClaw to query a Home Assistant installation.
 
-La superficie predeterminada es **observer/read-only**: inventario, estados, registros, historial, logbook, diagnósticos y metadatos. La administración se realiza desde Home Assistant Ingress y el transporte MCP directo se protege con `Host` allowlist, Bearer token, identidad de cliente y capabilities.
+The default surface is **observer/read-only**: inventory, states, registries, history, logbook, diagnostics and metadata. Administration is served through Home Assistant Ingress, while direct MCP transport is protected by a host allowlist, Bearer token, client identity and capabilities.
 
-> **Estado actual:** `v0.5.9`. Operator permanece deshabilitado: **No operator mutation is enabled yet**. No hay herramientas MCP de escritura registradas.
+> **Current status:** `v0.5.9`. Operator remains disabled: **No operator mutation is enabled yet**. No MCP write tools are registered.
 
-## Cómo se usa
+## How to use it
 
-### 1. Instalar el add-on
+### 1. Install the add-on
 
-1. Añade este repositorio al almacén de add-ons de Home Assistant.
-2. Instala **Home Assistant Gateway**.
-3. Abre la interfaz desde **Open Web UI**; la consola de administración está protegida por Supervisor Ingress.
-4. Mantén `operator_enabled: false` salvo que exista una provisión explícita para una futura capacidad de escritura.
+1. Add this repository to the Home Assistant add-on store.
+2. Install **Home Assistant Gateway**.
+3. Open the interface through **Open Web UI**; the administration console is protected by Supervisor Ingress.
+4. Keep `operator_enabled: false` unless an explicitly provisioned write capability is introduced in the future.
 
-### 2. Crear un cliente observer
+### 2. Create an observer client
 
-Desde la consola Ingress:
+From the Ingress console:
 
-1. abre **Clients**;
-2. crea un cliente independiente para cada agente;
-3. selecciona el perfil `observer`;
-4. concede solo las capabilities necesarias;
-5. guarda el token cuando se muestra: no se puede recuperar después.
+1. open **Clients**;
+2. create an independent client for each agent;
+3. select the `observer` profile;
+4. grant only the required capabilities;
+5. save the token when it is shown: it cannot be retrieved later.
 
-Los tokens son independientes por cliente. Para un token perdido o expuesto, usa **Rotate** o **Revoke**.
+Tokens are independent per client. For a lost or exposed token, use **Rotate** or **Revoke**.
 
-### 3. Conectar un cliente MCP
+### 3. Connect an MCP client
 
-Configura `mcp_allowed_hosts` con los hosts de destino usados en la URL, sin puerto y sin `*` global. Por ejemplo:
+Configure `mcp_allowed_hosts` with the destination hosts used in the URL, without a port and without a global `*`. For example:
 
 ```text
 localhost,127.0.0.1,[::1],homeassistant,homeassistant.local
 ```
 
-Usa el puerto publicado por el add-on y la ruta `/mcp/`:
+Use the port published by the add-on and the `/mcp/` path:
 
 ```text
 http://<home-assistant-host>:18099/mcp/
 ```
 
-El cliente debe enviar su token como:
+The client must send its token as:
 
 ```http
 Authorization: Bearer <observer-client-token>
 ```
 
-La comprobación mínima es:
+The minimum verification sequence is:
 
-1. `/mcp/` sin token → `401` esperado;
-2. `initialize` autenticado → correcto;
-3. `tools/list` → solo las herramientas autorizadas para ese cliente;
-4. una lectura → resultado `ok`, `warning` o `error` sanitizado.
+1. `/mcp/` without a token → expected `401`;
+2. authenticated `initialize` → success;
+3. `tools/list` → only the tools authorized for that client;
+4. one read operation → sanitized `ok`, `warning` or `error` result.
 
-El endpoint MCP directo no publica la consola administrativa. La Development Console se usa desde Ingress para verificar conectividad, resultados vacíos, fallos y trazabilidad de las lecturas.
+The direct MCP endpoint does not publish the administration console. Use the Development Console through Ingress to verify connectivity, empty results, failures and read traceability.
 
-## Qué expone
+## What it exposes
 
-El perfil observer puede exponer, según las capabilities del cliente, herramientas read-only como:
+The observer profile can expose the following read-only tools, depending on the client's capabilities:
 
 ```text
 gateway_diagnostics  ha_inventory       ha_states
 ha_automations       ha_configuration    ha_history
-ha_logbook           ha_services        ha_events
-ha_devices           ha_areas           ha_floors
-ha_labels            ha_entity_registry ha_scripts
-ha_scenes            ha_helpers         ha_integrations
+ha_logbook           ha_services         ha_events
+ha_devices           ha_areas            ha_floors
+ha_labels            ha_entity_registry  ha_scripts
+ha_scenes            ha_helpers          ha_integrations
 ```
 
-La lista efectiva siempre se comprueba con `tools/list`; que un cliente conecte no demuestra que tenga todos los permisos.
+The effective list is always verified with `tools/list`; connectivity does not prove that a client has every permission.
 
-## Seguridad y límites
+## Security and boundaries
 
-- No se ejecutan servicios de Home Assistant ni se modifican automatizaciones o configuración.
-- No se ofrece shell arbitrario, Docker socket, SSH, escaneo de red ni proxy transparente de APIs.
-- Los secretos no aparecen en prompts, resultados MCP, logs, auditorías, snapshots ni Git.
-- Los resultados son bounded y distinguen lecturas correctas, colecciones vacías (`warning`/`empty_result`) y fallos de upstream o transporte.
-- Las ejecuciones de Development Console son locales al proceso, bounded y no durables; se pierden al reiniciar el add-on.
+- Home Assistant services are not called, and automations or configuration are not modified.
+- The gateway does not provide arbitrary shell, Docker socket, SSH, network scanning or transparent API proxying.
+- Secrets are excluded from prompts, MCP results, logs, audit records, snapshots and Git.
+- Results are bounded and distinguish successful reads, empty collections (`warning`/`empty_result`) and upstream or transport failures.
+- Development Console jobs are process-local, bounded and non-durable; they are lost when the add-on restarts.
 
-## Índice de documentación
+## Documentation index
 
-### Empezar como consumidor
+### Consumer guides
 
-- [Guía de consumidor](docs/consumer/README.md) — instalación, superficies, herramientas y verificación mínima.
-- [Configurar un cliente MCP](docs/consumer/configure-mcp-client.md) — endpoint, tokens, capabilities, rotación y revocación.
-- [Solución de problemas](docs/consumer/troubleshooting.md) — síntomas, causas y comprobaciones.
-- [Integración con OpenClaw y Hermes](docs/integration-with-openclaw-and-hermes.md) — perfiles y conexión de agentes.
+- [Consumer guide](docs/consumer/README.md) — installation, surfaces, tools and minimum verification.
+- [Configure an MCP client](docs/consumer/configure-mcp-client.md) — endpoint, tokens, capabilities, rotation and revocation.
+- [Troubleshooting](docs/consumer/troubleshooting.md) — symptoms, causes and checks.
+- [OpenClaw and Hermes integration](docs/integration-with-openclaw-and-hermes.md) — agent profiles and connectivity.
 
-### Entender el producto
+### Product and architecture
 
-- [Arquitectura](docs/architecture.md) — límites Clean Architecture, puertos, adaptadores y composición.
-- [Modelo de seguridad](docs/security-model.md) — amenazas, perfiles, credenciales, red y auditoría.
-- [Contratos de Home Assistant](docs/home-assistant-platform-contracts.md) — APIs, WebSocket, Supervisor e Ingress.
-- [Diseño frontend](docs/frontend-design.md) — shell, Ingress, accesibilidad, temas e i18n.
+- [Architecture](docs/architecture.md) — Clean Architecture boundaries, ports, adapters and composition.
+- [Security model](docs/security-model.md) — threats, profiles, credentials, network and auditing.
+- [Home Assistant platform contracts](docs/home-assistant-platform-contracts.md) — APIs, WebSocket, Supervisor and Ingress.
+- [Frontend design](docs/frontend-design.md) — shell, Ingress, accessibility, themes and i18n.
 
-### Development Console y operación
+### Development Console and operations
 
-- [Development Console](docs/development-console.md) — operaciones, packs, jobs y resultados.
-- [Trazabilidad de la Development Console](docs/development-console-traceability.md) — evidencia, errores, warnings, comparaciones y exportación.
-- [Frontend y credenciales](docs/frontend-and-credentials.md) — límites de la UI y manejo de tokens.
-- [Live smoke](docs/live-smoke.md) — verificación contra un target autorizado.
+- [Development Console](docs/development-console.md) — operations, packs, jobs and results.
+- [Development Console traceability](docs/development-console-traceability.md) — evidence, failures, warnings, comparisons and export.
+- [Frontend and credentials](docs/frontend-and-credentials.md) — UI boundaries and token handling.
+- [Live smoke](docs/live-smoke.md) — verification against an authorized target.
 
-### Planificación y releases
+### Planning and releases
 
-- [Roadmap](docs/roadmap.md) — evolución prevista y límites actuales.
-- [Release 0.5.0](docs/release-0.5.0.md) — histórico de la refactorización arquitectónica.
-- [ADR: Home Assistant como target principal](docs/adr/0001-home-assistant-native.md) — decisión de producto y despliegue.
+- [Roadmap](docs/roadmap.md) — planned evolution and current boundaries.
+- [Release 0.5.0](docs/release-0.5.0.md) — historical architecture-hardening checklist.
+- [ADR: Home Assistant as the primary target](docs/adr/0001-home-assistant-native.md) — product and deployment decision.
 
-## Desarrollo local
+## Local development
 
 ```bash
 python -m pytest
@@ -120,8 +120,8 @@ npm --prefix frontend run check
 npm --prefix frontend run build
 ```
 
-Consulta la documentación de arquitectura y las guías de consumidor antes de modificar contratos MCP, perfiles o límites de seguridad.
+Read the architecture and consumer guides before changing MCP contracts, profiles or security boundaries.
 
-## Licencia
+## License
 
-MIT. Consulta [`LICENSE`](LICENSE).
+MIT. See [`LICENSE`](LICENSE).

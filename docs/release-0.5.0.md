@@ -1,14 +1,14 @@
 # Release checklist — v0.5.0
 
-## Alcance
+## Scope
 
-- [ ] Confirmar que no quedan secretos, tokens, cookies o `SUPERVISOR_TOKEN` en código, tests, logs, fixtures ni documentación.
-- [ ] Confirmar que el perfil `observer` sigue siendo read-only y que las herramientas efectivas siguen siendo 18.
-- [ ] Confirmar separación Ingress/MCP directo y `mcp_allowed_hosts` sin `*` global.
+- [ ] Confirm that no secrets, tokens, cookies or `SUPERVISOR_TOKEN` values remain in code, tests, logs, fixtures or documentation.
+- [ ] Confirm that the `observer` profile remains read-only and that the effective tool set contains 18 tools.
+- [ ] Confirm separation between Ingress and direct MCP, with `mcp_allowed_hosts` configured without a global `*`.
 
-## Gates locales
+## Local gates
 
-Desde la raíz del repositorio:
+From the repository root:
 
 ```bash
 .venv/bin/python -m pytest -q
@@ -24,24 +24,24 @@ git diff --check
 git status --short
 ```
 
-El árbol debe quedar limpio y todos los comandos deben terminar con código `0`.
+The working tree must be clean and every command must exit with code `0`.
 
 ## Metadata
 
-- [ ] `addon/config.yaml` tiene versión `0.5.0`.
-- [ ] `pyproject.toml` tiene versión `0.5.0`.
-- [ ] `addon/CHANGELOG.md` describe cambios, límites y migración.
-- [ ] README y documentación de consumidor apuntan a `0.5.0`.
-- [ ] El commit de release contiene únicamente cambios revisados.
+- [ ] `addon/config.yaml` contains version `0.5.0`.
+- [ ] `pyproject.toml` contains version `0.5.0`.
+- [ ] `addon/CHANGELOG.md` describes changes, boundaries and migration.
+- [ ] README and consumer documentation reference `0.5.0`.
+- [ ] The release commit contains only reviewed changes.
 
-## GitHub y artefactos
+## GitHub and artifacts
 
-- [ ] Push a `main` completado.
-- [ ] CI verde.
-- [ ] Release App verde.
-- [ ] Trivy verde.
-- [ ] Crear tag y release `v0.5.0` solo después de esos gates.
-- [ ] Verificar la release:
+- [ ] Push to `main` completed.
+- [ ] CI green.
+- [ ] Release App green.
+- [ ] Trivy green.
+- [ ] Create tag and release `v0.5.0` only after those gates.
+- [ ] Verify the release:
 
 ```bash
 gh release view v0.5.0 --repo vypdev/homeassistant-gateway
@@ -49,18 +49,18 @@ docker manifest inspect ghcr.io/vypdev/homeassistant-gateway:0.5.0
 gh run list --repo vypdev/homeassistant-gateway --limit 10
 ```
 
-- [ ] Confirmar `linux/amd64`, `linux/arm64` y `linux/arm/v7`.
+- [ ] Confirm `linux/amd64`, `linux/arm64` and `linux/arm/v7`.
 
-## Smoke test autorizado
+## Authorized smoke test
 
-Sin mostrar ni guardar credenciales:
+Without displaying or storing credentials:
 
-- [ ] `/` sin contexto Ingress → rechazo `401`.
-- [ ] `/mcp/` sin Bearer → rechazo de autenticación esperado.
-- [ ] `/mcp/` con cliente autorizado → `initialize` correcto.
-- [ ] `tools/list` → 18 herramientas observer read-only.
-- [ ] No aparecen tokens, cookies ni secretos en respuestas o logs.
+- [ ] `/` without Ingress context → expected `401` rejection.
+- [ ] `/mcp/` without a Bearer token → expected authentication rejection.
+- [ ] `/mcp/` with an authorized client → successful `initialize`.
+- [ ] `tools/list` → 18 observer read-only tools.
+- [ ] No tokens, cookies or secrets appear in responses or logs.
 
 ## Rollback
 
-Si el smoke test falla, no se promociona la release. Mantener disponible la imagen estable `0.4.20`, restaurar la versión desde Supervisor y repetir `/mcp/` sin token, UI Ingress y `initialize` autenticado antes de investigar.
+If the smoke test fails, do not promote the release. Keep the stable image available, restore the version from Supervisor and repeat `/mcp/` without a token, the Ingress UI and authenticated `initialize` before investigating.

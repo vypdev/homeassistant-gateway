@@ -1,60 +1,60 @@
-# Configurar un cliente MCP
+# Configure an MCP client
 
 ## Endpoint
 
-Usa el destino real incluido en la URL, por ejemplo:
+Use the real destination included in the URL, for example:
 
 ```text
-http://192.168.20.101:18099/mcp/
+http://<home-assistant-host>:18099/mcp/
 ```
 
-El hostname o IP de destino debe aparecer en `mcp_allowed_hosts`. La allowlist valida el `Host` de destino; no valida la IP de origen del cliente. En la configuración se escribe el host sin puerto. La App acepta internamente el puerto publicado que use el cliente.
+The destination hostname or IP must appear in `mcp_allowed_hosts`. The allowlist validates the destination `Host`; it does not validate the client's source IP. Enter the host without a port in the configuration. The App accepts the published port used by the client internally.
 
-Si el cliente conecta mediante otro DNS, añade ese DNS. No añadas la IP de `ai01.lan` salvo que sea el destino usado en la URL.
+If the client connects through another DNS name, add that DNS name. Do not add the IP of `ai01.lan` unless it is the destination used in the URL.
 
-## Crear el cliente
+## Create the client
 
-Desde la UI protegida por Supervisor Ingress:
+From the Supervisor Ingress-protected UI:
 
-1. abre **Clients**;
-2. elige un nombre visible independiente;
-3. selecciona el perfil `observer`;
-4. concede solo las capabilities necesarias;
-5. guarda el Bearer token una sola vez en el gestor seguro del cliente.
+1. open **Clients**;
+2. choose an independent display name;
+3. select the `observer` profile;
+4. grant only the required capabilities;
+5. save the Bearer token once in the client's secure secret manager.
 
-No pegues tokens en tickets, capturas, repositorios o conversaciones. La rotación invalida el token anterior y muestra uno nuevo una única vez.
+Do not paste tokens into tickets, screenshots, repositories or conversations. Rotation invalidates the previous token and displays a new one only once.
 
-## Orden de autenticación y autorización
+## Authentication and authorization order
 
 ```text
-Host permitido
-→ Bearer válido
-→ cliente declarado
-→ perfil observer/operator
-→ capabilities autorizadas
-→ herramienta MCP read-only
+Allowed Host
+→ valid Bearer token
+→ declared client
+→ observer/operator profile
+→ authorized capabilities
+→ read-only MCP tool
 ```
 
-Un token válido no concede automáticamente todas las herramientas.
+A valid token does not automatically grant every tool.
 
-## Perfil observer
+## Observer profile
 
-El perfil `observer` solo expone operaciones de lectura. No ejecuta servicios, scripts, automatizaciones ni cambios de configuración.
+The `observer` profile exposes read operations only. It does not call services, run scripts, modify automations or change configuration.
 
-Las herramientas efectivas se comprueban mediante `tools/list`. La referencia completa está en la [guía de consumidor](README.md).
+Verify the effective tools with `tools/list`. The complete reference is in the [consumer guide](README.md).
 
-## Prueba mínima
+## Minimum test
 
-- `GET /mcp/` sin token → `401` esperado.
-- MCP `initialize` con token válido → `200`.
-- `tools/list` → solo herramientas autorizadas.
-- una llamada de lectura → respuesta `ok`, `warning` o `error` sanitizada.
+- `GET /mcp/` without a token → expected `401`.
+- MCP `initialize` with a valid token → `200`.
+- `tools/list` → authorized tools only.
+- one read call → sanitized `ok`, `warning` or `error` response.
 
-La consola de desarrollo está protegida por Supervisor Ingress y no se publica mediante el endpoint MCP directo.
+The Development Console is protected by Supervisor Ingress and is not published through the direct MCP endpoint.
 
-## Rotación y revocación
+## Rotation and revocation
 
-- **Rotate**: genera un token nuevo y deja inutilizable el anterior.
-- **Revoke**: desactiva el cliente y sus tokens.
-- Si un agente pierde el token, no se puede recuperar: rota el cliente.
-- Si un token aparece en un log o captura, revócalo inmediatamente.
+- **Rotate**: generates a new token and invalidates the previous one.
+- **Revoke**: disables the client and its tokens.
+- If an agent loses the token, it cannot be retrieved: rotate the client.
+- If a token appears in a log or screenshot, revoke it immediately.
