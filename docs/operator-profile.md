@@ -69,9 +69,17 @@ The official Home Assistant documentation confirms:
 
 A service call is a state-changing operation and must use an explicitly verified Home Assistant service contract. The Gateway must not accept arbitrary domain/service strings or arbitrary targets.
 
-The repository now contains a typed, unregistered `SupervisorServiceMutationAdapter` for the REST service-call shape. It accepts only an explicit `domain.service` allowlist, sends a bounded JSON payload to `/services/<domain>/<service>`, classifies upstream failures and redacts returned state data. The adapter is intentionally not wired into the composition root and no MCP mutation tool uses it.
+The operator service-call path is wired through `SupervisorServiceMutationAdapter` only when `operator_enabled` is true and `operator_allowed_services` contains an explicit `domain.service` entry. It sends a bounded JSON payload to `/services/<domain>/<service>`, classifies upstream failures and redacts returned state data. Automation control is restricted to the official `automation.trigger`, `automation.turn_on`, and `automation.turn_off` services. An empty allowlist keeps mutation tools unavailable.
 
-Automation configuration editing is more sensitive. The Home Assistant Core/frontend implementation uses configuration-oriented WebSocket and frontend contracts that are version-dependent; the generic REST API documentation does not define a stable public CRUD contract for arbitrary automation source. Therefore this repository does **not** implement automation mutation yet. It must first pin and test the exact contract for the installed Home Assistant version and preserve structured configuration instead of editing `/config/automations.yaml` or `.storage` directly.
+Configure the add-on option with a comma-separated allowlist, for example:
+
+```text
+light.turn_on,light.turn_off,automation.trigger
+```
+
+The operator client must be created with the matching `ha.write.services` or `ha.write.automations` capability. Every mutation requires a short-lived approval, a single-use approval token, an idempotency key and a bearer-authenticated operator client. Generic configuration writes are not exposed because Home Assistant does not provide a bounded official write contract for arbitrary configuration data.
+
+Generic automation source editing remains intentionally unsupported. The bounded automation controls above only call the official automation services; they do not modify triggers, conditions or actions. Editing `/config/automations.yaml` or `.storage` directly is prohibited.
 
 ## Activation gates
 

@@ -113,3 +113,75 @@ def test_mcp_streamable_http_rejects_invalid_bearer(tmp_path) -> None:
             assert response.json() == {"detail": "invalid_client_token"}
 
     asyncio.run(run())
+
+
+def test_operator_discovery_lists_only_configured_mutation_tools(tmp_path) -> None:
+    async def run() -> None:
+        app = build_app(AppSettings(tmp_path, operator_enabled=True, operator_allowed_services=("light.turn_on", "automation.trigger")))
+        async with app.router.lifespan_context(app), httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app),
+            base_url="http://localhost",
+        ) as client:
+            ingress = {"X-Remote-User-Id": "test-user", "Content-Type": "application/json"}
+            created = await client.post(
+                "/api/clients",
+                headers=ingress,
+                json={
+                    "client_id": "operator",
+                    "display_name": "Operator",
+                    "profile": "operator",
+                    "capabilities": ["ha.write.services", "ha.write.automations"],
+                },
+            )
+            assert created.status_code == 201
+            token = created.json()["token"]
+            discovery = await client.get(
+                "/api/mcp/discovery",
+                headers={**ingress, "Authorization": f"Bearer {token}"},
+            )
+            assert discovery.status_code == 200
+            assert "ha_request_service_approval" in discovery.json()["tools"]
+            assert "ha_request_automation_approval" in discovery.json()["tools"]
+            mcp_headers = {
+                **ingress,
+                "Authorization": f"Bearer {token}",
+                "Accept": "application/json, text/event-stream",
+                "MCP-Protocol-Version": "2025-06-18",
+            }
+            approval_response = await client.post(
+                "/mcp/",
+                headers=mcp_headers,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "ha_request_service_approval",
+                        "arguments": {"target": "light.turn_on", "proposed": {"entity_id": "light.test"}},
+                    },
+                },
+            )
+            approval = approval_response.json()["result"]["structuredContent"]
+            assert approval["status"] == "approval_required"
+            execute_response = await client.post(
+                "/mcp/",
+                headers=mcp_headers,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 3,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "ha_execute_service_call",
+                        "arguments": {
+                            "target": "light.turn_on",
+                            "proposed": {"entity_id": "light.test"},
+                            "approval_id": approval["approval_id"],
+                            "approval_token": approval["approval_token"],
+                            "idempotency_key": "test-operator-call-1",
+                        },
+                    },
+                },
+            )
+            assert execute_response.json()["result"]["structuredContent"]["reason"] == "mutation_adapter_not_configured"
+
+    asyncio.run(run())
