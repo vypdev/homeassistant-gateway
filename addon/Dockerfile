@@ -14,7 +14,7 @@ RUN git init /src \
     && git checkout FETCH_HEAD
 RUN python -m pip wheel --no-cache-dir --wheel-dir /wheels /src
 
-FROM node:22-alpine AS ui-builder
+FROM --platform=$BUILDPLATFORM node:22-alpine AS ui-builder
 COPY --from=builder /src/frontend /frontend
 WORKDIR /frontend
 RUN npm ci --no-audit --no-fund \
