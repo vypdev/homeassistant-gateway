@@ -12,6 +12,7 @@ from homeassistant_gateway.application.development_models import (
     DevelopmentOperation,
     DevelopmentReport,
     DevelopmentResult,
+    DevelopmentTraceStep,
 )
 from homeassistant_gateway.application.development_result_policy import build_development_report
 from homeassistant_gateway.application.home_assistant import (
@@ -67,6 +68,14 @@ class DevelopmentToolRunner:
             count=self._count(data),
             data=data,
             reason="empty_result" if self._is_empty_result(data) else None,
+            trace=(DevelopmentTraceStep(
+                phase="execute",
+                transport="application",
+                status="warning" if self._is_empty_result(data) else "ok",
+                duration_ms=duration_ms,
+                command=operation,
+                detail="operation_completed",
+            ),),
         )
 
     def run_all(self) -> tuple[DevelopmentResult, ...]:
@@ -91,6 +100,17 @@ class DevelopmentToolRunner:
                         duration_ms=0,
                         count=0,
                         reason=str(error) if isinstance(error, HomeAssistantUnavailable) else type(error).__name__,
+                        details=self._error_details(error),
+                        trace=(DevelopmentTraceStep(
+                            phase="error",
+                            transport="upstream" if isinstance(error, HomeAssistantUnavailable) else "application",
+                            status="error",
+                            duration_ms=0,
+                            command=operation,
+                            path=error.path if isinstance(error, HomeAssistantUnavailable) else None,
+                            code=error.code if isinstance(error, HomeAssistantUnavailable) else type(error).__name__,
+                            detail="operation_failed",
+                        ),),
                     )
                 )
         return tuple(results)
@@ -126,3 +146,16 @@ class DevelopmentToolRunner:
                 return sum(value for value in counts.values() if isinstance(value, int))
             return len(data)
         return 1
+
+    @staticmethod
+    def _error_details(error: Exception) -> dict[str, Any] | None:
+        if not isinstance(error, HomeAssistantUnavailable):
+            return {"code": type(error).__name__}
+        details: dict[str, Any] = {"code": error.code}
+        if error.status is not None:
+            details["status"] = error.status
+        if error.path is not None:
+            details["path"] = error.path
+        if error.params:
+            details["params"] = list(error.params)
+        return details

@@ -11,6 +11,17 @@ const specs: Record<string, { dev: string[]; labels: string[]; descriptions: str
   ar: { dev: ['حالة المنبع','معرّف الكيان، مثل light.kitchen','وقت البدء، مثل 2026-08-01T00:00:00Z','العناصر','مللي ثانية','تغيّر المخطط','تراجعات','غير قابل للتحقق','المستمع المحلي','سلامة HTTP','MCP عبر HTTP','نشر منفذ المضيف'], labels: ['جرد الكيانات','حالات الكيانات','الأتمتة','الإعداد والسجلات','كتالوج الخدمات','كتالوج الأحداث','السجل التاريخي','سجل الأنشطة','سجل الأجهزة','سجل المناطق','سجل الطوابق','سجل التسميات','سجل الكيانات','البرامج النصية','المشاهد','المساعدات','التكاملات','منافذ البوابة ونقل MCP'], descriptions: ['قراءة الكيانات وإحصاءات الجرد','قراءة الحالات والسمات الحالية','قراءة كيانات الأتمتة وحالتها','قراءة الإعداد وبيانات السجلات','قراءة الخدمات والمخططات المتاحة','قراءة الأحداث المتاحة','قراءة سجل الحالات مع مرشحات اختيارية','قراءة سجلات النشاط مع مرشحات اختيارية','قراءة الأجهزة المسجلة','قراءة المناطق المسجلة','قراءة الطوابق المسجلة','قراءة التسميات المسجلة','قراءة الكيانات وبياناتها الوصفية','قراءة كيانات البرامج النصية','قراءة كيانات المشاهد','قراءة مساعدات الإدخال','قراءة نطاقات التكامل','فحص المستمع المحلي ومصادقة MCP'], packLabels: ['الجرد الأساسي','تشخيص الأتمتة','جاهزية MCP','اكتمال البيانات'], packDescriptions: ['نموذج القراءة والسجلات الأساسية.','الأتمتة وبيانات النشاط.','الموارد المطلوبة لعملاء المراقبة.','تغطية موسعة وأخطاء نقاط النهاية الصريحة.'], status: ['سليم','خطأ','جزئي','جاهز','جارٍ التحميل','غير معروف'] },
 };
 
+const traceTranslations: Record<string, Record<string, string>> = {
+  de: { traceability: 'Nachverfolgbarkeit', tracePhase: 'Phase', traceTransport: 'Transport', traceStatus: 'Status', traceCommand: 'Befehl', tracePath: 'Pfad', traceAttempts: 'Versuche', technicalDetails: 'Technische Details' },
+  pt: { traceability: 'Rastreabilidade', tracePhase: 'Fase', traceTransport: 'Transporte', traceStatus: 'Estado', traceCommand: 'Comando', tracePath: 'Caminho', traceAttempts: 'Tentativas', technicalDetails: 'Detalhes técnicos' },
+  it: { traceability: 'Tracciabilità', tracePhase: 'Fase', traceTransport: 'Trasporto', traceStatus: 'Stato', traceCommand: 'Comando', tracePath: 'Percorso', traceAttempts: 'Tentativi', technicalDetails: 'Dettagli tecnici' },
+  zh: { traceability: '可追溯性', tracePhase: '阶段', traceTransport: '传输', traceStatus: '状态', traceCommand: '命令', tracePath: '路径', traceAttempts: '尝试次数', technicalDetails: '技术详情' },
+  ja: { traceability: 'トレーサビリティ', tracePhase: 'フェーズ', traceTransport: 'トランスポート', traceStatus: 'ステータス', traceCommand: 'コマンド', tracePath: 'パス', traceAttempts: '試行回数', technicalDetails: '技術詳細' },
+  ru: { traceability: 'Трассировка', tracePhase: 'Фаза', traceTransport: 'Транспорт', traceStatus: 'Статус', traceCommand: 'Команда', tracePath: 'Путь', traceAttempts: 'Попытки', technicalDetails: 'Технические сведения' },
+  hi: { traceability: 'ट्रेसबिलिटी', tracePhase: 'चरण', traceTransport: 'ट्रांसपोर्ट', traceStatus: 'स्थिति', traceCommand: 'कमांड', tracePath: 'पथ', traceAttempts: 'प्रयास', technicalDetails: 'तकनीकी विवरण' },
+  ar: { traceability: 'قابلية التتبع', tracePhase: 'المرحلة', traceTransport: 'النقل', traceStatus: 'الحالة', traceCommand: 'الأمر', tracePath: 'المسار', traceAttempts: 'المحاولات', technicalDetails: 'التفاصيل التقنية' },
+};
+
 export const DEVELOPMENT_EXTRA_TRANSLATIONS: Record<string, Record<string, string>> = {};
 for (const [locale, spec] of Object.entries(specs)) {
   const entries: Record<string, string> = {};
@@ -19,5 +30,6 @@ for (const [locale, spec] of Object.entries(specs)) {
   names.forEach((name, index) => { entries[`op${name}Label`] = spec.labels[index]; entries[`op${name}Description`] = spec.descriptions[index]; });
   packs.forEach((name, index) => { entries[`pack${name}Label`] = spec.packLabels[index]; entries[`pack${name}Description`] = spec.packDescriptions[index]; });
   ['statusOk','statusError','statusPartial','statusReady','statusLoading','statusUnknown'].forEach((key, index) => { entries[key] = spec.status[index]; });
+  Object.assign(entries, traceTranslations[locale]);
   DEVELOPMENT_EXTRA_TRANSLATIONS[locale] = entries;
 }

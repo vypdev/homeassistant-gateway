@@ -80,6 +80,8 @@ def test_runner_returns_timing_and_count_for_probe() -> None:
     assert result.count == 1
     assert result.duration_ms >= 0
     assert result.data[0]["entity_id"] == "light.kitchen"
+    assert result.trace[0].phase == "execute"
+    assert result.trace[0].transport == "application"
 
 
 def test_runner_supports_extended_registry_resources() -> None:

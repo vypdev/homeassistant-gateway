@@ -22,6 +22,21 @@ class DevelopmentResult:
     count: int
     data: Any = None
     reason: str | None = None
+    details: dict[str, Any] | None = None
+    trace: tuple[DevelopmentTraceStep, ...] = ()
+
+
+@dataclass(frozen=True)
+class DevelopmentTraceStep:
+    phase: str
+    transport: str
+    status: str
+    duration_ms: int
+    command: str | None = None
+    path: str | None = None
+    attempt: int = 1
+    code: str | None = None
+    detail: str | None = None
 
 
 @dataclass(frozen=True)

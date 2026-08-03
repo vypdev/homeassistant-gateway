@@ -11,5 +11,15 @@ export const downloadDiagnostic = (health: HealthDetails, results: DevelopmentRe
 };
 
 export const copyDiagnostic = async (result: DevelopmentResult): Promise<void> => {
-  await navigator.clipboard?.writeText(JSON.stringify({ operation: result.operation, status: result.status, reason: result.reason ?? null }, null, 2));
+  await navigator.clipboard?.writeText(JSON.stringify({ operation: result.operation, status: result.status, reason: result.reason ?? null, details: result.details ?? null, trace: result.trace ?? [] }, null, 2));
+};
+
+export const copyProblemReports = async (results: DevelopmentResult[]): Promise<void> => {
+  const problems = results.filter((result) => result.status === 'error' || result.status === 'warning');
+  const payload = {
+    generated_at: new Date().toISOString(),
+    count: problems.length,
+    reports: problems,
+  };
+  await navigator.clipboard?.writeText(JSON.stringify(payload, null, 2));
 };

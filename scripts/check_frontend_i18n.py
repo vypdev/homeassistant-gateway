@@ -141,6 +141,8 @@ def main() -> int:
             "policyMutationDenied",
             "policyOperatorDisabled",
             "topologyUpstream",
+            "copyProblemReports",
+            "problemReports",
         }
     )
     for language in LANGUAGES:
