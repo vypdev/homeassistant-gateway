@@ -17,8 +17,8 @@ jobs:
           python-version: "3.11"
       - name: Install test dependencies
         run: python -m pip install --upgrade pip && python -m pip install ".[test]"
-      - name: Run backend tests
-        run: python -m pytest
+      - name: Run backend tests with coverage
+        run: python -m pytest --cov=homeassistant_gateway --cov-report=term-missing --cov-fail-under=85
       - name: Audit Python dependencies
         run: python -m pip install --quiet --upgrade 'setuptools>=83.0.0' pip-audit && python -m pip_audit --skip-editable
       - name: Run live smoke harness (no live target in CI)
