@@ -16,8 +16,8 @@ CREATE TABLE IF NOT EXISTS clients (
     created_at TEXT NOT NULL,
     status TEXT NOT NULL,
     token_digest TEXT NOT NULL,
-    revoked_at TEXT
-)
+    revoked_at TEXT,
+    operator_services_json TEXT NOT NULL DEFAULT '[]')
 """
 
 
@@ -31,6 +31,9 @@ class SQLiteClientRepository:
         os.chmod(self._database, 0o600)
         with self._connect() as connection:
             connection.execute(_SCHEMA)
+            columns = {row["name"] for row in connection.execute("PRAGMA table_info(clients)")}
+            if "operator_services_json" not in columns:
+                connection.execute("ALTER TABLE clients ADD COLUMN operator_services_json TEXT NOT NULL DEFAULT '[]'")
 
     def list(self) -> list[Client]:
         with self._connect() as connection:
@@ -59,8 +62,8 @@ class SQLiteClientRepository:
                 """
                 INSERT INTO clients (
                     client_id, display_name, profile, capabilities_json,
-                    created_at, status, token_digest, revoked_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    created_at, status, token_digest, revoked_at, operator_services_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(client_id) DO UPDATE SET
                     display_name = excluded.display_name,
                     profile = excluded.profile,
@@ -68,7 +71,8 @@ class SQLiteClientRepository:
                     created_at = excluded.created_at,
                     status = excluded.status,
                     token_digest = excluded.token_digest,
-                    revoked_at = excluded.revoked_at
+                    revoked_at = excluded.revoked_at,
+                    operator_services_json = excluded.operator_services_json
                 """,
                 (
                     client.client_id,
@@ -79,6 +83,7 @@ class SQLiteClientRepository:
                     client.status.value,
                     client.token_digest,
                     client.revoked_at.isoformat() if client.revoked_at else None,
+                    json.dumps(sorted(client.operator_services), separators=(",", ":")),
                 ),
             )
 
@@ -102,4 +107,5 @@ class SQLiteClientRepository:
                 if row["revoked_at"] is not None
                 else None
             ),
+            operator_services=frozenset(json.loads(row["operator_services_json"] or "[]")),
         )

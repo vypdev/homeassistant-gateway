@@ -130,13 +130,20 @@ def create_mcp_app(
                 result["http_status"] = error.status
             return result
 
-    def require_operator_mutation(capability: str) -> tuple[dict[str, Any] | None, str | None]:
+    def require_operator_mutation(capability: str, target: str | None = None, proposed: dict[str, Any] | None = None) -> tuple[dict[str, Any] | None, str | None]:
         token = _current_token.get()
         if token is None:
             return {"status": "denied", "reason": "invalid_client_token"}, None
         client = authenticate(token)
         if client is None:
             return {"status": "denied", "reason": "invalid_client_token"}, None
+        if target is not None:
+            service = target
+            if capability == "ha.write.automations":
+                action = (proposed or {}).get("action")
+                service = f"automation.{action}" if isinstance(action, str) else ""
+            if service not in client.operator_services:
+                return {"status": "denied", "reason": "service_not_granted_to_client"}, None
         decision = authorize(client.client_id, capability, mutation=True)
         if decision.decision.value != "approval_required":
             return {"status": "denied", "reason": decision.reason}, None
@@ -215,7 +222,7 @@ def create_mcp_app(
         description="Request explicit approval for one allowlisted Home Assistant service call.",
     )
     def ha_request_service_approval(target: str, proposed: dict[str, Any]) -> dict[str, Any]:
-        denied, _ = require_operator_mutation("ha.write.services")
+        denied, _ = require_operator_mutation("ha.write.services", target, proposed)
         if denied is not None:
             return denied
         try:
@@ -229,7 +236,7 @@ def create_mcp_app(
         description="Execute one previously approved allowlisted Home Assistant service call with an idempotency key.",
     )
     def ha_execute_service_call(target: str, proposed: dict[str, Any], approval_id: str, approval_token: str, idempotency_key: str) -> dict[str, Any]:
-        denied, _ = require_operator_mutation("ha.write.services")
+        denied, _ = require_operator_mutation("ha.write.services", target, proposed)
         if denied is not None:
             return denied
         try:
@@ -242,7 +249,7 @@ def create_mcp_app(
         description="Request explicit approval to trigger or enable/disable one Home Assistant automation.",
     )
     def ha_request_automation_approval(entity_id: str, action: str) -> dict[str, Any]:
-        denied, _ = require_operator_mutation("ha.write.automations")
+        denied, _ = require_operator_mutation("ha.write.automations", entity_id, {"action": action})
         if denied is not None:
             return denied
         try:
@@ -256,7 +263,7 @@ def create_mcp_app(
         description="Execute one previously approved Home Assistant automation action with an idempotency key.",
     )
     def ha_execute_automation(entity_id: str, action: str, approval_id: str, approval_token: str, idempotency_key: str) -> dict[str, Any]:
-        denied, _ = require_operator_mutation("ha.write.automations")
+        denied, _ = require_operator_mutation("ha.write.automations", entity_id, {"action": action})
         if denied is not None:
             return denied
         try:

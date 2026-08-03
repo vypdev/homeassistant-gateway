@@ -20,6 +20,7 @@ from homeassistant_gateway.application.operator_security import (
     IdempotencyRegistry,
     OperatorControl,
 )
+from homeassistant_gateway.domain.policy import Profile
 from homeassistant_gateway.infrastructure.home_assistant.service_mutation import (
     SupervisorOperatorMutationAdapter,
     SupervisorServiceMutationAdapter,
@@ -79,11 +80,14 @@ def build_app(settings: AppSettings) -> FastAPI:
         if settings.supervisor_token
         else None
     )
+    def effective_client_services() -> tuple[str, ...]:
+        return tuple(sorted({service for client in repository.list() if client.profile is Profile.OPERATOR and client.status.value == "active" for service in client.operator_services}))
+
     mutation_port = None
     if settings.operator_enabled and home_assistant is not None:
         service_port = SupervisorServiceMutationAdapter(
             home_assistant,
-            operator_state.get_allowed_services,
+            effective_client_services,
         )
         mutation_port = SupervisorOperatorMutationAdapter(service_port)
     operator_mutations = OperatorMutationService(
@@ -103,7 +107,7 @@ def build_app(settings: AppSettings) -> FastAPI:
     )
 
     def operator_capabilities() -> tuple[str, ...]:
-        current = operator_state.get_allowed_services()
+        current = effective_client_services()
         return tuple(
             capability
             for capability, services in (
@@ -114,7 +118,7 @@ def build_app(settings: AppSettings) -> FastAPI:
         )
 
     def registered_mutation_tools() -> tuple[str, ...]:
-        current = operator_state.get_allowed_services()
+        current = effective_client_services()
         return tuple(
             tool
             for tools, services in (

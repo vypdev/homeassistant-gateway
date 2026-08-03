@@ -48,6 +48,7 @@ class IssueClient:
         display_name: str,
         profile: Profile,
         capabilities: frozenset[str],
+        operator_services: frozenset[str] = frozenset(),
     ) -> IssuedClient:
         if not client_id.strip() or not display_name.strip():
             raise ValueError("client_identity_required")
@@ -55,10 +56,12 @@ class IssueClient:
             raise ValueError("client_already_exists")
         if profile is Profile.OPERATOR and not self._operator_enabled:
             raise ValueError("operator_disabled")
-        if profile is Profile.OBSERVER and any(
+        if profile is Profile.OBSERVER and (any(
             capability.startswith("ha.write.") for capability in capabilities
-        ):
+        ) or operator_services):
             raise ValueError("observer_operator_capability_conflict")
+        if profile is not Profile.OPERATOR and operator_services:
+            raise ValueError("operator_services_require_operator_profile")
 
         token, digest = self._token_issuer.issue()
         client = Client(
@@ -66,12 +69,38 @@ class IssueClient:
             display_name=display_name,
             profile=profile,
             capabilities=capabilities,
+            operator_services=operator_services,
             created_at=self._clock(),
             status=ClientStatus.ACTIVE,
             token_digest=digest,
         )
         self._repository.save(client)
         return IssuedClient(client=client, token=token)
+
+
+class UpdateClientOperatorServices:
+    def __init__(self, repository: ClientRepository) -> None:
+        self._repository = repository
+
+    def execute(self, client_id: str, services: frozenset[str]) -> Client:
+        client = self._repository.get(client_id)
+        if client is None:
+            raise ValueError("client_not_found")
+        if client.profile is not Profile.OPERATOR and services:
+            raise ValueError("operator_services_require_operator_profile")
+        updated = Client(
+            client_id=client.client_id,
+            display_name=client.display_name,
+            profile=client.profile,
+            capabilities=client.capabilities,
+            created_at=client.created_at,
+            status=client.status,
+            token_digest=client.token_digest,
+            revoked_at=client.revoked_at,
+            operator_services=services,
+        )
+        self._repository.save(updated)
+        return updated
 
 
 class RotateClient:

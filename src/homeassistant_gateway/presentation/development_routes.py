@@ -47,7 +47,7 @@ def register_development_routes(app: FastAPI, dependencies: DevelopmentRouteDepe
     def registered_mutation_tools() -> tuple[str, ...]:
         return dependencies.registered_mutation_tools() if callable(dependencies.registered_mutation_tools) else dependencies.registered_mutation_tools
 
-    def require_operator_client(request: Request, capability: str) -> None:
+    def require_operator_client(request: Request, capability: str, target: str | None = None, proposed: dict[str, Any] | None = None) -> None:
         if dependencies.authenticate_client is None or dependencies.authorize_request is None:
             raise HTTPException(status_code=503, detail="operator_authorization_not_configured")
         from homeassistant_gateway.presentation.auth_headers import parse_bearer_token
@@ -55,6 +55,13 @@ def register_development_routes(app: FastAPI, dependencies: DevelopmentRouteDepe
         client = dependencies.authenticate_client.execute(parse_bearer_token(request.headers.get("authorization")) or "")
         if client is None:
             raise HTTPException(status_code=401, detail="invalid_client_token")
+        if target is not None:
+            service = target
+            if capability == "ha.write.automations":
+                action = (proposed or {}).get("action")
+                service = f"automation.{action}" if isinstance(action, str) else ""
+            if service not in client.operator_services:
+                raise HTTPException(status_code=403, detail="service_not_granted_to_client")
         decision = dependencies.authorize_request.execute(client.client_id, capability, mutation=True)
         if decision.decision.value != "approval_required":
             raise HTTPException(status_code=403, detail=decision.reason)
@@ -122,7 +129,7 @@ def register_development_routes(app: FastAPI, dependencies: DevelopmentRouteDepe
     def operator_approval_resource(request: Request, payload: OperatorApprovalRequest) -> dict[str, Any]:
         if not dependencies.operator_enabled or dependencies.operator_mutations is None:
             raise HTTPException(status_code=403, detail="operator_disabled")
-        require_operator_client(request, payload.capability)
+        require_operator_client(request, payload.capability, payload.target, payload.proposed)
         try:
             grant = dependencies.operator_mutations.request_approval(payload.operation, payload.target, payload.capability, payload.proposed)
         except (RuntimeError, ValueError) as error:
@@ -133,7 +140,7 @@ def register_development_routes(app: FastAPI, dependencies: DevelopmentRouteDepe
     def operator_execute_resource(request: Request, payload: OperatorExecuteRequest) -> dict[str, Any]:
         if not dependencies.operator_enabled or dependencies.operator_mutations is None:
             raise HTTPException(status_code=403, detail="operator_disabled")
-        require_operator_client(request, payload.capability)
+        require_operator_client(request, payload.capability, payload.target, payload.proposed)
         try:
             return dependencies.operator_mutations.execute(
                 payload.operation,

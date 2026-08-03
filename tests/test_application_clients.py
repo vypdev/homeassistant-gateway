@@ -7,6 +7,8 @@ from homeassistant_gateway.application.clients import (
     IssueClient,
     ListClients,
     RevokeClient,
+    RotateClient,
+    UpdateClientOperatorServices,
 )
 from homeassistant_gateway.domain.clients import Client, ClientStatus
 from homeassistant_gateway.domain.policy import Profile
@@ -100,3 +102,50 @@ def test_revoke_client_is_idempotent_and_listing_hides_token_digest() -> None:
     listed = ListClients(repository).execute()
     assert listed[0].status is ClientStatus.REVOKED
     assert not hasattr(listed[0], "token")
+
+
+def test_operator_grants_are_explicit_and_can_be_updated() -> None:
+    repository = InMemoryClientRepository()
+    use_case = IssueClient(repository, FakeTokenIssuer(), lambda: datetime.now(UTC), operator_enabled=True)
+    result = use_case.execute(
+        client_id="hermes",
+        display_name="Hermes",
+        profile=Profile.OPERATOR,
+        capabilities=frozenset({"ha.write.services"}),
+        operator_services=frozenset({"light.turn_on"}),
+    )
+    assert result.client.operator_services == frozenset({"light.turn_on"})
+    updated = UpdateClientOperatorServices(repository).execute("hermes", frozenset({"switch.turn_off"}))
+    assert updated.operator_services == frozenset({"switch.turn_off"})
+
+
+def test_observer_cannot_receive_operator_service_grants() -> None:
+    use_case = IssueClient(InMemoryClientRepository(), FakeTokenIssuer(), lambda: datetime.now(UTC), operator_enabled=True)
+    with pytest.raises(ValueError, match="observer_operator_capability_conflict"):
+        use_case.execute(
+            client_id="observer-services",
+            display_name="Observer",
+            profile=Profile.OBSERVER,
+            capabilities=frozenset({"ha.read.states"}),
+            operator_services=frozenset({"light.turn_on"}),
+        )
+
+
+def test_operator_service_update_rejects_missing_or_observer_clients() -> None:
+    repository = InMemoryClientRepository()
+    updater = UpdateClientOperatorServices(repository)
+    with pytest.raises(ValueError, match="client_not_found"):
+        updater.execute("missing", frozenset({"light.turn_on"}))
+    issue = IssueClient(repository, FakeTokenIssuer(), lambda: datetime.now(UTC), operator_enabled=True)
+    issue.execute("observer", "Observer", Profile.OBSERVER, frozenset({"ha.read.states"}))
+    with pytest.raises(ValueError, match="operator_services_require_operator_profile"):
+        updater.execute("observer", frozenset({"light.turn_on"}))
+
+
+def test_client_identity_and_rotation_rejections_are_explicit() -> None:
+    repository = InMemoryClientRepository()
+    issue = IssueClient(repository, FakeTokenIssuer(), lambda: datetime.now(UTC), operator_enabled=False)
+    with pytest.raises(ValueError, match="client_identity_required"):
+        issue.execute("", "", Profile.OBSERVER, frozenset())
+    with pytest.raises(ValueError, match="client_not_active"):
+        RotateClient(repository, FakeTokenIssuer()).execute("missing")

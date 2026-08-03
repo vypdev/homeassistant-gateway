@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.18
+
+- Add GitHub-style per-credential operator service grants.
+- Keep operator clients read-only by default, with explicit service grants per credential.
+- Persist grants with existing client records and migrate older SQLite databases additively.
+- Enforce grants for the authenticated credential before operator approval and execution.
+- Display effective operator capabilities and service grants in the Clients view.
+- Reject wildcard service grants and keep the global operator switch as `operator_enabled`.
+
 All notable changes to this app are documented in this file.
 
 ## 0.5.17

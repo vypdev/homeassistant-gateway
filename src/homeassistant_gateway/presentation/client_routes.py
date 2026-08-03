@@ -107,8 +107,13 @@ def register_client_routes(app: FastAPI, dependencies: ClientRouteDependencies) 
 
     @app.post("/api/clients", response_model=IssuedClientResponse, status_code=status.HTTP_201_CREATED)
     def issue_client_resource(request: CreateClientRequest) -> IssuedClientResponse:
+        if request.operator_services:
+            catalog = normalize_service_catalog(dependencies.home_assistant.services() if dependencies.home_assistant is not None else [])
+            available = {item["id"] for item in catalog}
+            if any(service == "*" or (available and service not in available) for service in request.operator_services):
+                raise HTTPException(status_code=400, detail="operator_service_not_available")
         try:
-            issued = dependencies.issue_client.execute(client_id=request.client_id, display_name=request.display_name, profile=request.profile, capabilities=request.capabilities)
+            issued = dependencies.issue_client.execute(client_id=request.client_id, display_name=request.display_name, profile=request.profile, capabilities=request.capabilities, operator_services=request.operator_services)
         except ValueError as error:
             reason = str(error)
             if reason == "client_already_exists":

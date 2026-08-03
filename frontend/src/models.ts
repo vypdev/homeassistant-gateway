@@ -4,6 +4,7 @@ export type Client = {
   display_name: string;
   profile: Profile;
   capabilities: string[];
+  operator_services: string[];
   created_at: string;
   status: string;
   revoked_at: string | null;

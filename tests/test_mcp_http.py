@@ -131,6 +131,7 @@ def test_operator_discovery_lists_only_configured_mutation_tools(tmp_path) -> No
                     "display_name": "Operator",
                     "profile": "operator",
                     "capabilities": ["ha.write.services", "ha.write.automations"],
+                    "operator_services": ["light.turn_on", "automation.trigger"],
                 },
             )
             assert created.status_code == 201
@@ -184,4 +185,16 @@ def test_operator_discovery_lists_only_configured_mutation_tools(tmp_path) -> No
             )
             assert execute_response.json()["result"]["structuredContent"]["reason"] == "mutation_adapter_not_configured"
 
+    asyncio.run(run())
+
+
+def test_operator_service_grant_isolated_per_client(tmp_path) -> None:
+    async def run() -> None:
+        app = build_app(AppSettings(tmp_path, operator_enabled=True, operator_allowed_services=("light.turn_on",)))
+        async with app.router.lifespan_context(app), httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://localhost") as client:
+            ingress = {"X-Remote-User-Id": "test-user", "Content-Type": "application/json"}
+            created = await client.post("/api/clients", headers=ingress, json={"client_id": "operator-no-grant", "display_name": "Operator", "profile": "operator", "capabilities": ["ha.write.services"], "operator_services": []})
+            token = created.json()["token"]
+            response = await client.post("/mcp/", headers={**ingress, "Authorization": f"Bearer {token}", "Accept": "application/json, text/event-stream", "MCP-Protocol-Version": "2025-06-18"}, json={"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "ha_request_service_approval", "arguments": {"target": "light.turn_on", "proposed": {"entity_id": "light.test"}}}})
+            assert response.json()["result"]["structuredContent"] == {"status": "denied", "reason": "service_not_granted_to_client"}
     asyncio.run(run())

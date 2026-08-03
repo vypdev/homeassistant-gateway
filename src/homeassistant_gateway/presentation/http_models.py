@@ -28,6 +28,7 @@ class CreateClientRequest(BaseModel):
     display_name: str = Field(min_length=1, max_length=256)
     profile: Profile
     capabilities: frozenset[str] = Field(default_factory=frozenset)
+    operator_services: frozenset[str] = Field(default_factory=frozenset)
 
 
 class ClientResponse(BaseModel):
@@ -37,6 +38,7 @@ class ClientResponse(BaseModel):
     display_name: str
     profile: Profile
     capabilities: frozenset[str]
+    operator_services: frozenset[str]
     created_at: datetime
     status: str
     revoked_at: datetime | None
@@ -48,6 +50,7 @@ class ClientResponse(BaseModel):
             display_name=client.display_name,
             profile=client.profile,
             capabilities=client.capabilities,
+            operator_services=client.operator_services,
             created_at=client.created_at,
             status=client.status.value,
             revoked_at=client.revoked_at,

@@ -20,3 +20,4 @@ class Client:
     status: ClientStatus
     token_digest: str = field(repr=False)
     revoked_at: datetime | None = None
+    operator_services: frozenset[str] = field(default_factory=frozenset)

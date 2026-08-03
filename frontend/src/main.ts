@@ -261,7 +261,8 @@ export class GatewayApp extends LitElement {
     .capability-option input { width: auto; margin-top: 3px; }
     .capability-option strong { display: block; color: #d7e8f7; font-size: 12px; }
     .capability-option small { display: block; color: #8ea5bd; margin-top: 2px; }
-    .capability-option.operator { opacity: .5; cursor: not-allowed; }
+    .capability-option.operator { opacity: 1; cursor: pointer; }
+    .capability-option.operator:has(input:disabled) { opacity: .5; cursor: not-allowed; }
     .shell.light .capability-option { background: #f8fbfe; border-color: #b9cad9; }
     .shell.light .capability-option strong { color: #29445d; }
     .result-row { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; border: 1px solid #29465f; border-radius: 10px; padding: 12px 13px; background: #07152233; }
@@ -301,7 +302,7 @@ export class GatewayApp extends LitElement {
     const data = new FormData(form);
     this.busy = true; this.error = '';
     try {
-      const result = await api<Client & { token: string }>('/clients', { method: 'POST', body: JSON.stringify({ client_id: data.get('client_id'), display_name: data.get('display_name'), profile: data.get('profile'), capabilities: [...this.selectedCapabilities] }) });
+      const result = await api<Client & { token: string }>('/clients', { method: 'POST', body: JSON.stringify({ client_id: data.get('client_id'), display_name: data.get('display_name'), profile: data.get('profile'), capabilities: [...this.selectedCapabilities], operator_services: data.getAll('operator_services') }) });
       this.issuedToken = result.token; form.reset(); this.selectedCapabilities = new Set(['ha.read.diagnostics']); await this.refresh();
     } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorIssueClient'); }
     finally { this.busy = false; }
@@ -446,7 +447,7 @@ export class GatewayApp extends LitElement {
 
   developmentView() { return renderDevelopmentView({ catalog: this.development, progress: this.developmentProgress, results: this.developmentResults, reports: this.developmentReports, output: this.developmentOutput, entity: this.developmentEntity, startTime: this.developmentStartTime, busy: this.busy, t: this.t.bind(this), statusText: this.statusText.bind(this), packText: this.packText.bind(this), operationText: this.operationText.bind(this), setEntity: (value) => { this.developmentEntity = value; }, setStartTime: (value) => { this.developmentStartTime = value; }, runAll: () => void this.runAllDevelopment(), runPack: (name) => void this.runDevelopmentPack(name), runOperation: (name) => void this.runDevelopment(name), download: () => this.downloadDiagnostic(), copyProblemReports: () => void this.copyProblemReports(), copyDiagnostic: (result) => void this.copyDiagnostic(result), retry: (operation) => void this.retryDevelopment(operation), reasonText: (reason) => reason === 'empty_result' ? this.t('statusPartial') : reason }); }
 
-  clientsView() { return renderClientsView({ clients: this.clients, busy: this.busy, t: this.t.bind(this), refresh: () => void this.refresh(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), rotate: (clientId) => void this.rotate(clientId), capabilitySelector: () => this.capabilitySelector(), operatorEnabled: this.operatorEnabled }); }
+  clientsView() { return renderClientsView({ clients: this.clients, busy: this.busy, t: this.t.bind(this), refresh: () => void this.refresh(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), rotate: (clientId) => void this.rotate(clientId), capabilitySelector: () => this.capabilitySelector(), operatorEnabled: this.operatorEnabled, operatorServices: this.operatorPolicy?.services ?? [] }); }
 
   auditView() { return auditView({ audit: this.audit, t: this.t.bind(this), loadAudit: (decision) => void this.loadAudit(decision) }); }
 
