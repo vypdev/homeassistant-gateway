@@ -94,6 +94,20 @@ def test_logbook_without_entity_reads_all_activity() -> None:
     assert make_client(handler).logbook() == [{"entity_id": "light.kitchen", "state": "on"}]
 
 
+def test_logbook_websocket_uses_official_get_events_command() -> None:
+    client = make_client(lambda request: httpx.Response(500))
+    calls: list[tuple[str, dict[str, object]]] = []
+
+    def websocket(command: str, payload: dict[str, object]) -> list[dict[str, object]]:
+        calls.append((command, payload))
+        return [{"entity_id": "light.kitchen", "state": "on"}]
+
+    client._ws_command = websocket
+    assert client.logbook("light.kitchen", "2026-08-01T00:00:00Z") == [{"entity_id": "light.kitchen", "state": "on"}]
+    assert calls[0][0] == "logbook/get_events"
+    assert calls[0][1]["entity_ids"] == ["light.kitchen"]
+
+
 @pytest.mark.parametrize("status", [400, 401, 403, 404, 500])
 def test_upstream_http_statuses_are_classified_without_response_body(status: int) -> None:
     client = make_client(lambda request: httpx.Response(status, text="secret upstream body"))

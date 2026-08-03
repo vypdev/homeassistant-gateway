@@ -40,6 +40,7 @@ class DevelopmentToolRunner:
     def __init__(self, home_assistant: HomeAssistantReadPort, port_diagnostics: PortDiagnosticsPort | None = None) -> None:
         self._home_assistant = home_assistant
         self._port_diagnostics = port_diagnostics
+        self.last_trace: tuple[DevelopmentTraceStep, ...] = ()
         self._operations: dict[str, Callable[..., Any]] = {
             "inventory": home_assistant.inventory,
             "states": home_assistant.states,
@@ -62,9 +63,14 @@ class DevelopmentToolRunner:
         if callable(begin_trace):
             begin_trace()
         started = monotonic()
-        data = self._operations[operation](**safe_parameters)
+        try:
+            data = self._operations[operation](**safe_parameters)
+        except Exception:
+            self.last_trace = tuple(getattr(self._home_assistant, "last_trace", ()))
+            raise
         duration_ms = max(0, round((monotonic() - started) * 1000))
         upstream_trace = tuple(getattr(self._home_assistant, "last_trace", ()))
+        self.last_trace = upstream_trace
         trace = upstream_trace or (DevelopmentTraceStep(
             phase="execute",
             transport="application",

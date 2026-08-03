@@ -2,6 +2,13 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.5.7
+
+- Correct the native Home Assistant logbook WebSocket command to the official `logbook/get_events` contract.
+- Send the official `start_time`, `end_time`, and optional `entity_ids` payload fields used by Home Assistant Core and frontend.
+- Preserve WebSocket transport traces when asynchronous development jobs report `home_assistant_unavailable`.
+- Keep authentication and command failures explicit; REST fallback remains limited to transport failures.
+
 ## 0.5.6
 
 - Include `unavailable` development results in the Developer Console's “Copy errors and warnings” report.

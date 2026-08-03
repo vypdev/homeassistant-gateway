@@ -37,7 +37,7 @@ class SupervisorHistoryReader:
     def logbook(self: Any, entity_id: str | None = None, start_time: str | None = None) -> list[dict[str, Any]]:
         start = start_time or self._timestamp(datetime.now(UTC) - timedelta(days=1))
         try:
-            payload = self._ws_command("logbook/get", {"start_time": start, **({"entity": entity_id} if entity_id else {})})
+            payload = self._ws_command("logbook/get_events", {"start_time": start, "end_time": self._timestamp(datetime.now(UTC)), **({"entity_ids": [entity_id]} if entity_id else {})})
             return self._bounded_list(payload)
         except HomeAssistantUnavailable as error:
             if not self._is_websocket_fallback_allowed(error):

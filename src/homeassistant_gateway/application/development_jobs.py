@@ -128,7 +128,7 @@ class DevelopmentJobManager:
                 try:
                     result = self._runner.run(operation, job.parameters if len(job.operations) == 1 else {})
                 except HomeAssistantUnavailable:
-                    result = DevelopmentResult("unavailable", operation, 0, 0, reason="home_assistant_unavailable")
+                    result = DevelopmentResult("unavailable", operation, 0, 0, reason="home_assistant_unavailable", trace=tuple(getattr(self._runner, "last_trace", ())))
                 except ValueError:
                     result = DevelopmentResult("error", operation, 0, 0, reason="invalid_development_operation")
                 except Exception:  # noqa: BLE001 - sanitize unexpected probe failures
