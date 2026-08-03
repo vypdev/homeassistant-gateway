@@ -165,11 +165,13 @@ export class GatewayApp extends LitElement {
     .shell.light .dev-output { color: #31516b; background: #f5f9fc; border-color: #d3deea; }
     .shell.light .grid { opacity: .25; background-image: linear-gradient(#5c88a31c 1px, transparent 1px), linear-gradient(90deg, #5c88a31c 1px, transparent 1px); }
     .shell::before { content: ''; position: fixed; inset: -20%; pointer-events: none; background: radial-gradient(circle at 18% 0%, #087fb52b, transparent 34%), radial-gradient(circle at 90% 20%, #234b9c22, transparent 36%); animation: drift 32s ease-in-out infinite alternate; }
-    .neural { position: fixed; inset: 0; pointer-events: none; opacity: .45; overflow: hidden; }
-    .neural::before, .neural::after { content: ''; position: absolute; inset: 8% 4%; background: linear-gradient(28deg, transparent 48%, #4bc9ff22 49%, transparent 50%), linear-gradient(151deg, transparent 48%, #6ce0c522 49%, transparent 50%), linear-gradient(79deg, transparent 49%, #4bc9ff18 50%, transparent 51%); background-size: 260px 210px, 320px 280px, 420px 330px; animation: network-flow 24s linear infinite; mask-image: radial-gradient(ellipse at center, black, transparent 76%); }
-    .neural::after { filter: blur(1px); opacity: .7; animation-duration: 36s; animation-direction: reverse; }
-    .node { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: #65d8ff; box-shadow: 0 0 0 4px #65d8ff14, 0 0 18px #65d8ffcc; animation: node-pulse 4s ease-in-out infinite; }
-    .shell.light .neural { opacity: .25; } .shell.light .node { background: #168bd0; box-shadow: 0 0 0 4px #168bd014, 0 0 18px #168bd066; }
+    .dot-field { position: fixed; inset: 0; pointer-events: none; overflow: hidden; opacity: .9; background-image: radial-gradient(circle, #8fc9ed2e 1px, transparent 1.45px); background-size: 24px 24px; mask-image: radial-gradient(ellipse at center, black 12%, transparent 82%); }
+    .dot-field__zone { position: absolute; width: 54vw; height: 42vw; max-width: 760px; max-height: 590px; min-width: 360px; min-height: 270px; background-image: radial-gradient(circle, #93d8ff 1.45px, transparent 2px); background-size: 24px 24px; mask-image: radial-gradient(ellipse at center, black 0%, transparent 70%); opacity: .23; filter: blur(.1px); animation: dot-zone-drift 28s ease-in-out infinite alternate; }
+    .dot-field__zone--one { top: -12%; left: -10%; }
+    .dot-field__zone--two { top: 20%; right: -16%; animation-duration: 34s; animation-delay: -9s; }
+    .dot-field__zone--three { bottom: -24%; left: 24%; animation-duration: 40s; animation-delay: -18s; opacity: .16; }
+    .shell.light .dot-field { opacity: .78; background-image: radial-gradient(circle, #5e89a52b 1px, transparent 1.45px); }
+    .shell.light .dot-field__zone { background-image: radial-gradient(circle, #6d9bb8 1.45px, transparent 2px); opacity: .2; }
     .boot-stage { min-height: min(620px, calc(100vh - 56px)); display: grid; place-items: center; padding: 28px; }
     .boot-card { position: relative; width: min(520px, 100%); padding: 42px 38px; text-align: center; border: 1px solid #31536f; border-radius: 22px; background: #071522d9; box-shadow: 0 24px 70px #02081266; backdrop-filter: blur(14px); }
     .shell.light .boot-card { border-color: #c4d5e1; background: #ffffffec; box-shadow: 0 24px 70px #38516b1c; }
@@ -190,7 +192,7 @@ export class GatewayApp extends LitElement {
     .layout { position: relative; width: min(1360px, calc(100% - 40px)); margin: auto; display: grid; grid-template-columns: 230px 1fr; gap: 28px; padding: 28px 0; }
     aside { border: 1px solid #23415e; border-radius: 20px; background: #0b1929dd; padding: 20px 14px; height: calc(100vh - 56px); position: sticky; top: 28px; display: flex; flex-direction: column; }
     .brand { padding: 4px 10px 26px; display: flex; gap: 10px; align-items: center; }
-    .brand-mark { width: 34px; height: 34px; border: 1px solid #4bc9ff; border-radius: 11px; display: grid; place-items: center; color: #54d1ff; box-shadow: 0 0 22px #16a9ef55; }
+    .brand-mark { width: 34px; height: 34px; border: 1px solid #4bc9ff66; border-radius: 11px; display: block; object-fit: cover; box-shadow: 0 0 22px #16a9ef55; }
     .brand strong { display: block; letter-spacing: -.02em; }
     .brand small, .muted { color: #8ea5bd; }
     nav { display: grid; gap: 5px; }
@@ -262,11 +264,10 @@ export class GatewayApp extends LitElement {
     @keyframes boot-pulse { 0%, 100% { transform: scale(.82); opacity: .72; } 50% { transform: scale(1.12); opacity: 1; } }
     @keyframes boot-progress { 0% { transform: translateX(-130%); } 55%, 100% { transform: translateX(250%); } }
     @keyframes drift { from { transform: translate3d(-1%, -1%, 0) scale(1); } to { transform: translate3d(2%, 2%, 0) scale(1.04); } }
-    @keyframes network-flow { from { transform: translate3d(-2%, -1%, 0) rotate(0deg); } to { transform: translate3d(2%, 1%, 0) rotate(2deg); } }
-    @keyframes node-pulse { 0%, 100% { opacity: .45; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.25); } }
+    @keyframes dot-zone-drift { from { transform: translate3d(-8%, -5%, 0) scale(.92); } to { transform: translate3d(10%, 8%, 0) scale(1.12); } }
     @media (max-width: 1000px) { .cards { grid-template-columns: repeat(2, 1fr); } .topology-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .split, .dev-grid { grid-template-columns: 1fr; } }
     @media (max-width: 720px) { .layout { width: min(100% - 24px, 600px); display: block; padding-top: 12px; } aside { height: auto; position: static; margin-bottom: 18px; } nav { grid-template-columns: repeat(4, 1fr); } nav button { text-align: center; padding: 9px 4px; font-size: 12px; } .side-foot { display: none; } .cards, .topology-grid, .split, .dev-grid, .pack-grid { grid-template-columns: 1fr; } .topline { display: block; } .topline > div { min-width: 0; } .status-pill { margin-top: 16px; } .toolbar, .capability-toolbar { flex-wrap: wrap; align-items: flex-start; } .toolbar > div, .toolbar button { min-width: 0; } .toolbar button, .form-actions button { max-width: 100%; } .form-actions { flex-wrap: wrap; } .result-row { flex-direction: column; } .result-row > * { max-width: 100%; } .pack-grid button { min-width: 0; } .card { min-width: 0; padding: 16px; } h1 { overflow-wrap: anywhere; } }
-    @media (prefers-reduced-motion: reduce) { .shell::before, .neural::before, .neural::after, .node, .boot-orbit, .boot-core, .boot-progress::before { animation: none; } *, *::before, *::after { transition-duration: .01ms !important; } }
+    @media (prefers-reduced-motion: reduce) { .shell::before, .dot-field__zone, .boot-orbit, .boot-core, .boot-progress::before { animation: none; } *, *::before, *::after { transition-duration: .01ms !important; } }
     @media (prefers-contrast: more) { .card, aside, input, select, textarea, .result-row { border-color: currentColor; } .muted, p, label, th { color: currentColor; } .tag, button.secondary { border-color: currentColor; } }
   `;
 
@@ -407,15 +408,15 @@ export class GatewayApp extends LitElement {
 
   loadingView() {
     const failed = this.bootState === 'error';
-    return html`<div class="shell ${this.effectiveTheme}">${neuralBackground()}<div class="grid"></div><main class="boot-stage" aria-busy=${failed ? 'false' : 'true'}><section class="boot-card" aria-live="polite"><div class="boot-orbit" aria-hidden="true"><div class="boot-core"></div></div><h1>${failed ? this.t('errorLoadState') : this.t('checkingGateway')}</h1><p>${this.t('healthDescription')}</p>${failed ? html`<div class="alert" role="alert" style="margin-top:20px">${this.error}</div><button class="secondary boot-retry" @click=${() => void this.refresh()}>${this.t('refresh')}</button>` : html`<div class="boot-status"><span class="dot"></span>${this.t('checkingGateway')}</div><div class="boot-progress" role="progressbar" aria-label=${this.t('checkingGateway')}></div>`}</section></main></div>`;
+    return html`<div class="shell ${this.effectiveTheme}">${neuralBackground()}<main class="boot-stage" aria-busy=${failed ? 'false' : 'true'}><section class="boot-card" aria-live="polite"><div class="boot-orbit" aria-hidden="true"><div class="boot-core"></div></div><h1>${failed ? this.t('errorLoadState') : this.t('checkingGateway')}</h1><p>${this.t('healthDescription')}</p>${failed ? html`<div class="alert" role="alert" style="margin-top:20px">${this.error}</div><button class="secondary boot-retry" @click=${() => void this.refresh()}>${this.t('refresh')}</button>` : html`<div class="boot-status"><span class="dot"></span>${this.t('checkingGateway')}</div><div class="boot-progress" role="progressbar" aria-label=${this.t('checkingGateway')}></div>`}</section></main></div>`;
   }
 
   render() {
     if (this.bootState !== 'ready') return this.loadingView();
     const active = this.view;
-    return html`<div class="shell ${this.effectiveTheme}">${neuralBackground()}<div class="grid"></div><div class="layout">
+    return html`<div class="shell ${this.effectiveTheme}">${neuralBackground()}<div class="layout">
       <aside>
-        <div class="brand"><div class="brand-mark">⌁</div><div><strong>${this.t('gateway')}</strong><small> ${this.t('controlPlane')}</small></div></div>
+        <div class="brand"><img class="brand-mark" src="/icon.png" alt="" width="34" height="34" /><div><strong>${this.t('gateway')}</strong><small> ${this.t('controlPlane')}</small></div></div>
         ${navigationView(this.view, this.t.bind(this), (view) => this.setView(view))}
         <div class="side-foot"><div class="ok">● ${this.t('observerFirst')}</div><div>${this.t('operatorDisabled')}</div></div>
       </aside>
