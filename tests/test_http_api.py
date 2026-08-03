@@ -213,8 +213,17 @@ def test_operator_status_is_ingress_protected_and_has_no_mutation_tools() -> Non
         "execution": "disabled",
         "registered_mutation_tools": [],
         "capabilities": [],
-        "reason": "operator_mutations_not_implemented",
+        "reason": "mutation_execution_disabled",
     }
+
+
+def test_operator_approval_and_execute_are_blocked_when_disabled() -> None:
+    app = make_app(home_assistant=FakeHomeAssistant())
+    payload = {"operation": "ha.call_service", "target": "light.kitchen", "capability": "ha.write.services", "proposed": {"state": "on"}}
+    assert request(app, "POST", "/api/operator/approval", headers=ingress_headers(), json=payload).status_code == 403
+    execute_payload = {**payload, "approval_id": "approval", "approval_token": "token", "idempotency_key": "request"}
+    assert request(app, "POST", "/api/operator/execute", headers=ingress_headers(), json=execute_payload).status_code == 403
+
 
 
 def test_ingress_responses_include_security_headers() -> None:

@@ -57,6 +57,8 @@ The emergency control can disable operator execution without disabling observer 
 
 The application ports now support a SQLite-backed operator state adapter. It persists approval metadata, token digests, consumed state and idempotency fingerprints with private database permissions; plaintext approval tokens and proposed payloads are never stored. The adapter is available for composition, but it is not connected to an active mutation route while operator execution remains disabled.
 
+The Ingress-only HTTP boundary exposes `POST /api/operator/approval` and `POST /api/operator/execute` for contract testing. Both reject requests with `403 operator_disabled` while the global flag is false. If the flag is enabled without a mutation adapter, execution remains bounded and returns `mutation_adapter_not_configured`; no MCP mutation tool is registered by this release.
+
 ## Home Assistant contract research
 
 The official Home Assistant documentation confirms:

@@ -13,9 +13,12 @@ from homeassistant_gateway.application.development import (
 )
 from homeassistant_gateway.application.development_jobs import DevelopmentJobManager
 from homeassistant_gateway.application.home_assistant import HomeAssistantReadPort
+from homeassistant_gateway.application.operator_mutations import OperatorMutationService
 from homeassistant_gateway.application.operator_preview import build_operator_preview
 from homeassistant_gateway.presentation.http_models import (
     DevelopmentRunRequest,
+    OperatorApprovalRequest,
+    OperatorExecuteRequest,
     OperatorPreviewRequest,
 )
 
@@ -27,6 +30,7 @@ class DevelopmentRouteDependencies:
     development_report_store: DevelopmentReportStore | None
     enabled: bool
     operator_enabled: bool = False
+    operator_mutations: OperatorMutationService | None = None
 
 
 def register_development_routes(app: FastAPI, dependencies: DevelopmentRouteDependencies) -> None:
@@ -40,7 +44,7 @@ def register_development_routes(app: FastAPI, dependencies: DevelopmentRouteDepe
             "packs": [asdict(item) for item in development_packs()],
             "mutations": {
                 "status": "disabled",
-                "reason": "operator_mutations_not_implemented",
+                "reason": "mutation_execution_disabled",
                 "approval_required": True,
                 "operator_enabled": dependencies.operator_enabled,
             },
@@ -54,7 +58,7 @@ def register_development_routes(app: FastAPI, dependencies: DevelopmentRouteDepe
             "execution": "disabled",
             "registered_mutation_tools": [],
             "capabilities": [],
-            "reason": "operator_mutations_not_implemented",
+            "reason": "mutation_execution_disabled",
         }
 
     @app.post("/api/development/run", status_code=202)
@@ -86,6 +90,37 @@ def register_development_routes(app: FastAPI, dependencies: DevelopmentRouteDepe
             return asdict(build_operator_preview(request.operation, request.target, request.capability, request.proposed, request.current))
         except ValueError as error:
             raise HTTPException(status_code=400, detail=str(error)) from error
+
+    @app.post("/api/operator/approval")
+    def operator_approval_resource(request: OperatorApprovalRequest) -> dict[str, Any]:
+        if not dependencies.operator_enabled or dependencies.operator_mutations is None:
+            raise HTTPException(status_code=403, detail="operator_disabled")
+        try:
+            grant = dependencies.operator_mutations.request_approval(request.operation, request.target, request.capability, request.proposed)
+        except (RuntimeError, ValueError) as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+        return {"approval_id": grant.approval_id, "approval_token": grant.token, "expires_at": grant.expires_at.isoformat()}
+
+    @app.post("/api/operator/execute")
+    def operator_execute_resource(request: OperatorExecuteRequest) -> dict[str, Any]:
+        if not dependencies.operator_enabled or dependencies.operator_mutations is None:
+            raise HTTPException(status_code=403, detail="operator_disabled")
+        try:
+            return dependencies.operator_mutations.execute(
+                request.operation,
+                request.target,
+                request.capability,
+                request.proposed,
+                request.approval_id,
+                request.approval_token,
+                request.idempotency_key,
+            )
+        except PermissionError as error:
+            raise HTTPException(status_code=403, detail=str(error)) from error
+        except ValueError as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+        except RuntimeError as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
 
     @app.get("/api/development/reports")
     def development_reports_resource(limit: int = Query(default=20, ge=1, le=100)) -> list[dict[str, Any]]:

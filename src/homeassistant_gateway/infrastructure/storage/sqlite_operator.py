@@ -1,13 +1,17 @@
 import sqlite3
+import uuid
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
+from homeassistant_gateway.application.audit import AuditEvent
 from homeassistant_gateway.application.operator_security import (
     ApprovalGrant,
     ApprovalStore,
     IdempotencyStore,
     _StoredGrant,
 )
+from homeassistant_gateway.infrastructure.storage.sqlite_audit import SQLiteAuditRepository
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS operator_approvals (
@@ -86,8 +90,28 @@ class SQLiteOperatorStateRepository(ApprovalStore, IdempotencyStore):
         with self._connect() as connection:
             connection.execute("INSERT INTO operator_idempotency VALUES (?, ?)", (key, proposal_fingerprint))
 
-
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self._database)
         connection.row_factory = sqlite3.Row
         return connection
+
+
+class SQLiteOperatorAuditAdapter:
+    def __init__(self, repository: SQLiteAuditRepository, clock: Callable[[], datetime]) -> None:
+        self._repository = repository
+        self._clock = clock
+
+    def record(self, operation: str, target: str, decision: str, outcome: str) -> None:
+        self._repository.record(
+            AuditEvent(
+                event_id=uuid.uuid4().hex,
+                occurred_at=self._clock(),
+                request_id="operator",
+                remote_user_id=None,
+                action=f"operator.{operation}",
+                target=target,
+                decision=decision,
+                outcome=outcome,
+                status_code=200 if decision == "allowed" else 403,
+            )
+        )

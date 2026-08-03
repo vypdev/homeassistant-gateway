@@ -29,6 +29,7 @@ from homeassistant_gateway.application.development_jobs import DevelopmentJobMan
 from homeassistant_gateway.application.home_assistant import (
     HomeAssistantReadPort,
 )
+from homeassistant_gateway.application.operator_mutations import OperatorMutationService
 from homeassistant_gateway.presentation.audit_routes import (
     AuditRouteDependencies,
     register_audit_routes,
@@ -64,6 +65,7 @@ def create_app(
     development_report_store: DevelopmentReportStore | None = None,
     development_console_enabled: bool = True,
     operator_enabled: bool = False,
+    operator_mutations: OperatorMutationService | None = None,
     lifespan: Any | None = None,
 ) -> FastAPI:
     """Build the HTTP adapter around already-wired application use cases."""
@@ -108,6 +110,7 @@ def create_app(
             development_report_store=development_report_store,
             enabled=development_console_enabled,
             operator_enabled=operator_enabled,
+            operator_mutations=operator_mutations,
         ),
     )
 

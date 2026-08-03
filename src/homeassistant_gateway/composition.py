@@ -14,12 +14,22 @@ from homeassistant_gateway.application.clients import (
 )
 from homeassistant_gateway.application.development import DevelopmentToolRunner
 from homeassistant_gateway.application.observer import ObserverDiagnostics
+from homeassistant_gateway.application.operator_mutations import OperatorMutationService
+from homeassistant_gateway.application.operator_security import (
+    ApprovalService,
+    IdempotencyRegistry,
+    OperatorControl,
+)
 from homeassistant_gateway.infrastructure.local_port_diagnostics import LocalGatewayPortDiagnostics
 from homeassistant_gateway.infrastructure.security.tokens import SecureTokenIssuer
 from homeassistant_gateway.infrastructure.storage.sqlite_audit import SQLiteAuditRepository
 from homeassistant_gateway.infrastructure.storage.sqlite_clients import SQLiteClientRepository
 from homeassistant_gateway.infrastructure.storage.sqlite_development import (
     SQLiteDevelopmentReportStore,
+)
+from homeassistant_gateway.infrastructure.storage.sqlite_operator import (
+    SQLiteOperatorAuditAdapter,
+    SQLiteOperatorStateRepository,
 )
 from homeassistant_gateway.infrastructure.supervisor_home_assistant import (
     SupervisorHomeAssistantClient,
@@ -50,12 +60,19 @@ def build_app(settings: AppSettings) -> FastAPI:
     repository = SQLiteClientRepository(database)
     audit_repository = SQLiteAuditRepository(database)
     development_report_store = SQLiteDevelopmentReportStore(database)
+    operator_state = SQLiteOperatorStateRepository(database)
     token_issuer = SecureTokenIssuer()
     clock = lambda: datetime.now(UTC)
 
     authenticate_client = AuthenticateClient(repository, token_issuer)
     authorize_request = AuthorizeRequest(repository, settings.operator_enabled)
     observer_diagnostics = ObserverDiagnostics(authenticate_client, authorize_request)
+    operator_mutations = OperatorMutationService(
+        OperatorControl(settings.operator_enabled),
+        ApprovalService(clock=clock, store=operator_state),
+        IdempotencyRegistry(store=operator_state),
+        audit=SQLiteOperatorAuditAdapter(audit_repository, clock),
+    )
     home_assistant = (
         SupervisorHomeAssistantClient(settings.supervisor_token, base_url=settings.supervisor_url)
         if settings.supervisor_token
@@ -89,5 +106,6 @@ def build_app(settings: AppSettings) -> FastAPI:
         development_report_store=development_report_store,
         development_console_enabled=settings.development_console_enabled,
         operator_enabled=settings.operator_enabled,
+        operator_mutations=operator_mutations,
         lifespan=mcp_bundle.lifespan,
     )

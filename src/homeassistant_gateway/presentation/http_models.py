@@ -113,6 +113,16 @@ class OperatorPreviewRequest(BaseModel):
     current: dict[str, Any] = Field(default_factory=dict)
 
 
+class OperatorApprovalRequest(OperatorPreviewRequest):
+    pass
+
+
+class OperatorExecuteRequest(OperatorPreviewRequest):
+    approval_id: str = Field(min_length=1, max_length=128)
+    approval_token: str = Field(min_length=1, max_length=256)
+    idempotency_key: str = Field(min_length=1, max_length=128)
+
+
 class DevelopmentResultResponse(BaseModel):
     status: str
     operation: str
