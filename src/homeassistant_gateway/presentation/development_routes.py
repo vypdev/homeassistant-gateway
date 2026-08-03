@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from typing import Any
 
@@ -33,13 +34,19 @@ class DevelopmentRouteDependencies:
     enabled: bool
     operator_enabled: bool = False
     operator_mutations: OperatorMutationService | None = None
-    operator_capabilities: tuple[str, ...] = ()
-    registered_mutation_tools: tuple[str, ...] = ()
+    operator_capabilities: tuple[str, ...] | Callable[[], tuple[str, ...]] = ()
+    registered_mutation_tools: tuple[str, ...] | Callable[[], tuple[str, ...]] = ()
     authenticate_client: AuthenticateClient | None = None
     authorize_request: AuthorizeRequest | None = None
 
 
 def register_development_routes(app: FastAPI, dependencies: DevelopmentRouteDependencies) -> None:
+    def operator_capabilities() -> tuple[str, ...]:
+        return dependencies.operator_capabilities() if callable(dependencies.operator_capabilities) else dependencies.operator_capabilities
+
+    def registered_mutation_tools() -> tuple[str, ...]:
+        return dependencies.registered_mutation_tools() if callable(dependencies.registered_mutation_tools) else dependencies.registered_mutation_tools
+
     def require_operator_client(request: Request, capability: str) -> None:
         if dependencies.authenticate_client is None or dependencies.authorize_request is None:
             raise HTTPException(status_code=503, detail="operator_authorization_not_configured")
@@ -61,12 +68,12 @@ def register_development_routes(app: FastAPI, dependencies: DevelopmentRouteDepe
             "operations": [asdict(item) for item in development_catalog()],
             "packs": [asdict(item) for item in development_packs()],
             "mutations": {
-                "status": "ready" if dependencies.registered_mutation_tools else "disabled",
-                "reason": None if dependencies.registered_mutation_tools else "mutation_execution_disabled",
+                "status": "ready" if registered_mutation_tools() else "disabled",
+                "reason": None if registered_mutation_tools() else "mutation_execution_disabled",
                 "approval_required": True,
                 "operator_enabled": dependencies.operator_enabled,
-                "capabilities": dependencies.operator_capabilities,
-                "registered_mutation_tools": dependencies.registered_mutation_tools,
+                "capabilities": operator_capabilities(),
+                "registered_mutation_tools": registered_mutation_tools(),
             },
         }
 
@@ -75,10 +82,10 @@ def register_development_routes(app: FastAPI, dependencies: DevelopmentRouteDepe
         return {
             "profile": "operator",
             "operator_enabled": dependencies.operator_enabled,
-            "execution": "ready" if dependencies.registered_mutation_tools else "disabled",
-            "registered_mutation_tools": dependencies.registered_mutation_tools,
-            "capabilities": dependencies.operator_capabilities,
-            "reason": None if dependencies.registered_mutation_tools else "mutation_execution_disabled",
+            "execution": "ready" if registered_mutation_tools() else "disabled",
+            "registered_mutation_tools": registered_mutation_tools(),
+            "capabilities": operator_capabilities(),
+            "reason": None if registered_mutation_tools() else "mutation_execution_disabled",
         }
 
     @app.post("/api/development/run", status_code=202)

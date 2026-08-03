@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable, Collection
 from typing import Any, Protocol
 
 from homeassistant_gateway.application.home_assistant import (
@@ -17,7 +18,7 @@ class ServicePostTransport(Protocol):
 class SupervisorServiceMutationAdapter(HomeAssistantServiceMutationPort):
     """Bounded, allowlisted Home Assistant service-call adapter."""
 
-    def __init__(self, transport: ServicePostTransport, allowed_services: frozenset[str] = frozenset(), max_payload_keys: int = 50) -> None:
+    def __init__(self, transport: ServicePostTransport, allowed_services: Collection[str] | Callable[[], Collection[str]] = (), max_payload_keys: int = 50) -> None:
         if max_payload_keys < 1 or max_payload_keys > 200:
             raise ValueError("invalid_mutation_payload_limit")
         self._transport = transport
@@ -28,7 +29,8 @@ class SupervisorServiceMutationAdapter(HomeAssistantServiceMutationPort):
         operation = f"{domain}.{service}"
         if not re.fullmatch(r"[a-z0-9_]+", domain) or not re.fullmatch(r"[a-z0-9_]+", service):
             raise ValueError("invalid_service_name")
-        if operation not in self._allowed_services:
+        allowed_services = self._allowed_services() if callable(self._allowed_services) else self._allowed_services
+        if operation not in allowed_services:
             raise PermissionError("service_not_allowlisted")
         if not isinstance(payload, dict) or len(payload) > self._max_payload_keys:
             raise ValueError("service_payload_too_large")

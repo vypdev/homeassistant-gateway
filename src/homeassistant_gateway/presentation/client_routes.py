@@ -13,6 +13,11 @@ from homeassistant_gateway.application.clients import (
     RevokeClient,
     RotateClient,
 )
+from homeassistant_gateway.application.home_assistant import HomeAssistantReadPort
+from homeassistant_gateway.application.operator_policy import (
+    OperatorServicePolicyPort,
+    normalize_service_catalog,
+)
 from homeassistant_gateway.presentation.auth_headers import parse_bearer_token
 from homeassistant_gateway.presentation.http_models import (
     ClientResponse,
@@ -32,7 +37,8 @@ class ClientRouteDependencies:
     rotate_client: RotateClient
     authenticate_client: AuthenticateClient
     authorize_request: AuthorizeRequest
-
+    home_assistant: HomeAssistantReadPort | None = None
+    operator_service_policy: OperatorServicePolicyPort | None = None
 
 def register_client_routes(app: FastAPI, dependencies: ClientRouteDependencies) -> None:
     @app.get("/api/clients", response_model=list[ClientResponse])
@@ -59,6 +65,32 @@ def register_client_routes(app: FastAPI, dependencies: ClientRouteDependencies) 
             capabilities=client.capabilities,
             tools=tuple(tools),
         )
+
+    @app.get("/api/operator/service-policy")
+    def operator_service_policy_resource() -> dict[str, object]:
+        if dependencies.operator_service_policy is None:
+            raise HTTPException(status_code=503, detail="operator_policy_not_configured")
+        raw_catalog = dependencies.home_assistant.services() if dependencies.home_assistant is not None else []
+        catalog = normalize_service_catalog(raw_catalog)
+        return {
+            "services": catalog,
+            "selected": dependencies.operator_service_policy.get_allowed_services(),
+        }
+
+    @app.put("/api/operator/service-policy")
+    def update_operator_service_policy(payload: dict[str, object]) -> dict[str, object]:
+        if dependencies.operator_service_policy is None:
+            raise HTTPException(status_code=503, detail="operator_policy_not_configured")
+        raw_selected = payload.get("selected")
+        if not isinstance(raw_selected, list) or len(raw_selected) > 200 or not all(isinstance(item, str) for item in raw_selected):
+            raise HTTPException(status_code=400, detail="operator_service_policy_invalid")
+        catalog = normalize_service_catalog(dependencies.home_assistant.services() if dependencies.home_assistant is not None else [])
+        available = {item["id"] for item in catalog}
+        selected = tuple(sorted(set(raw_selected)))
+        if any(item not in available for item in selected):
+            raise HTTPException(status_code=400, detail="operator_service_not_available")
+        dependencies.operator_service_policy.set_allowed_services(selected)
+        return {"selected": selected}
 
     @app.get("/api/client/me", response_model=ClientResponse)
     def client_identity_resource(request: Request) -> ClientResponse:

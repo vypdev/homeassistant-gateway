@@ -23,3 +23,5 @@ export type DevelopmentCatalog = { enabled: boolean; upstream: string; operation
 export type UiContext = { locale: string; theme: 'light' | 'dark' | 'auto' };
 export type View = 'overview' | 'clients' | 'policy' | 'mcp' | 'audit' | 'development';
 export type CapabilityDefinition = { name: string; group: 'observer' | 'operator'; label: string; description: string };
+export type OperatorService = { id: string; domain: string; service: string; name: string; description: string; fields: Record<string, unknown> };
+export type OperatorServicePolicy = { services: OperatorService[]; selected: string[] };

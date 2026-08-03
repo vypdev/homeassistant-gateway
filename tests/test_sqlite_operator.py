@@ -20,3 +20,11 @@ def test_sqlite_operator_state_preserves_approval_digest_and_replay_state(tmp_pa
     idempotency.reserve("request-1", {"target": "light.test"})
     reopened_idempotency = IdempotencyRegistry(store=SQLiteOperatorStateRepository(tmp_path / "gateway.sqlite3"))
     assert reopened_idempotency._store.find("request-1") is not None
+
+
+def test_sqlite_operator_policy_survives_reopen(tmp_path) -> None:
+    database = tmp_path / "gateway.sqlite3"
+    repository = SQLiteOperatorStateRepository(database)
+    repository.set_allowed_services(("light.turn_on", "automation.trigger"))
+    reopened = SQLiteOperatorStateRepository(database)
+    assert reopened.get_allowed_services() == ("automation.trigger", "light.turn_on")

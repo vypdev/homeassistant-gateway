@@ -27,6 +27,9 @@ CREATE TABLE IF NOT EXISTS operator_idempotency (
     idempotency_key TEXT PRIMARY KEY,
     proposal_fingerprint TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS operator_service_policy (
+    service TEXT PRIMARY KEY
+);
 """
 
 
@@ -80,6 +83,16 @@ class SQLiteOperatorStateRepository(ApprovalStore, IdempotencyStore):
     def size(self) -> int:
         with self._connect() as connection:
             return int(connection.execute("SELECT COUNT(*) FROM operator_approvals WHERE consumed = 0", ()).fetchone()[0])
+
+    def get_allowed_services(self) -> tuple[str, ...]:
+        with self._connect() as connection:
+            rows = connection.execute("SELECT service FROM operator_service_policy ORDER BY service").fetchall()
+        return tuple(row[0] for row in rows)
+
+    def set_allowed_services(self, services: tuple[str, ...]) -> None:
+        with self._connect() as connection:
+            connection.execute("DELETE FROM operator_service_policy")
+            connection.executemany("INSERT INTO operator_service_policy(service) VALUES (?)", ((service,) for service in services))
 
     def find(self, key: str) -> str | None:
         with self._connect() as connection:

@@ -96,22 +96,24 @@ class FakeHomeAssistant:
     def ui_context(self):
         return {"locale": "es", "theme": "light"}
 
-def make_app(audit_sink=None, home_assistant=None, development_console_enabled=True):
+def make_app(audit_sink=None, home_assistant=None, development_console_enabled=True, operator_enabled=False, operator_service_policy=None):
     repository = InMemoryClientRepository()
     tokens = SecureTokenIssuer()
     clock = lambda: datetime(2026, 7, 31, tzinfo=UTC)
     return create_app(
-        issue_client=IssueClient(repository, tokens, clock, operator_enabled=False),
+        issue_client=IssueClient(repository, tokens, clock, operator_enabled=operator_enabled),
         list_clients=ListClients(repository),
         revoke_client=RevokeClient(repository, clock),
         rotate_client=RotateClient(repository, tokens),
         authenticate_client=AuthenticateClient(repository, tokens),
-        authorize_request=AuthorizeRequest(repository, operator_enabled=False),
+        authorize_request=AuthorizeRequest(repository, operator_enabled=operator_enabled),
         audit_sink=audit_sink,
         audit_reader=audit_sink,
         home_assistant=home_assistant,
         development_runner=DevelopmentToolRunner(home_assistant, FakePortDiagnostics()) if home_assistant else None,
         development_console_enabled=development_console_enabled,
+        operator_enabled=operator_enabled,
+        operator_service_policy=operator_service_policy,
     )
 
 
@@ -510,3 +512,34 @@ def test_duplicate_client_is_conflict_and_revoke_is_idempotent() -> None:
     assert request(app, "POST", "/api/clients/observer/revoke", headers=ingress_headers()).status_code == 204
     assert request(app, "POST", "/api/clients/observer/revoke", headers=ingress_headers()).status_code == 204
     assert request(app, "GET", "/api/clients", headers=ingress_headers()).json()[0]["status"] == "revoked"
+
+
+class InMemoryOperatorPolicy:
+    def __init__(self, selected=()):
+        self.selected = tuple(selected)
+
+    def get_allowed_services(self):
+        return self.selected
+
+    def set_allowed_services(self, services):
+        self.selected = tuple(services)
+
+
+class ServiceHomeAssistant(FakeHomeAssistant):
+    def services(self):
+        return [{"domain": "light", "services": {"turn_on": {"name": "Turn on", "description": "Turn on a light."}, "turn_off": {"name": "Turn off", "description": "Turn off a light."}}}, {"domain": "automation", "services": {"trigger": {"name": "Trigger", "description": "Trigger an automation."}}}]
+
+
+def test_operator_service_policy_is_graphical_and_validated() -> None:
+    policy = InMemoryOperatorPolicy()
+    app = make_app(home_assistant=ServiceHomeAssistant(), operator_enabled=True, operator_service_policy=policy)
+    headers = ingress_headers()
+    response = request(app, "GET", "/api/operator/service-policy", headers=headers)
+    assert response.status_code == 200
+    assert {item["id"] for item in response.json()["services"]} == {"light.turn_on", "light.turn_off", "automation.trigger"}
+    assert response.json()["selected"] == []
+    saved = request(app, "PUT", "/api/operator/service-policy", headers=headers, json={"selected": ["light.turn_on", "automation.trigger"]})
+    assert saved.status_code == 200
+    assert policy.get_allowed_services() == ("automation.trigger", "light.turn_on")
+    rejected = request(app, "PUT", "/api/operator/service-policy", headers=headers, json={"selected": ["light.nope"]})
+    assert rejected.status_code == 400

@@ -69,13 +69,9 @@ The official Home Assistant documentation confirms:
 
 A service call is a state-changing operation and must use an explicitly verified Home Assistant service contract. The Gateway must not accept arbitrary domain/service strings or arbitrary targets.
 
-The operator service-call path is wired through `SupervisorServiceMutationAdapter` only when `operator_enabled` is true and `operator_allowed_services` contains an explicit `domain.service` entry. It sends a bounded JSON payload to `/services/<domain>/<service>`, classifies upstream failures and redacts returned state data. Automation control is restricted to the official `automation.trigger`, `automation.turn_on`, and `automation.turn_off` services. An empty allowlist keeps mutation tools unavailable.
+The operator service-call path is wired through `SupervisorServiceMutationAdapter` only when `operator_enabled` is true and the graphical Operator services policy contains an explicit `domain.service` entry. The policy is persisted in the gateway SQLite state and applied without a process restart. It sends a bounded JSON payload to `/services/<domain>/<service>`, classifies upstream failures and redacts returned state data. Automation control is restricted to the official `automation.trigger`, `automation.turn_on`, and `automation.turn_off` services. An empty policy keeps mutation tools unavailable.
 
-Configure the add-on option with a comma-separated allowlist, for example:
-
-```text
-light.turn_on,light.turn_off,automation.trigger
-```
+Configure the global operator switch in the add-on options. Then open the Gateway **Policy** view, review the live Home Assistant service catalog and select the concrete services to allow. The GUI shows each service with its domain, name and description; saving an empty selection disables mutation tools.
 
 The operator client must be created with the matching `ha.write.services` or `ha.write.automations` capability. Every mutation requires a short-lived approval, a single-use approval token, an idempotency key and a bearer-authenticated operator client. Generic configuration writes are not exposed because Home Assistant does not provide a bounded official write contract for arbitrary configuration data.
 

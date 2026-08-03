@@ -66,6 +66,8 @@ def build_app(settings: AppSettings) -> FastAPI:
     audit_repository = SQLiteAuditRepository(database)
     development_report_store = SQLiteDevelopmentReportStore(database)
     operator_state = SQLiteOperatorStateRepository(database)
+    if not operator_state.get_allowed_services() and settings.operator_allowed_services:
+        operator_state.set_allowed_services(tuple(sorted(set(settings.operator_allowed_services))))
     token_issuer = SecureTokenIssuer()
     clock = lambda: datetime.now(UTC)
 
@@ -81,7 +83,7 @@ def build_app(settings: AppSettings) -> FastAPI:
     if settings.operator_enabled and home_assistant is not None:
         service_port = SupervisorServiceMutationAdapter(
             home_assistant,
-            frozenset(settings.operator_allowed_services),
+            operator_state.get_allowed_services,
         )
         mutation_port = SupervisorOperatorMutationAdapter(service_port)
     operator_mutations = OperatorMutationService(
@@ -99,6 +101,29 @@ def build_app(settings: AppSettings) -> FastAPI:
         operator_mutations=operator_mutations,
         allowed_hosts=settings.mcp_allowed_hosts,
     )
+
+    def operator_capabilities() -> tuple[str, ...]:
+        current = operator_state.get_allowed_services()
+        return tuple(
+            capability
+            for capability, services in (
+                ("ha.write.services", tuple(service for service in current if not service.startswith("automation."))),
+                ("ha.write.automations", tuple(service for service in current if service.startswith("automation."))),
+            )
+            if settings.operator_enabled and services
+        )
+
+    def registered_mutation_tools() -> tuple[str, ...]:
+        current = operator_state.get_allowed_services()
+        return tuple(
+            tool
+            for tools, services in (
+                (("ha_request_service_approval", "ha_execute_service_call"), tuple(service for service in current if not service.startswith("automation."))),
+                (("ha_request_automation_approval", "ha_execute_automation"), tuple(service for service in current if service.startswith("automation."))),
+            )
+            if settings.operator_enabled and services
+            for tool in tools
+        )
 
     return create_app(
         issue_client=IssueClient(
@@ -121,22 +146,8 @@ def build_app(settings: AppSettings) -> FastAPI:
         development_console_enabled=settings.development_console_enabled,
         operator_enabled=settings.operator_enabled,
         operator_mutations=operator_mutations,
-        operator_capabilities=tuple(
-            capability
-            for capability, services in (
-                ("ha.write.services", tuple(service for service in settings.operator_allowed_services if not service.startswith("automation."))),
-                ("ha.write.automations", tuple(service for service in settings.operator_allowed_services if service.startswith("automation."))),
-            )
-            if settings.operator_enabled and services
-        ),
-        registered_mutation_tools=tuple(
-            tool
-            for tool, services in (
-                (("ha_request_service_approval", "ha_execute_service_call"), tuple(service for service in settings.operator_allowed_services if not service.startswith("automation."))),
-                (("ha_request_automation_approval", "ha_execute_automation"), tuple(service for service in settings.operator_allowed_services if service.startswith("automation."))),
-            )
-            if settings.operator_enabled and services
-            for tool in tool
-        ),
+        operator_service_policy=operator_state,
+        operator_capabilities=operator_capabilities,
+        registered_mutation_tools=registered_mutation_tools,
         lifespan=mcp_bundle.lifespan,
     )

@@ -24,6 +24,7 @@ import { FINAL_TRANSLATIONS } from './i18n-final';
 import {
   type AuditEvent,
   type Client,
+  type OperatorServicePolicy,
   type DevelopmentCatalog,
   type DevelopmentOperation,
   type DevelopmentPack,
@@ -144,6 +145,8 @@ export class GatewayApp extends LitElement {
   @state() bootState: 'checking' | 'ready' | 'error' = 'checking';
   @state() operatorEnabled = false;
   @state() operatorStatus: OperatorStatus = { operator_enabled: false, execution: 'disabled', registered_mutation_tools: [], capabilities: [], reason: 'loading' };
+  @state() operatorPolicy: OperatorServicePolicy | null = null;
+  @state() operatorPolicyDirty = false;
 
   static styles = css`
     :host { display: block; color: #e7f0fb; min-height: 100vh; font: 14px/1.5 Inter, ui-sans-serif, system-ui, sans-serif; }
@@ -285,7 +288,7 @@ export class GatewayApp extends LitElement {
 
   async refresh() {
     this.busy = true; this.bootState = 'checking'; this.error = '';
-    try { [this.ready, this.clients, this.audit, this.development, this.developmentReports, this.uiContext, this.healthDetails, this.operatorStatus] = await Promise.all([api<Ready>('/../ready'), api<Client[]>('/clients'), api<AuditEvent[]>('/audit'), api<DevelopmentCatalog>('/development/catalog'), api<DevelopmentReport[]>('/development/reports'), api<UiContext>('/ui/context'), api<HealthDetails>('/health/details'), api<OperatorStatus>('/operator/status')]); this.operatorEnabled = this.operatorStatus.operator_enabled; this.bootState = 'ready'; }
+    try { [this.ready, this.clients, this.audit, this.development, this.developmentReports, this.uiContext, this.healthDetails, this.operatorStatus, this.operatorPolicy] = await Promise.all([api<Ready>('/../ready'), api<Client[]>('/clients'), api<AuditEvent[]>('/audit'), api<DevelopmentCatalog>('/development/catalog'), api<DevelopmentReport[]>('/development/reports'), api<UiContext>('/ui/context'), api<HealthDetails>('/health/details'), api<OperatorStatus>('/operator/status'), api<OperatorServicePolicy>('/operator/service-policy')]); this.operatorEnabled = this.operatorStatus.operator_enabled; this.operatorPolicyDirty = false; this.bootState = 'ready'; }
     catch (error) { this.error = error instanceof Error ? error.message : this.t('errorLoadState'); this.bootState = 'error'; }
     finally { this.busy = false; }
   }
@@ -448,7 +451,23 @@ export class GatewayApp extends LitElement {
   auditView() { return auditView({ audit: this.audit, t: this.t.bind(this), loadAudit: (decision) => void this.loadAudit(decision) }); }
 
   async loadAudit(decision: string) { this.busy = true; try { this.audit = await api<AuditEvent[]>(`/audit?limit=100${decision ? `&decision=${encodeURIComponent(decision)}` : ''}`); } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorAudit'); } finally { this.busy = false; } }
-  policyView() { return renderPolicyView({ clients: this.clients, busy: this.busy, t: this.t.bind(this), evaluatePolicy: this.evaluatePolicy.bind(this) }); }
+  toggleOperatorService(service: string, checked: boolean) {
+    if (!this.operatorPolicy) return;
+    const selected = new Set(this.operatorPolicy.selected);
+    if (checked) selected.add(service); else selected.delete(service);
+    this.operatorPolicy = { ...this.operatorPolicy, selected: [...selected].sort() };
+    this.operatorPolicyDirty = true;
+  }
+
+  async saveOperatorPolicy() {
+    if (!this.operatorPolicy) return;
+    this.busy = true; this.error = '';
+    try { await api('/operator/service-policy', { method: 'PUT', body: JSON.stringify({ selected: this.operatorPolicy.selected }) }); await this.refresh(); }
+    catch (error) { this.error = error instanceof Error ? error.message : 'Unable to save operator services'; }
+    finally { this.busy = false; }
+  }
+
+  policyView() { return renderPolicyView({ clients: this.clients, busy: this.busy, t: this.t.bind(this), evaluatePolicy: this.evaluatePolicy.bind(this), operatorPolicy: this.operatorPolicy, operatorPolicyDirty: this.operatorPolicyDirty, toggleOperatorService: this.toggleOperatorService.bind(this), saveOperatorPolicy: this.saveOperatorPolicy.bind(this) }); }
   async evaluatePolicy(event: Event) { event.preventDefault(); const data = new FormData(event.target as HTMLFormElement); this.busy = true; try { const result = await api<{ decision: string; reason: string }>('/policy/evaluate', { method: 'POST', body: JSON.stringify({ client_id: data.get('client_id'), capability: data.get('capability'), mutation: data.has('mutation') }) }); window.alert(`${result.decision}: ${result.reason}`); } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorPolicy'); } finally { this.busy = false; } }
   mcpView() { return renderMcpView({ ready: this.ready, discovery: this.discovery, busy: this.busy, t: this.t.bind(this), loadDiscovery: this.loadDiscovery.bind(this) }); }
   tokenModal() { return html`<div class="modal-backdrop" role="dialog" aria-modal="true"><div class="modal"><div class="eyebrow">${this.t('oneTimeCredential')}</div><h2>${this.t('tokenOnce')}</h2><p>${this.t('tokenOnlyOnce')}</p><div class="token mono">${this.issuedToken}</div><div class="form-actions"><button class="secondary" @click=${() => navigator.clipboard?.writeText(this.issuedToken)}>${this.t('copyToken')}</button><button class="primary" @click=${() => { this.issuedToken = ''; }}>${this.t('savedIt')}</button></div></div></div>`; }

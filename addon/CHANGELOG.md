@@ -2,12 +2,20 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.5.17
+
+- Add a graphical Operator services policy editor under the Policy view.
+- Load the bounded Home Assistant service catalog with names, descriptions and domains.
+- Persist selected services in the gateway SQLite state and apply changes without restarting the add-on.
+- Validate every selected service against the current Home Assistant catalog; wildcard `*` is not accepted.
+- Keep `operator_enabled` as the only operator switch in add-on configuration.
+
 ## 0.5.16
 
 - Connect allowlisted Home Assistant service calls to the operator approval and execution flow.
 - Add bounded automation control through the official `automation.trigger`, `automation.turn_on`, and `automation.turn_off` services.
 - Expose operator mutation tools only through operator client discovery and enforce bearer authorization before approval or execution.
-- Add the `operator_allowed_services` add-on option; an empty allowlist keeps mutation tools unavailable.
+- Configure the global operator switch with `operator_enabled`; configure the concrete service allowlist from the Policy view instead of add-on options.
 
 ## 0.5.15
 
