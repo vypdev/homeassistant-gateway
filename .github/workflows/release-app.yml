@@ -13,6 +13,7 @@ on:
       - src/**
       - pyproject.toml
       - scripts/release_metadata.py
+      - scripts/artifact_smoke.py
       - .github/workflows/release-app.yml
   workflow_dispatch:
 
@@ -111,6 +112,12 @@ jobs:
           severity: HIGH,CRITICAL
           ignore-unfixed: true
           exit-code: 1
+
+      - name: Smoke published image
+        if: steps.version.outputs.new_release == 'true'
+        env:
+          GATEWAY_ARTIFACT_IMAGE: ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
+        run: python scripts/artifact_smoke.py
 
       - name: Create GitHub Release
         if: steps.version.outputs.new_release == 'true'

@@ -2,6 +2,15 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.5.9
+
+- Add real local WebSocket contract coverage for authentication, ordering, closure, timeouts, and bounded reads.
+- Enforce backend coverage at 85% with explicit unit, integration, and live-test classification.
+- Add a published-container smoke harness and run it in Release App after the multi-architecture image is published and scanned.
+- Add Chromium Playwright smoke coverage for Ingress rendering, keyboard navigation, reduced motion, and narrow responsive viewports.
+- Extract Developer Console job orchestration from the Lit root component while preserving the public UI contract.
+- Document the Home Assistant adapter façade and its port boundary.
+
 ## 0.5.8
 
 - Bound logbook WebSocket reads to one-hour windows to avoid oversized all-day queries closing the Home Assistant connection.
