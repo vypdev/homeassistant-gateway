@@ -29,7 +29,11 @@ export function capabilityText(localeCatalog: Record<string, string> | undefined
 }
 
 export function statusText(translator: Translator, status: string): string {
-  return translator(status === 'warning' ? 'statusPartial' : `status${status.charAt(0).toUpperCase()}${status.slice(1)}`);
+  return translator(status === 'warning' ? 'statusPartial' : status === 'unavailable' ? 'statusError' : `status${status.charAt(0).toUpperCase()}${status.slice(1)}`);
+}
+
+export function isProblemStatus(status: string): boolean {
+  return status === 'error' || status === 'warning' || status === 'unavailable';
 }
 
 export function operationText(translator: Translator, operation: string, field: 'Label' | 'Description', fallback: string): string {

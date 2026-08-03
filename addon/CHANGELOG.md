@@ -2,6 +2,12 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.5.6
+
+- Include `unavailable` development results in the Developer Console's “Copy errors and warnings” report.
+- Keep the problem counter, button state, copied payload, and visual error classification consistent for `error`, `warning`, and `unavailable` results.
+- Map `unavailable` to the localized error status label without changing the public MCP contract.
+
 ## 0.5.5
 
 - Add the first native Home Assistant WebSocket read transport through `ws://supervisor/core/websocket`.

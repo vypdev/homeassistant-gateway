@@ -1,4 +1,5 @@
 import type { DevelopmentReport, DevelopmentResult, HealthDetails } from './models';
+import { isProblemStatus } from './view-helpers';
 
 export const downloadDiagnostic = (health: HealthDetails, results: DevelopmentResult[], reports: DevelopmentReport[]): void => {
   const payload = { generated_at: new Date().toISOString(), health, results, reports: reports.slice(0, 10) };
@@ -15,7 +16,7 @@ export const copyDiagnostic = async (result: DevelopmentResult): Promise<void> =
 };
 
 export const copyProblemReports = async (results: DevelopmentResult[]): Promise<void> => {
-  const problems = results.filter((result) => result.status === 'error' || result.status === 'warning');
+  const problems = results.filter((result) => isProblemStatus(result.status));
   const payload = {
     generated_at: new Date().toISOString(),
     count: problems.length,
