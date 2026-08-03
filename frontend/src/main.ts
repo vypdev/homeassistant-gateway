@@ -34,6 +34,7 @@ import {
   type Profile,
   type Ready,
   type UiContext,
+  type OperatorStatus,
   type View,
 } from './models';
 
@@ -141,6 +142,8 @@ export class GatewayApp extends LitElement {
   @state() developmentStartTime = '';
   @state() selectedCapabilities = new Set<string>(['ha.read.diagnostics']);
   @state() bootState: 'checking' | 'ready' | 'error' = 'checking';
+  @state() operatorEnabled = false;
+  @state() operatorStatus: OperatorStatus = { operator_enabled: false, execution: 'disabled', registered_mutation_tools: [], capabilities: [], reason: 'loading' };
 
   static styles = css`
     :host { display: block; color: #e7f0fb; min-height: 100vh; font: 14px/1.5 Inter, ui-sans-serif, system-ui, sans-serif; }
@@ -282,7 +285,7 @@ export class GatewayApp extends LitElement {
 
   async refresh() {
     this.busy = true; this.bootState = 'checking'; this.error = '';
-    try { [this.ready, this.clients, this.audit, this.development, this.developmentReports, this.uiContext, this.healthDetails] = await Promise.all([api<Ready>('/../ready'), api<Client[]>('/clients'), api<AuditEvent[]>('/audit'), api<DevelopmentCatalog>('/development/catalog'), api<DevelopmentReport[]>('/development/reports'), api<UiContext>('/ui/context'), api<HealthDetails>('/health/details')]); this.bootState = 'ready'; }
+    try { [this.ready, this.clients, this.audit, this.development, this.developmentReports, this.uiContext, this.healthDetails, this.operatorStatus] = await Promise.all([api<Ready>('/../ready'), api<Client[]>('/clients'), api<AuditEvent[]>('/audit'), api<DevelopmentCatalog>('/development/catalog'), api<DevelopmentReport[]>('/development/reports'), api<UiContext>('/ui/context'), api<HealthDetails>('/health/details'), api<OperatorStatus>('/operator/status')]); this.operatorEnabled = this.operatorStatus.operator_enabled; this.bootState = 'ready'; }
     catch (error) { this.error = error instanceof Error ? error.message : this.t('errorLoadState'); this.bootState = 'error'; }
     finally { this.busy = false; }
   }
@@ -440,7 +443,7 @@ export class GatewayApp extends LitElement {
 
   developmentView() { return renderDevelopmentView({ catalog: this.development, progress: this.developmentProgress, results: this.developmentResults, reports: this.developmentReports, output: this.developmentOutput, entity: this.developmentEntity, startTime: this.developmentStartTime, busy: this.busy, t: this.t.bind(this), statusText: this.statusText.bind(this), packText: this.packText.bind(this), operationText: this.operationText.bind(this), setEntity: (value) => { this.developmentEntity = value; }, setStartTime: (value) => { this.developmentStartTime = value; }, runAll: () => void this.runAllDevelopment(), runPack: (name) => void this.runDevelopmentPack(name), runOperation: (name) => void this.runDevelopment(name), download: () => this.downloadDiagnostic(), copyProblemReports: () => void this.copyProblemReports(), copyDiagnostic: (result) => void this.copyDiagnostic(result), retry: (operation) => void this.retryDevelopment(operation), reasonText: (reason) => reason === 'empty_result' ? this.t('statusPartial') : reason }); }
 
-  clientsView() { return renderClientsView({ clients: this.clients, busy: this.busy, t: this.t.bind(this), refresh: () => void this.refresh(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), rotate: (clientId) => void this.rotate(clientId), capabilitySelector: () => this.capabilitySelector() }); }
+  clientsView() { return renderClientsView({ clients: this.clients, busy: this.busy, t: this.t.bind(this), refresh: () => void this.refresh(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), rotate: (clientId) => void this.rotate(clientId), capabilitySelector: () => this.capabilitySelector(), operatorEnabled: this.operatorEnabled }); }
 
   auditView() { return auditView({ audit: this.audit, t: this.t.bind(this), loadAudit: (decision) => void this.loadAudit(decision) }); }
 

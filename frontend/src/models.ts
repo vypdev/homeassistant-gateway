@@ -9,6 +9,7 @@ export type Client = {
   revoked_at: string | null;
 };
 export type Ready = { status: string; storage: string; mcp: string; home_assistant: string };
+export type OperatorStatus = { operator_enabled: boolean; execution: string; registered_mutation_tools: string[]; capabilities: string[]; reason: string };
 export type HealthCheck = { name: string; status: string; latency_ms: number; http_status: number | null; code: string | null };
 export type HealthDetails = { status: string; checks: HealthCheck[] };
 export type AuditEvent = { event_id: string; occurred_at: string; request_id: string; remote_user_id: string | null; action: string; target: string; decision: string; outcome: string; status_code: number };

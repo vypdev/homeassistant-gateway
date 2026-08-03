@@ -2,6 +2,11 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.5.13
+
+- Fix the client-management UI to read effective operator status from `/api/operator/status` instead of keeping the operator profile hard-disabled in markup.
+- Preserve backend enforcement: operator clients remain rejected when the effective add-on flag is false.
+
 ## 0.5.12
 
 - Persist operator approval metadata, token digests and idempotency fingerprints in bounded SQLite state.
