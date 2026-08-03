@@ -2,6 +2,13 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.5.12
+
+- Persist operator approval metadata, token digests and idempotency fingerprints in bounded SQLite state.
+- Add an Ingress-only approval/execute contract that remains blocked while operator execution is disabled.
+- Compose sanitized operator audit events without registering Home Assistant mutation tools.
+- Add a typed, allowlisted Home Assistant service-call adapter and contract tests without enabling live writes.
+
 ## 0.5.11
 
 - Add a disabled operator safety framework with bounded one-time approvals, idempotency replay protection, emergency control and typed mutation boundaries.
