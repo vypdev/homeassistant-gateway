@@ -65,6 +65,8 @@ The official Home Assistant documentation confirms:
 
 A service call is a state-changing operation and must use an explicitly verified Home Assistant service contract. The Gateway must not accept arbitrary domain/service strings or arbitrary targets.
 
+The repository now contains a typed, unregistered `SupervisorServiceMutationAdapter` for the REST service-call shape. It accepts only an explicit `domain.service` allowlist, sends a bounded JSON payload to `/services/<domain>/<service>`, classifies upstream failures and redacts returned state data. The adapter is intentionally not wired into the composition root and no MCP mutation tool uses it.
+
 Automation configuration editing is more sensitive. The Home Assistant Core/frontend implementation uses configuration-oriented WebSocket and frontend contracts that are version-dependent; the generic REST API documentation does not define a stable public CRUD contract for arbitrary automation source. Therefore this repository does **not** implement automation mutation yet. It must first pin and test the exact contract for the installed Home Assistant version and preserve structured configuration instead of editing `/config/automations.yaml` or `.storage` directly.
 
 ## Activation gates

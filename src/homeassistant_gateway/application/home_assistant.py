@@ -60,6 +60,10 @@ class HomeAssistantCatalogPort(Protocol):
     def events(self) -> list[dict[str, Any]]: ...
 
 
+class HomeAssistantServiceMutationPort(Protocol):
+    def call_service(self, domain: str, service: str, payload: dict[str, Any]) -> list[dict[str, Any]]: ...
+
+
 class HomeAssistantActivityPort(Protocol):
     def history(self, entity_id: str | None = None, start_time: str | None = None) -> list[dict[str, Any]]: ...
 

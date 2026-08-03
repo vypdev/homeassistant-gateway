@@ -122,6 +122,14 @@ class SupervisorApiClient:
             raise HomeAssistantUnavailable(f"home_assistant_http_{response.status_code}", path=request_path, status=response.status_code)
         return response
 
+    def post_json(self, path: str, payload: dict[str, Any]) -> tuple[int, Any]:
+        """Expose one bounded POST seam for explicitly allowlisted mutation adapters."""
+        response = self._request_post(path, payload, diagnostic_path=path)
+        try:
+            return response.status_code, redact(response.json())
+        except ValueError as error:
+            raise HomeAssistantUnavailable("home_assistant_invalid_json", path=path, status=response.status_code) from error
+
     def _request(self, path: str, params: dict[str, str] | None = None, diagnostic_path: str | None = None) -> httpx.Response:
         request_path = diagnostic_path or path
         request_params = tuple(sorted(params or {}))
