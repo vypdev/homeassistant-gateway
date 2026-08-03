@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
+from threading import Thread
+from time import sleep
 from typing import Any
 
 import pytest
+from websockets.sync.server import serve
 
 from homeassistant_gateway.application.home_assistant import HomeAssistantUnavailable
 from homeassistant_gateway.infrastructure.home_assistant.websocket_client import (
@@ -72,3 +75,93 @@ def test_websocket_result_errors_are_structured_and_sanitized() -> None:
 
     assert caught.value.path == "config/entity_registry/list"
     assert "secret detail" not in str(caught.value)
+
+
+def _run_server(handler):
+    server = serve(handler, "127.0.0.1", 0)
+    thread = Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    return server, thread
+
+
+def _stop_server(server, thread) -> None:
+    server.shutdown()
+    thread.join(timeout=2)
+    server.socket.close()
+
+
+def test_real_websocket_server_contract_round_trip() -> None:
+    # The real protocol sends auth_required before the client sends auth.
+    def handler(connection) -> None:
+        connection.send(json.dumps({"type": "auth_required"}))
+        auth = json.loads(connection.recv())
+        assert auth == {"type": "auth", "access_token": "supervisor-secret"}
+        connection.send(json.dumps({"type": "auth_ok"}))
+        command = json.loads(connection.recv())
+        assert command == {"id": 1, "type": "states"}
+        connection.send(json.dumps({"id": 1, "type": "result", "success": True, "result": [{"state": "on"}]}))
+
+    server, thread = _run_server(handler)
+    try:
+        port = server.socket.getsockname()[1]
+        client = SupervisorWebSocketClient("supervisor-secret", f"ws://127.0.0.1:{port}")
+        assert client.command("states") == [{"state": "on"}]
+        assert [step.phase for step in client.last_trace] == ["connect", "auth", "command"]
+    finally:
+        _stop_server(server, thread)
+
+
+def test_real_websocket_close_during_command_is_classified() -> None:
+    def handler(connection) -> None:
+        connection.send(json.dumps({"type": "auth_required"}))
+        connection.recv()
+        connection.send(json.dumps({"type": "auth_ok"}))
+        connection.recv()
+        connection.close()
+
+    server, thread = _run_server(handler)
+    try:
+        port = server.socket.getsockname()[1]
+        client = SupervisorWebSocketClient("supervisor-secret", f"ws://127.0.0.1:{port}")
+        with pytest.raises(HomeAssistantUnavailable, match="home_assistant_websocket_closed"):
+            client.command("logbook/get_events")
+        assert client.last_trace[-1].code == "websocket_closed"
+    finally:
+        _stop_server(server, thread)
+
+
+def test_real_websocket_ignores_unrelated_message_ids() -> None:
+    def handler(connection) -> None:
+        connection.send(json.dumps({"type": "auth_required"}))
+        connection.recv()
+        connection.send(json.dumps({"type": "auth_ok"}))
+        connection.recv()
+        connection.send(json.dumps({"id": 99, "type": "result", "success": True, "result": [{"wrong": True}]}))
+        connection.send(json.dumps({"id": 1, "type": "result", "success": True, "result": [{"right": True}]}))
+
+    server, thread = _run_server(handler)
+    try:
+        port = server.socket.getsockname()[1]
+        client = SupervisorWebSocketClient("supervisor-secret", f"ws://127.0.0.1:{port}")
+        assert client.command("states") == [{"right": True}]
+    finally:
+        _stop_server(server, thread)
+
+
+def test_real_websocket_receive_timeout_is_classified() -> None:
+    def handler(connection) -> None:
+        connection.send(json.dumps({"type": "auth_required"}))
+        connection.recv()
+        connection.send(json.dumps({"type": "auth_ok"}))
+        connection.recv()
+        sleep(0.2)
+
+    server, thread = _run_server(handler)
+    try:
+        port = server.socket.getsockname()[1]
+        client = SupervisorWebSocketClient("supervisor-secret", f"ws://127.0.0.1:{port}", timeout=0.05)
+        with pytest.raises(HomeAssistantUnavailable, match="home_assistant_websocket_timeout"):
+            client.command("states")
+        assert client.last_trace[-1].code == "websocket_timeout"
+    finally:
+        _stop_server(server, thread)
