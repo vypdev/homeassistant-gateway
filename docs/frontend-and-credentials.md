@@ -16,14 +16,14 @@ The App UI is served through Home Assistant Supervisor Ingress. It must not requ
 - Home Assistant credentials are never shown after creation.
 - MCP client tokens are shown only once and stored as hashes where possible.
 - Revocation is immediate and auditable.
-- Operator client creation requires an explicit UI confirmation and is disabled until the operator policy gate is enabled.
+- Operator client creation is controlled by the effective `/api/operator/status` policy gate; mutation execution remains disabled independently.
 - The UI cannot grant a capability that the server policy does not recognize.
 
 ## Ingress
 
 ## Capability selector
 
-Client provisioning uses a grouped checklist instead of a comma-separated free-text field. Each capability shows its stable identifier and a human-readable description. The observer preset selects the complete read-only catalog, while operator capabilities remain visibly disabled while `operator_enabled=false`.
+- Client provisioning uses a grouped checklist instead of a comma-separated free-text field. Each capability shows its stable identifier and a human-readable description. The observer preset selects the complete read-only catalog, while operator capabilities remain unavailable for execution until their mutation contracts are activated.
 
 The UI still submits the explicit `string[]` capability contract to the API. The client token therefore receives only the checked capabilities; no capability is inferred from a display name or prompt.
 

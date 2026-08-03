@@ -77,7 +77,7 @@ class OperatorMutationService:
             approval_required=True,
             idempotency_required=True,
             rollback_required=True,
-            reason="operator_mutations_not_enabled" if not self._control.enabled else "mutation_adapter_not_configured",
+            reason="mutation_execution_disabled" if not self._control.enabled else "mutation_adapter_not_configured",
         )
 
     def request_approval(self, operation: str, target: str, capability: str, proposed: dict[str, Any]) -> ApprovalGrant:

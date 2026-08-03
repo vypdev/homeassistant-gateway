@@ -2,6 +2,13 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.5.14
+
+- Remove stale operator preview reason identifiers and use the stable `mutation_execution_disabled` contract.
+- Make the MCP management view render discovered tools instead of a hard-coded tool name.
+- Route client profile labels through the frontend translation system.
+- Refresh repository and operator documentation to match the effective operator provisioning policy.
+
 ## 0.5.13
 
 - Fix the client-management UI to read effective operator status from `/api/operator/status` instead of keeping the operator profile hard-disabled in markup.

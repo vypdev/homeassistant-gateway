@@ -7,7 +7,7 @@
 
 The default surface is **observer/read-only**: inventory, states, registries, history, logbook, diagnostics and metadata. Administration is served through Home Assistant Ingress, while direct MCP transport is protected by a host allowlist, Bearer token, client identity and capabilities.
 
-> **Current status:** `v0.5.10`. Operator remains disabled: **No operator mutation is enabled yet**. No MCP write tools are registered.
+> **Current status:** `v0.5.13`. Operator provisioning follows the effective add-on flag, but **no operator mutation is enabled yet**. No MCP write tools are registered.
 
 ## How to use it
 
@@ -16,7 +16,7 @@ The default surface is **observer/read-only**: inventory, states, registries, hi
 1. Add this repository to the Home Assistant add-on store.
 2. Install **Home Assistant Gateway**.
 3. Open the interface through **Open Web UI**; the administration console is protected by Supervisor Ingress.
-4. Keep `operator_enabled: false` unless an explicitly provisioned write capability is introduced in the future.
+4. Keep `operator_enabled: false` unless you intentionally want to provision operator-profile clients. Mutation execution remains disabled even when the profile flag is enabled.
 
 ### 2. Create an observer client
 

@@ -21,7 +21,7 @@ Its current contract reports:
   "execution": "disabled",
   "registered_mutation_tools": [],
   "capabilities": [],
-  "reason": "operator_mutations_not_implemented"
+  "reason": "mutation_execution_disabled"
 }
 ```
 

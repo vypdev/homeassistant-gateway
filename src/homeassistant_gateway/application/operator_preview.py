@@ -54,5 +54,5 @@ def build_operator_preview(
         affected=(target,),
         before=before,
         after=after,
-        reason="operator_mutations_not_enabled",
+        reason="mutation_execution_disabled",
     )

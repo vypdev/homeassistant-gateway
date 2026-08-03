@@ -23,7 +23,7 @@ def service(enabled: bool = False) -> OperatorMutationService:
 def test_preview_is_bounded_and_explicitly_disabled() -> None:
     preview = service().preview("ha.call_service", "light.test", "ha.write.services", {"state": "on"}, {"state": "off"})
     assert preview.execution == "disabled"
-    assert preview.reason == "operator_mutations_not_enabled"
+    assert preview.reason == "mutation_execution_disabled"
     assert preview.before == {"state": "off"}
     assert preview.after == {"state": "on"}
     assert preview.approval_required is True
