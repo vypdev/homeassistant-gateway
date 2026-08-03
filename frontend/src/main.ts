@@ -12,7 +12,7 @@ import { clientsView as renderClientsView } from './clients-view';
 import { developmentView as renderDevelopmentView } from './development-view';
 import { policyView as renderPolicyView } from './policy-view';
 import { mcpView as renderMcpView } from './mcp-view';
-import { loadDevelopmentReports, queueDevelopmentJob, watchDevelopmentJob } from './development-service';
+import { loadDevelopmentReports, executeDevelopmentJob } from './development-controller';
 import { property, state } from 'lit/decorators.js';
 import { EXTRA_TRANSLATIONS } from './i18n-extra';
 import { DEVELOPMENT_TRANSLATIONS } from './i18n-development';
@@ -361,8 +361,7 @@ export class GatewayApp extends LitElement {
   async startDevelopmentJob(operation: string, parameters: Record<string, string>, errorKey: string) {
     this.busy = true; this.error = ''; this.developmentProgress = { status: 'queued', completed: 0, total: 0 };
     try {
-      const jobId = await queueDevelopmentJob(operation, parameters);
-      await watchDevelopmentJob(jobId, {
+      await executeDevelopmentJob(operation, parameters, {
         onSnapshot: (snapshot) => {
           this.developmentProgress = { status: snapshot.status, completed: snapshot.completed, total: snapshot.total };
           this.developmentResults = snapshot.results;

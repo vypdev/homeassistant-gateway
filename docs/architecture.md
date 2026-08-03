@@ -10,6 +10,7 @@ presentation → application ports/use cases → infrastructure adapters
 - `frontend/src/api.ts`: browser HTTP boundary for Ingress-relative API requests.
 - `frontend/src/models.ts`: shared UI/domain response types.
 - `frontend/src/development-service.ts`: bounded development-job queueing and polling.
+- `frontend/src/development-controller.ts`: typed orchestration boundary for queue → poll → report refresh.
 - `frontend/src/diagnostics-service.ts`: sanitized diagnostic export and clipboard operations.
 - `frontend/src/main.ts`: Lit shell, navigation, state coordination and remaining views.
 
@@ -22,7 +23,8 @@ The frontend follows the same direction: transport and long-running operations a
 - `infrastructure`: Supervisor/Home Assistant HTTP adapter, SQLite stores, local port diagnostics and local job execution.
 - `composition.py`: dependency wiring and runtime profile selection.
 
-The Supervisor adapter may implement several small Home Assistant capabilities, but application use cases must depend on ports rather than HTTPX, SQLite or FastAPI.
+The Supervisor adapter currently uses a concrete multiple-inheritance façade over small reader mixins. This is retained intentionally: the mixins share the bounded transport, trace context, fallback policy and sanitization primitives, and the façade is the single composition boundary exposed to application ports. Application use cases still depend on ports rather than HTTPX, SQLite or FastAPI. Replacing it with delegation would be a larger mechanical refactor without a demonstrated contract or testability gain; any future migration must first introduce independent reader constructors and contract tests.
+
 
 ## Runtime guarantees
 

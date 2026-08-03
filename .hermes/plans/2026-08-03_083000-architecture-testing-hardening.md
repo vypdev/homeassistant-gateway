@@ -139,9 +139,12 @@ Then verify CI, Release App, Trivy, tag, GitHub Release, image manifest, and liv
 ## Current baseline evidence
 
 - `0.5.8` live-verified: labels and logbook work through Supervisor/Core WebSocket.
-- `109` backend tests pass with `PYTHONPATH=.`.
+- Backend no-live suite passes with coverage enforced at `86.27%` and a CI floor of `85%`.
 - Frontend runtime/UX/type/build/i18n gates pass.
+- Real local WebSocket protocol tests pass.
+- Playwright Chromium smoke passes `3/3` against a mocked Ingress API boundary.
 - CI and Release App pass with Node 24 actions.
-- Coverage measurement is not configured yet.
-- Browser E2E is not configured yet.
-- The highest-risk current issue is mutable `last_trace` state shared by concurrent executions.
+- Published-image smoke harness is implemented but Docker execution is blocked on this host by Docker socket permissions.
+- The frontend Developer Console polling orchestration now lives in `frontend/src/development-controller.ts`.
+- Adapter review retained the current mixin façade intentionally; no public contract or dependency-direction defect justified a mechanical delegation rewrite.
+- Live Supervisor artifact verification and release remain open until the final versioned artifact is built and independently checked.
