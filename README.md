@@ -1,95 +1,127 @@
 # Home Assistant Gateway
 
-Home Assistant-native MCP gateway for safe, auditable access to the full Home Assistant installation.
+[![CI](https://github.com/vypdev/homeassistant-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/vypdev/homeassistant-gateway/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/vypdev/homeassistant-gateway?sort=semver)](https://github.com/vypdev/homeassistant-gateway/releases)
 
-The project is designed to run **inside Home Assistant** as a custom integration/add-on boundary, with a native configuration UI and explicit security profiles:
+**Home Assistant Gateway** es un add-on de Home Assistant que ofrece una interfaz MCP segura, acotada y auditable para que clientes como Hermes u OpenClaw consulten una instalación de Home Assistant.
 
-- **Observer**: read-only inventory, state, configuration metadata, automations, scripts, areas, devices, services, diagnostics, and audit views.
-- **Operator**: narrowly scoped mutations, disabled by default, requiring explicit authorization, policy checks, confirmation, and audit logging.
+La superficie predeterminada es **observer/read-only**: inventario, estados, registros, historial, logbook, diagnósticos y metadatos. La administración se realiza desde Home Assistant Ingress y el transporte MCP directo se protege con `Host` allowlist, Bearer token, identidad de cliente y capabilities.
 
-The gateway is intended to be consumed by OpenClaw and Hermes through MCP without exposing Home Assistant credentials to either client.
+> **Estado actual:** `v0.5.9`. Operator permanece deshabilitado: **No operator mutation is enabled yet**. No hay herramientas MCP de escritura registradas.
 
-## Development Console
+## Cómo se usa
 
-The Ingress UI includes a first-level **Development Console**. It is an internal verification surface, not an MCP endpoint. It runs the same bounded read adapter used by observer tools and reports, per probe:
+### 1. Instalar el add-on
 
-- operation and upstream status;
-- item count;
-- elapsed time;
-- sanitized payload or explicit failure category;
-- aggregate results from `Run all`.
+1. Añade este repositorio al almacén de add-ons de Home Assistant.
+2. Instala **Home Assistant Gateway**.
+3. Abre la interfaz desde **Open Web UI**; la consola de administración está protegida por Supervisor Ingress.
+4. Mantén `operator_enabled: false` salvo que exista una provisión explícita para una futura capacidad de escritura.
 
-The current probes cover inventory, states, automations, configuration/registries, services, events, history, logbook, devices, areas, floors, labels, entity registry, scripts, scenes, helpers and derived integrations. Four packs are available: Basic Inventory, Automation Diagnostics, MCP Readiness and Data Completeness. Entity and start-time filters are available where Home Assistant supports them.
+### 2. Crear un cliente observer
 
-Each execution stores sanitized evidence in the private SQLite database with a schema fingerprint, duration, aggregate count and comparison against the previous run. Historical evidence is visible in the console without exposing credentials, headers, query strings or request bodies.
+Desde la consola Ingress:
 
-Mutation probes are shown as blocked and require the separate operator design: target allowlist, validated diff, approval token, idempotency key, audit before/after, and rollback. The console never enables MCP mutations by itself.
+1. abre **Clients**;
+2. crea un cliente independiente para cada agente;
+3. selecciona el perfil `observer`;
+4. concede solo las capabilities necesarias;
+5. guarda el token cuando se muestra: no se puede recuperar después.
 
-Disable it with the App option `development_console_enabled: false` or `GATEWAY_DEVELOPMENT_CONSOLE_ENABLED=false`.
+Los tokens son independientes por cliente. Para un token perdido o expuesto, usa **Rotate** o **Revoke**.
 
-The Supervisor App exposes the management UI through Ingress and also publishes the read-only MCP transport on the Home Assistant host port `18099` for native MCP clients such as Hermes. Connect to `http://<home-assistant-host>:18099/mcp/` with an observer client Bearer token. No operator mutation is enabled yet; operator mutations remain disabled and no write tools are registered.
+### 3. Conectar un cliente MCP
 
-For direct MCP access, configure the App option `mcp_allowed_hosts` as a comma-separated list of **destination hosts** used in client URLs, without ports. For example:
-
-```text
-localhost,127.0.0.1,[::1],homeassistant,homeassistant.local,192.168.20.101
-```
-
-This is a global HTTP transport allowlist, not a per-client permission list and not the source-IP allowlist of Hermes/OpenClaw. If a client uses `http://ai01.lan:18099/mcp/`, add `ai01.lan`; if it uses `http://192.168.20.101:18099/mcp/`, add `192.168.20.101`. Do not use `*` or include `:18099`. Client tokens and capabilities remain separate per client.
-
-
-## Design goals
-
-- Run close to Home Assistant and use its authenticated internal APIs/services.
-- Provide a native Home Assistant config flow and frontend panel for setup and policy management.
-- Keep credentials in Home Assistant-managed secure storage; never place them in MCP prompts, logs, Git, or client configuration.
-- Expose a stable, bounded MCP contract instead of proxying arbitrary Home Assistant APIs.
-- Make observer access useful enough for full analysis: entities, devices, areas, automations, scripts, scenes, services, helpers, integrations, configuration metadata, and diagnostics.
-- Separate observer and operator capabilities at the policy boundary.
-- Require explicit approval and idempotency checks for mutations.
-- Preserve Clean Architecture boundaries and test the policy before integrating transports.
-
-## Proposed runtime
+Configura `mcp_allowed_hosts` con los hosts de destino usados en la URL, sin puerto y sin `*` global. Por ejemplo:
 
 ```text
-Home Assistant
-└── custom_components/homeassistant_gateway
-    ├── config flow + frontend panel
-    ├── policy engine
-    ├── credential/storage adapter
-    ├── read model and HA service adapters
-    ├── audit store
-    └── MCP transport adapter
-
-OpenClaw / Hermes
-└── authenticated MCP client
-    ├── observer profile by default
-    └── operator profile only when explicitly provisioned
+localhost,127.0.0.1,[::1],homeassistant,homeassistant.local
 ```
 
-The management UI is a real Lit + TypeScript + Vite frontend served as static assets by FastAPI. It provides overview/readiness, clients, one-time token issuance, revocation, rotation, profiles/policy, MCP discovery and sanitized audit views.
+Usa el puerto publicado por el add-on y la ruta `/mcp/`:
 
-The App can use the Supervisor-provided Home Assistant API through a bounded read-only adapter. The current MCP observer tools are `gateway_diagnostics`, `ha_inventory`, `ha_states`, `ha_automations`, and `ha_configuration`; each requires an explicit capability.
+```text
+http://<home-assistant-host>:18099/mcp/
+```
 
-## Security posture
+El cliente debe enviar su token como:
 
-- Default bind: Home Assistant-local or loopback boundary.
-- Default profile: observer/read-only.
-- Operator profile: separate policy, separate client identity, explicit enablement, short-lived authorization where possible.
-- No arbitrary shell, Docker socket, SSH, filesystem browsing, or transparent API proxy.
-- Every mutation: allowlist check → validation → confirmation/approval → execution → audit event.
-- Audit records contain actor, tool, target, action, result, timestamp, and correlation ID, never secrets.
+```http
+Authorization: Bearer <observer-client-token>
+```
 
-See [`docs/architecture.md`](docs/architecture.md), [`docs/security-model.md`](docs/security-model.md), and [`docs/roadmap.md`](docs/roadmap.md).
+La comprobación mínima es:
 
-## Development
+1. `/mcp/` sin token → `401` esperado;
+2. `initialize` autenticado → correcto;
+3. `tools/list` → solo las herramientas autorizadas para ese cliente;
+4. una lectura → resultado `ok`, `warning` o `error` sanitizado.
 
-The repository currently contains the architecture contract and integration skeleton. Implementation slices will be added behind tests, starting with policy and read-only discovery before any operator mutation.
+El endpoint MCP directo no publica la consola administrativa. La Development Console se usa desde Ingress para verificar conectividad, resultados vacíos, fallos y trazabilidad de las lecturas.
+
+## Qué expone
+
+El perfil observer puede exponer, según las capabilities del cliente, herramientas read-only como:
+
+```text
+gateway_diagnostics  ha_inventory       ha_states
+ha_automations       ha_configuration    ha_history
+ha_logbook           ha_services        ha_events
+ha_devices           ha_areas           ha_floors
+ha_labels            ha_entity_registry ha_scripts
+ha_scenes            ha_helpers         ha_integrations
+```
+
+La lista efectiva siempre se comprueba con `tools/list`; que un cliente conecte no demuestra que tenga todos los permisos.
+
+## Seguridad y límites
+
+- No se ejecutan servicios de Home Assistant ni se modifican automatizaciones o configuración.
+- No se ofrece shell arbitrario, Docker socket, SSH, escaneo de red ni proxy transparente de APIs.
+- Los secretos no aparecen en prompts, resultados MCP, logs, auditorías, snapshots ni Git.
+- Los resultados son bounded y distinguen lecturas correctas, colecciones vacías (`warning`/`empty_result`) y fallos de upstream o transporte.
+- Las ejecuciones de Development Console son locales al proceso, bounded y no durables; se pierden al reiniciar el add-on.
+
+## Índice de documentación
+
+### Empezar como consumidor
+
+- [Guía de consumidor](docs/consumer/README.md) — instalación, superficies, herramientas y verificación mínima.
+- [Configurar un cliente MCP](docs/consumer/configure-mcp-client.md) — endpoint, tokens, capabilities, rotación y revocación.
+- [Solución de problemas](docs/consumer/troubleshooting.md) — síntomas, causas y comprobaciones.
+- [Integración con OpenClaw y Hermes](docs/integration-with-openclaw-and-hermes.md) — perfiles y conexión de agentes.
+
+### Entender el producto
+
+- [Arquitectura](docs/architecture.md) — límites Clean Architecture, puertos, adaptadores y composición.
+- [Modelo de seguridad](docs/security-model.md) — amenazas, perfiles, credenciales, red y auditoría.
+- [Contratos de Home Assistant](docs/home-assistant-platform-contracts.md) — APIs, WebSocket, Supervisor e Ingress.
+- [Diseño frontend](docs/frontend-design.md) — shell, Ingress, accesibilidad, temas e i18n.
+
+### Development Console y operación
+
+- [Development Console](docs/development-console.md) — operaciones, packs, jobs y resultados.
+- [Trazabilidad de la Development Console](docs/development-console-traceability.md) — evidencia, errores, warnings, comparaciones y exportación.
+- [Frontend y credenciales](docs/frontend-and-credentials.md) — límites de la UI y manejo de tokens.
+- [Live smoke](docs/live-smoke.md) — verificación contra un target autorizado.
+
+### Planificación y releases
+
+- [Roadmap](docs/roadmap.md) — evolución prevista y límites actuales.
+- [Release 0.5.0](docs/release-0.5.0.md) — histórico de la refactorización arquitectónica.
+- [ADR: Home Assistant como target principal](docs/adr/0001-home-assistant-native.md) — decisión de producto y despliegue.
+
+## Desarrollo local
 
 ```bash
 python -m pytest
+.venv/bin/ruff check src tests scripts
+npm --prefix frontend run check
+npm --prefix frontend run build
 ```
 
-## License
+Consulta la documentación de arquitectura y las guías de consumidor antes de modificar contratos MCP, perfiles o límites de seguridad.
 
-MIT. See [`LICENSE`](LICENSE).
+## Licencia
+
+MIT. Consulta [`LICENSE`](LICENSE).
