@@ -24,6 +24,7 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 addopts = "-q"
 markers = [
+    "integration: exercises a local or packaged integration boundary",
     "live: requires an explicitly configured live gateway target",
 ]
 
