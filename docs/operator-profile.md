@@ -55,6 +55,8 @@ A future mutation must satisfy all of these checks before an infrastructure adap
 
 The emergency control can disable operator execution without disabling observer reads. Approval tokens are stored only as digests, are bounded in memory and are single-use. Idempotency reservations reject replay and payload reuse.
 
+The application ports now support a SQLite-backed operator state adapter. It persists approval metadata, token digests, consumed state and idempotency fingerprints with private database permissions; plaintext approval tokens and proposed payloads are never stored. The adapter is available for composition, but it is not connected to an active mutation route while operator execution remains disabled.
+
 ## Home Assistant contract research
 
 The official Home Assistant documentation confirms:
