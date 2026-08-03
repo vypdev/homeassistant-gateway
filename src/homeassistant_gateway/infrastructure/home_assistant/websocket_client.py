@@ -10,6 +10,7 @@ from websockets.sync.client import connect
 
 from homeassistant_gateway.application.development_models import DevelopmentTraceStep
 from homeassistant_gateway.application.home_assistant import HomeAssistantUnavailable, redact
+from homeassistant_gateway.application.trace_context import get_trace, set_trace
 
 
 class WebSocketConnection(Protocol):
@@ -36,7 +37,11 @@ class SupervisorWebSocketClient:
         self._timeout = timeout
         self._max_size = max_size
         self._connector = connector
-        self.last_trace: tuple[DevelopmentTraceStep, ...] = ()
+
+    @property
+    def last_trace(self) -> tuple[DevelopmentTraceStep, ...]:
+        """Compatibility view scoped to the current execution context."""
+        return get_trace()
 
     def command(self, command: str, payload: dict[str, Any] | None = None) -> Any:
         started = monotonic()
@@ -68,7 +73,7 @@ class SupervisorWebSocketClient:
                         continue
                     if response.get("type") == "result" and response.get("success") is True:
                         trace.append(self._step("command", "ok", command_started, "websocket_command_ok", command))
-                        self.last_trace = tuple(trace)
+                        set_trace(tuple(trace))
                         return redact(response.get("result"))
                     error_value = response.get("error")
                     command_error: dict[str, Any] = error_value if isinstance(error_value, dict) else {}
@@ -78,15 +83,15 @@ class SupervisorWebSocketClient:
             finally:
                 socket.close()
         except HomeAssistantUnavailable:
-            self.last_trace = tuple(trace)
+            set_trace(tuple(trace))
             raise
         except (TimeoutError, ConnectionClosed) as error:
             trace.append(self._step("connect", "error", started, "websocket_timeout" if isinstance(error, TimeoutError) else "websocket_closed", command))
-            self.last_trace = tuple(trace)
+            set_trace(tuple(trace))
             raise HomeAssistantUnavailable("home_assistant_websocket_timeout" if isinstance(error, TimeoutError) else "home_assistant_websocket_closed", path="/core/websocket") from error
         except (OSError, WebSocketException) as error:
             trace.append(self._step("connect", "error", started, "websocket_connection", command))
-            self.last_trace = tuple(trace)
+            set_trace(tuple(trace))
             raise HomeAssistantUnavailable("home_assistant_websocket_connection", path="/core/websocket") from error
 
     @staticmethod

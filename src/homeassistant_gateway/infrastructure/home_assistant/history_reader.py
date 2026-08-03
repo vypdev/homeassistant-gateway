@@ -5,6 +5,7 @@ from typing import Any
 from urllib.parse import quote
 
 from homeassistant_gateway.application.home_assistant import HomeAssistantUnavailable
+from homeassistant_gateway.application.trace_context import get_trace, set_trace
 
 
 class SupervisorHistoryReader:
@@ -54,10 +55,10 @@ class SupervisorHistoryReader:
                         **({"entity_ids": [entity_id]} if entity_id else {}),
                     },
                 )
-                traces = (*traces, *self.last_trace)
+                traces = (*traces, *get_trace())
                 events.extend(item for item in self._bounded_list(payload) if isinstance(item, dict))
                 window_start = current_end
-            self.last_trace = traces
+            set_trace(traces)
             return events[: self._max_items]
         except HomeAssistantUnavailable as error:
             if not self._is_websocket_fallback_allowed(error):

@@ -8,6 +8,15 @@ import httpx
 
 from homeassistant_gateway.application.development_models import DevelopmentTraceStep
 from homeassistant_gateway.application.home_assistant import HomeAssistantUnavailable, redact
+from homeassistant_gateway.application.trace_context import (
+    append_trace,
+    fallback_active,
+    get_trace,
+    mark_fallback_active,
+)
+from homeassistant_gateway.application.trace_context import (
+    begin_trace as begin_execution_trace,
+)
 from homeassistant_gateway.infrastructure.home_assistant.websocket_client import (
     SupervisorWebSocketClient,
 )
@@ -37,12 +46,14 @@ class SupervisorApiClient:
         self._max_items = max_items
         self._transport = transport
         self._websocket = None if transport is not None else SupervisorWebSocketClient(token, self._websocket_url(self._base_url), timeout=timeout)
-        self.last_trace: tuple[DevelopmentTraceStep, ...] = ()
-        self._fallback_active = False
+
+    @property
+    def last_trace(self) -> tuple[DevelopmentTraceStep, ...]:
+        """Compatibility view scoped to the current execution context."""
+        return get_trace()
 
     def begin_trace(self) -> None:
-        self.last_trace = ()
-        self._fallback_active = False
+        begin_execution_trace()
 
     @staticmethod
     def _websocket_url(base_url: str) -> str:
@@ -56,7 +67,8 @@ class SupervisorApiClient:
 
     def _ws_command(self, command: str, payload: dict[str, Any] | None = None) -> Any:
         if self._websocket is None:
-            self.last_trace = (DevelopmentTraceStep(
+            begin_execution_trace()
+            append_trace(DevelopmentTraceStep(
                 phase="connect",
                 transport="websocket",
                 status="error",
@@ -65,15 +77,13 @@ class SupervisorApiClient:
                 code="websocket_connection",
                 detail="websocket_transport_unavailable",
             ),)
-            self._fallback_active = True
+            mark_fallback_active()
             raise HomeAssistantUnavailable("home_assistant_websocket_connection", path="/core/websocket")
         try:
             return self._websocket.command(command, payload)
         except HomeAssistantUnavailable:
-            self._fallback_active = True
+            mark_fallback_active()
             raise
-        finally:
-            self.last_trace = self._websocket.last_trace
 
     def _get_json(
         self,
@@ -85,7 +95,7 @@ class SupervisorApiClient:
     ) -> Any:
         safe_path = diagnostic_path or path
         response = self._request(path, params=params, diagnostic_path=safe_path)
-        self._record_transport_step("fallback" if self._fallback_active else "command", "rest", safe_path)
+        self._record_transport_step("fallback" if fallback_active() else "command", "rest", safe_path)
         if response.status_code == 404:
             if allow_not_found:
                 return default
@@ -136,7 +146,7 @@ class SupervisorApiClient:
 
     def _post_template(self, template: str) -> list[dict[str, Any]]:
         response = self._request_post("/template", {"template": template}, diagnostic_path="/template")
-        self._record_transport_step("fallback" if self._fallback_active else "command", "template", "/template")
+        self._record_transport_step("fallback" if fallback_active() else "command", "template", "/template")
         try:
             payload = json.loads(response.text)
         except json.JSONDecodeError as error:
@@ -144,7 +154,7 @@ class SupervisorApiClient:
         return payload if isinstance(payload, list) else []
 
     def _record_transport_step(self, phase: str, transport: str, path: str) -> None:
-        self.last_trace = (*self.last_trace, DevelopmentTraceStep(
+        append_trace(DevelopmentTraceStep(
             phase=phase,
             transport=transport,
             status="ok",

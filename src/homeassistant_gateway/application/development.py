@@ -20,6 +20,7 @@ from homeassistant_gateway.application.home_assistant import (
     HomeAssistantUnavailable,
 )
 from homeassistant_gateway.application.port_diagnostics import PortDiagnosticsPort
+from homeassistant_gateway.application.trace_context import begin_trace, get_trace
 
 __all__ = [
     "DevelopmentReportStore",
@@ -40,7 +41,6 @@ class DevelopmentToolRunner:
     def __init__(self, home_assistant: HomeAssistantReadPort, port_diagnostics: PortDiagnosticsPort | None = None) -> None:
         self._home_assistant = home_assistant
         self._port_diagnostics = port_diagnostics
-        self.last_trace: tuple[DevelopmentTraceStep, ...] = ()
         self._operations: dict[str, Callable[..., Any]] = {
             "inventory": home_assistant.inventory,
             "states": home_assistant.states,
@@ -59,18 +59,14 @@ class DevelopmentToolRunner:
         if definition is None:
             raise ValueError("unknown_development_operation")
         safe_parameters = self._validate_parameters(definition, parameters)
-        begin_trace = getattr(self._home_assistant, "begin_trace", None)
-        if callable(begin_trace):
-            begin_trace()
+        begin_trace()
+        upstream_begin_trace = getattr(self._home_assistant, "begin_trace", None)
+        if callable(upstream_begin_trace):
+            upstream_begin_trace()
         started = monotonic()
-        try:
-            data = self._operations[operation](**safe_parameters)
-        except Exception:
-            self.last_trace = tuple(getattr(self._home_assistant, "last_trace", ()))
-            raise
+        data = self._operations[operation](**safe_parameters)
         duration_ms = max(0, round((monotonic() - started) * 1000))
-        upstream_trace = tuple(getattr(self._home_assistant, "last_trace", ()))
-        self.last_trace = upstream_trace
+        upstream_trace = get_trace()
         trace = upstream_trace or (DevelopmentTraceStep(
             phase="execute",
             transport="application",

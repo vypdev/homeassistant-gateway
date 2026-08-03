@@ -16,6 +16,7 @@ from homeassistant_gateway.application.development import (
     development_packs,
 )
 from homeassistant_gateway.application.home_assistant import HomeAssistantUnavailable
+from homeassistant_gateway.application.trace_context import get_trace
 
 
 @dataclass
@@ -128,7 +129,7 @@ class DevelopmentJobManager:
                 try:
                     result = self._runner.run(operation, job.parameters if len(job.operations) == 1 else {})
                 except HomeAssistantUnavailable:
-                    result = DevelopmentResult("unavailable", operation, 0, 0, reason="home_assistant_unavailable", trace=tuple(getattr(self._runner, "last_trace", ())))
+                    result = DevelopmentResult("unavailable", operation, 0, 0, reason="home_assistant_unavailable", trace=get_trace())
                 except ValueError:
                     result = DevelopmentResult("error", operation, 0, 0, reason="invalid_development_operation")
                 except Exception:  # noqa: BLE001 - sanitize unexpected probe failures

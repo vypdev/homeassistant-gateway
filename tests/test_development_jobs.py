@@ -1,10 +1,16 @@
 from __future__ import annotations
 
-from threading import Event
+from threading import Barrier, Event
 from time import monotonic, sleep
 
-from homeassistant_gateway.application.development import DevelopmentReport, DevelopmentResult
+from homeassistant_gateway.application.development import (
+    DevelopmentReport,
+    DevelopmentResult,
+    DevelopmentToolRunner,
+)
 from homeassistant_gateway.application.development_jobs import DevelopmentJobManager, _Job
+from homeassistant_gateway.application.development_models import DevelopmentTraceStep
+from homeassistant_gateway.application.trace_context import append_trace, begin_trace
 
 
 class FakeRunner:
@@ -26,6 +32,32 @@ class BlockingRunner:
         self.started.set()
         self.release.wait(timeout=2)
         return DevelopmentResult("ok", operation, 1, 1, data=[{"operation": operation}])
+
+
+class ConcurrentTraceHomeAssistant:
+    def __init__(self) -> None:
+        self.barrier = Barrier(2)
+
+    def begin_trace(self) -> None:
+        begin_trace()
+
+    def states(self, entity_id: str | None = None) -> list[dict[str, object]]:
+        self.barrier.wait(timeout=2)
+        marker = entity_id or "none"
+        append_trace(DevelopmentTraceStep(
+            phase="command",
+            transport="fake",
+            status="ok",
+            duration_ms=0,
+            command="states",
+            detail=marker,
+        ))
+        return [{"entity_id": marker}]
+
+    def __getattr__(self, name: str):
+        def empty(*args, **kwargs):
+            return []
+        return empty
 
 
 class FailingReportStore:
@@ -131,3 +163,21 @@ def test_shutdown_rejects_new_jobs() -> None:
         assert str(error) == "development_jobs_shutdown"
     else:
         raise AssertionError("shutdown must reject new jobs")
+
+
+def test_concurrent_jobs_keep_their_own_trace() -> None:
+    runner = DevelopmentToolRunner(ConcurrentTraceHomeAssistant())
+    manager = DevelopmentJobManager(runner)
+    try:
+        first_id = manager.start("states", {"entity_id": "sensor.first"})
+        second_id = manager.start("states", {"entity_id": "sensor.second"})
+        first = wait_for_terminal(manager, first_id)
+        second = wait_for_terminal(manager, second_id)
+        first_trace = first["results"][0]["trace"]
+        second_trace = second["results"][0]["trace"]
+        assert any(step["detail"] == "sensor.first" for step in first_trace)
+        assert any(step["detail"] == "sensor.second" for step in second_trace)
+        assert all(step["detail"] != "sensor.second" for step in first_trace)
+        assert all(step["detail"] != "sensor.first" for step in second_trace)
+    finally:
+        manager.shutdown()
