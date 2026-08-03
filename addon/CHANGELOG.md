@@ -2,6 +2,11 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.5.15
+
+- Correct observer write-capability isolation to reject the actual `ha.write.*` capability namespace.
+- Clarify that operator write capabilities remain unavailable because mutation execution is disabled, independently of operator client provisioning.
+
 ## 0.5.14
 
 - Remove stale operator preview reason identifiers and use the stable `mutation_execution_disabled` contract.

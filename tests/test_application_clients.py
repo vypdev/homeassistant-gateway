@@ -66,7 +66,19 @@ def test_operator_issue_is_rejected_when_disabled() -> None:
             client_id="operator",
             display_name="Operator",
             profile=Profile.OPERATOR,
-            capabilities=frozenset({"ha.operator.service_call"}),
+            capabilities=frozenset({"ha.write.services"}),
+        )
+
+
+def test_observer_cannot_receive_write_capability() -> None:
+    use_case = IssueClient(InMemoryClientRepository(), FakeTokenIssuer(), lambda: datetime.now(UTC), operator_enabled=True)
+
+    with pytest.raises(ValueError, match="observer_operator_capability_conflict"):
+        use_case.execute(
+            client_id="observer",
+            display_name="Observer",
+            profile=Profile.OBSERVER,
+            capabilities=frozenset({"ha.write.services"}),
         )
 
 

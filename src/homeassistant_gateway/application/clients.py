@@ -56,7 +56,7 @@ class IssueClient:
         if profile is Profile.OPERATOR and not self._operator_enabled:
             raise ValueError("operator_disabled")
         if profile is Profile.OBSERVER and any(
-            capability.startswith("ha.operator.") for capability in capabilities
+            capability.startswith("ha.write.") for capability in capabilities
         ):
             raise ValueError("observer_operator_capability_conflict")
 

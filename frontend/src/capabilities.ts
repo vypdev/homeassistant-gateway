@@ -11,7 +11,7 @@ export const CAPABILITY_DEFINITIONS: CapabilityDefinition[] = [
   { name: 'ha.read.registry', group: 'observer', label: 'Registries and resources', description: 'Read devices, areas, floors, labels, entity registry, scripts, scenes, helpers and integrations.' },
   { name: 'ha.read.services', group: 'observer', label: 'Service catalog', description: 'Read the available Home Assistant service catalog; this does not execute services.' },
   { name: 'ha.read.events', group: 'observer', label: 'Event catalog', description: 'Read the bounded event catalog; this does not fire events.' },
-  { name: 'ha.write.services', group: 'operator', label: 'Service execution', description: 'Write capability; unavailable while operator mode is disabled.' },
-  { name: 'ha.write.automations', group: 'operator', label: 'Automation changes', description: 'Write capability; unavailable while operator mode is disabled.' },
-  { name: 'ha.write.configuration', group: 'operator', label: 'Configuration changes', description: 'Write capability; unavailable while operator mode is disabled.' },
+  { name: 'ha.write.services', group: 'operator', label: 'Service execution', description: 'Write capability; unavailable while mutation execution is disabled.' },
+  { name: 'ha.write.automations', group: 'operator', label: 'Automation changes', description: 'Write capability; unavailable while mutation execution is disabled.' },
+  { name: 'ha.write.configuration', group: 'operator', label: 'Configuration changes', description: 'Write capability; unavailable while mutation execution is disabled.' },
 ];
