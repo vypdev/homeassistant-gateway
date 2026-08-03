@@ -147,4 +147,5 @@ Then verify CI, Release App, Trivy, tag, GitHub Release, image manifest, and liv
 - Published-image smoke harness is implemented but Docker execution is blocked on this host by Docker socket permissions.
 - The frontend Developer Console polling orchestration now lives in `frontend/src/development-controller.ts`.
 - Adapter review retained the current mixin façade intentionally; no public contract or dependency-direction defect justified a mechanical delegation rewrite.
-- Live Supervisor artifact verification and release remain open until the final versioned artifact is built and independently checked.
+- Release `v0.5.9` is published after CI, multi-architecture build, Trivy scan, and published-image smoke verification passed.
+- Optional local live smoke was not run because `GATEWAY_LIVE_URL` is not configured; the published artifact smoke ran successfully in Release App.
