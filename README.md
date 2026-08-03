@@ -7,7 +7,7 @@
 
 The default surface is **observer/read-only**: inventory, states, registries, history, logbook, diagnostics and metadata. Administration is served through Home Assistant Ingress, while direct MCP transport is protected by a host allowlist, Bearer token, client identity and capabilities.
 
-> **Current status:** `v0.5.9`. Operator remains disabled: **No operator mutation is enabled yet**. No MCP write tools are registered.
+> **Current status:** `v0.5.10`. Operator remains disabled: **No operator mutation is enabled yet**. No MCP write tools are registered.
 
 ## How to use it
 
@@ -65,11 +65,12 @@ The observer profile can expose the following read-only tools, depending on the 
 
 ```text
 gateway_diagnostics  ha_inventory       ha_states
-ha_automations       ha_configuration    ha_history
-ha_logbook           ha_services         ha_events
-ha_devices           ha_areas            ha_floors
-ha_labels            ha_entity_registry  ha_scripts
-ha_scenes            ha_helpers          ha_integrations
+ha_automations       ha_automation_config ha_configuration
+ha_history           ha_logbook           ha_services
+ha_events             ha_devices           ha_areas
+ha_floors             ha_labels            ha_entity_registry
+ha_scripts            ha_scenes            ha_helpers
+ha_integrations
 ```
 
 The effective list is always verified with `tools/list`; connectivity does not prove that a client has every permission.
@@ -101,6 +102,7 @@ The effective list is always verified with `tools/list`; connectivity does not p
 ### Development Console and operations
 
 - [Development Console](docs/development-console.md) — operations, packs, jobs and results.
+- [Automation inspection](docs/automation-analysis.md) — bounded YAML rendering, static findings and read-only analysis.
 - [Development Console traceability](docs/development-console-traceability.md) — evidence, failures, warnings, comparisons and export.
 - [Frontend and credentials](docs/frontend-and-credentials.md) — UI boundaries and token handling.
 - [Live smoke](docs/live-smoke.md) — verification against an authorized target.

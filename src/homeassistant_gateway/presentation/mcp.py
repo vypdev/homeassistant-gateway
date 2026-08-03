@@ -150,6 +150,13 @@ def create_mcp_app(
         return read_tool("ha.read.automations", home_assistant.automations)  # type: ignore[union-attr]
 
     @server.tool(
+        name="ha_automation_config",
+        description="Read and analyze one bounded Home Assistant automation configuration without executing it.",
+    )
+    def ha_automation_config(entity_id: str | None = None) -> dict[str, Any]:
+        return read_tool("ha.read.automation_config", lambda: home_assistant.automation_config(entity_id))  # type: ignore[union-attr]
+
+    @server.tool(
         name="ha_configuration",
         description="Return safe Home Assistant configuration and registry metadata without secrets.",
     )

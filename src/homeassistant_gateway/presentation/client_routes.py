@@ -52,7 +52,7 @@ def register_client_routes(app: FastAPI, dependencies: ClientRouteDependencies) 
             client_id=client.client_id,
             profile=client.profile,
             capabilities=client.capabilities,
-            tools=("gateway_diagnostics", "ha_inventory", "ha_states", "ha_automations", "ha_configuration", "ha_services", "ha_events", "ha_history", "ha_logbook", "ha_devices", "ha_areas", "ha_floors", "ha_labels", "ha_entity_registry", "ha_scripts", "ha_scenes", "ha_helpers", "ha_integrations"),
+            tools=("gateway_diagnostics", "ha_inventory", "ha_states", "ha_automations", "ha_automation_config", "ha_configuration", "ha_services", "ha_events", "ha_history", "ha_logbook", "ha_devices", "ha_areas", "ha_floors", "ha_labels", "ha_entity_registry", "ha_scripts", "ha_scenes", "ha_helpers", "ha_integrations"),
         )
 
     @app.get("/api/client/me", response_model=ClientResponse)

@@ -7,6 +7,9 @@ from homeassistant_gateway.application.home_assistant import (
     HomeAssistantReadPort,
     HomeAssistantUnavailable,
 )
+from homeassistant_gateway.infrastructure.home_assistant.automation_reader import (
+    SupervisorAutomationReader,
+)
 from homeassistant_gateway.infrastructure.home_assistant.client import SupervisorApiClient
 from homeassistant_gateway.infrastructure.home_assistant.core_reader import SupervisorCoreReader
 from homeassistant_gateway.infrastructure.home_assistant.history_reader import (
@@ -17,7 +20,7 @@ from homeassistant_gateway.infrastructure.home_assistant.registry_reader import 
 )
 
 
-class SupervisorHomeAssistantClient(SupervisorApiClient, SupervisorCoreReader, SupervisorHistoryReader, SupervisorRegistryReader, HomeAssistantReadPort):
+class SupervisorHomeAssistantClient(SupervisorApiClient, SupervisorCoreReader, SupervisorHistoryReader, SupervisorRegistryReader, SupervisorAutomationReader, HomeAssistantReadPort):
 
     def inventory(self) -> dict[str, Any]:
         states = self.states()

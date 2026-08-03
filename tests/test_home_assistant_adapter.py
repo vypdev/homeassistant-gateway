@@ -33,6 +33,31 @@ def test_states_uses_supervisor_auth_and_redacts_secret_fields() -> None:
     assert client.states() == [{"entity_id": "light.kitchen", "state": "on", "attributes": {"api_token": "[REDACTED]"}}]
 
 
+def test_automation_config_selects_first_automation_and_renders_bounded_yaml() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/states"):
+            return httpx.Response(200, json=[{
+                "entity_id": "automation.irrigation",
+                "state": "on",
+                "attributes": {"id": "irrigation-1", "friendly_name": "Irrigation"},
+            }])
+        assert request.url.path.endswith("/config/automation/config/irrigation-1")
+        return httpx.Response(200, json={
+            "alias": "Irrigation",
+            "trigger": [{"platform": "time", "at": "08:00:00"}],
+            "action": [{"service": "switch.turn_on", "target": {"entity_id": "switch.irrigation"}}],
+            "mode": "single",
+            "api_token": "do-not-return",
+        })
+
+    result = make_client(handler).automation_config()
+
+    assert result["entity_id"] == "automation.irrigation"
+    assert result["configuration"]["api_token"] == "[REDACTED]"
+    assert "alias: Irrigation" in result["yaml"]
+    assert result["findings"]
+
+
 def test_inventory_is_bounded_and_keeps_transport_outside_application() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/states"):

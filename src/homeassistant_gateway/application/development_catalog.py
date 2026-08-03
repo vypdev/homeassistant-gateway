@@ -5,7 +5,7 @@ from homeassistant_gateway.application.development_models import (
     DevelopmentPack,
 )
 
-CORE_OPERATIONS = frozenset({"inventory", "states", "automations", "configuration", "services", "events", "history", "logbook", "gateway_ports"})
+CORE_OPERATIONS = frozenset({"inventory", "states", "automations", "automation_config", "configuration", "services", "events", "history", "logbook", "gateway_ports"})
 
 
 def development_catalog() -> tuple[DevelopmentOperation, ...]:
@@ -13,6 +13,7 @@ def development_catalog() -> tuple[DevelopmentOperation, ...]:
         DevelopmentOperation("inventory", "Entity inventory", "All bounded entities, services and counts."),
         DevelopmentOperation("states", "Entity states", "Current state and attributes, optionally scoped to one entity.", supports_entity_id=True),
         DevelopmentOperation("automations", "Automations", "Automation entities and their current applied state."),
+        DevelopmentOperation("automation_config", "Automation configuration", "Read and analyze one automation configuration, defaulting to the first available automation.", supports_entity_id=True),
         DevelopmentOperation("configuration", "Configuration and registries", "Core configuration plus entity and area registries."),
         DevelopmentOperation("services", "Service catalog", "Available service domains and service schemas."),
         DevelopmentOperation("events", "Event catalog", "Available event types exposed by Home Assistant."),
@@ -34,7 +35,7 @@ def development_catalog() -> tuple[DevelopmentOperation, ...]:
 def development_packs() -> tuple[DevelopmentPack, ...]:
     return (
         DevelopmentPack("basic_inventory", "Basic inventory", "Core read model and registries.", ("inventory", "states", "devices", "areas", "floors", "labels", "entity_registry")),
-        DevelopmentPack("automation_diagnostics", "Automation diagnostics", "Automations and related state/activity data.", ("automations", "scripts", "scenes", "helpers", "history", "logbook")),
+        DevelopmentPack("automation_diagnostics", "Automation diagnostics", "Automation configuration, entities and related state/activity data.", ("automations", "automation_config", "scripts", "scenes", "helpers", "history", "logbook")),
         DevelopmentPack("mcp_readiness", "MCP readiness", "Resources required by observer clients.", ("inventory", "services", "events", "configuration", "automations")),
         DevelopmentPack("data_completeness", "Data completeness", "Extended read model coverage and explicit endpoint failures.", tuple(item.name for item in development_catalog())),
     )

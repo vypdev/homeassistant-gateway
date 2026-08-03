@@ -37,7 +37,7 @@ export function isProblemStatus(status: string): boolean {
 }
 
 export function operationText(translator: Translator, operation: string, field: 'Label' | 'Description', fallback: string): string {
-  const name = operation === 'entity_registry' ? 'EntityRegistry' : operation === 'gateway_ports' ? 'GatewayPorts' : operation.charAt(0).toUpperCase() + operation.slice(1);
+  const name = operation === 'entity_registry' ? 'EntityRegistry' : operation === 'automation_config' ? 'AutomationConfig' : operation === 'gateway_ports' ? 'GatewayPorts' : operation.charAt(0).toUpperCase() + operation.slice(1);
   const key = `op${name}${field}`;
   const value = translator(key);
   return value === key ? fallback : value;

@@ -72,6 +72,9 @@ class FakeHomeAssistant:
     def automations(self):
         return [{"entity_id": "automation.test", "state": "on"}]
 
+    def automation_config(self, entity_id=None):
+        return {"entity_id": entity_id or "automation.test", "configuration": {"trigger": [], "action": []}, "yaml": "trigger: []\naction: []\n", "findings": []}
+
     def configuration(self):
         return {"core": {}, "entity_registry": [], "area_registry": []}
 
@@ -131,7 +134,7 @@ def test_development_catalog_requires_ingress_and_lists_probes() -> None:
     response = request(app, "GET", "/api/development/catalog", headers=ingress_headers())
     assert response.status_code == 200
     assert response.json()["enabled"] is True
-    assert len(response.json()["operations"]) == 18
+    assert len(response.json()["operations"]) == 19
     assert len(response.json()["packs"]) == 4
     assert response.json()["mutations"]["status"] == "disabled"
 
@@ -177,7 +180,7 @@ def test_development_run_all_returns_one_result_per_probe() -> None:
         sleep(0.01)
     assert payload is not None
     assert payload["status"] == "warning"
-    assert len(payload["results"]) == 18
+    assert len(payload["results"]) == 19
     assert {item["status"] for item in payload["results"]} == {"ok", "warning"}
     assert all(item.get("reason") == "empty_result" for item in payload["results"] if item["status"] == "warning")
 
@@ -421,7 +424,7 @@ def test_mcp_discovery_returns_only_client_scoped_metadata() -> None:
 
     assert response.status_code == 200
     assert response.json()["endpoint"] == "/mcp/"
-    assert len(response.json()["tools"]) == 18
+    assert len(response.json()["tools"]) == 19
     assert "ha_history" in response.json()["tools"]
     assert "ha_logbook" in response.json()["tools"]
     assert "token" not in response.json()

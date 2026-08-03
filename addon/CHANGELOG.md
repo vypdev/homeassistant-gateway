@@ -2,6 +2,14 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.5.10
+
+- Add the read-only `ha_automation_config` MCP tool.
+- Add the `automation_config` Development Console operation, selecting the first automation by default.
+- Read automation configuration through Home Assistant's official configuration endpoint without filesystem access.
+- Render bounded sanitized YAML and return conservative static findings for missing triggers/actions, overlap mode, duplicate entity references and malformed service references.
+- Add automation configuration tests, English documentation and frontend translations.
+
 ## 0.5.9
 
 - Add real local WebSocket contract coverage for authentication, ordering, closure, timeouts, and bounded reads.

@@ -45,12 +45,13 @@ class DevelopmentToolRunner:
             "inventory": home_assistant.inventory,
             "states": home_assistant.states,
             "automations": home_assistant.automations,
+            "automation_config": home_assistant.automation_config,
             "configuration": home_assistant.configuration,
             "services": home_assistant.services,
             "events": home_assistant.events,
             "history": home_assistant.history,
             "logbook": home_assistant.logbook,
-            **{operation.name: (lambda resource=operation.name: home_assistant.extended_read(resource)) for operation in development_catalog() if operation.name not in {"inventory", "states", "automations", "configuration", "services", "events", "history", "logbook", "gateway_ports"}},
+            **{operation.name: (lambda resource=operation.name: home_assistant.extended_read(resource)) for operation in development_catalog() if operation.name not in {"inventory", "states", "automations", "automation_config", "configuration", "services", "events", "history", "logbook", "gateway_ports"}},
             "gateway_ports": lambda: self._port_diagnostics.run() if self._port_diagnostics is not None else {"status": "error", "reason": "port_diagnostics_not_configured"},
         }
 

@@ -25,7 +25,10 @@ class FakeHomeAssistant:
         return [{"entity_id": entity_id or "light.kitchen", "state": "on"}]
 
     def automations(self) -> list[dict[str, Any]]:
-        return [{"entity_id": "automation.test", "state": "on"}]
+        return [{"entity_id": "automation.test", "state": "on", "attributes": {"id": "automation-test"}}]
+
+    def automation_config(self, entity_id: str | None = None) -> dict[str, Any]:
+        return {"entity_id": entity_id or "automation.test", "configuration": {"id": "automation-test", "trigger": [{"platform": "state"}], "action": [{"service": "light.turn_on"}]}, "yaml": "id: automation-test\n", "findings": []}
 
     def configuration(self) -> dict[str, Any]:
         return {"core": {"location_name": "Test"}, "entity_registry": [], "area_registry": []}
@@ -54,6 +57,7 @@ def test_catalog_exposes_every_internal_observer_probe() -> None:
         "inventory",
         "states",
         "automations",
+        "automation_config",
         "configuration",
         "services",
         "events",
@@ -89,6 +93,15 @@ def test_runner_supports_extended_registry_resources() -> None:
 
     assert result.status == "ok"
     assert result.data == [{"resource": "devices"}]
+
+
+def test_runner_reads_automation_configuration_by_entity() -> None:
+    result = DevelopmentToolRunner(FakeHomeAssistant()).run("automation_config", {"entity_id": "automation.test"})
+
+    assert result.status == "ok"
+    assert result.operation == "automation_config"
+    assert result.data["entity_id"] == "automation.test"
+    assert result.data["configuration"]["action"][0]["service"] == "light.turn_on"
 
 
 def test_runner_warns_when_expected_list_is_empty() -> None:
