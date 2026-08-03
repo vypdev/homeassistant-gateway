@@ -124,6 +124,23 @@ def test_logbook_websocket_queries_bounded_hour_windows() -> None:
     assert all("start_time" in item and "end_time" in item for item in calls)
 
 
+def test_logbook_deduplicates_events_across_windows_and_preserves_order() -> None:
+    client = make_client(lambda request: httpx.Response(500))
+    calls = 0
+    duplicate = {"when": "2026-08-01T01:00:00Z", "entity_id": "light.kitchen", "state": "on"}
+    later = {"when": "2026-08-01T01:30:00Z", "entity_id": "light.kitchen", "state": "off"}
+
+    def websocket(command: str, payload: dict[str, object]) -> list[dict[str, object]]:
+        nonlocal calls
+        calls += 1
+        return [dict(duplicate), dict(later)] if calls == 1 else [dict(duplicate)]
+
+    client._ws_command = websocket
+    result = client.logbook(start_time="2026-08-01T00:00:00Z")
+    assert result[:2] == [duplicate, later]
+    assert result.count(duplicate) == 1
+
+
 @pytest.mark.parametrize("status", [400, 401, 403, 404, 500])
 def test_upstream_http_statuses_are_classified_without_response_body(status: int) -> None:
     client = make_client(lambda request: httpx.Response(status, text="secret upstream body"))

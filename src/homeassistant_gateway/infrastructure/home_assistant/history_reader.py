@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import quote
@@ -57,6 +58,7 @@ class SupervisorHistoryReader:
                 )
                 traces = (*traces, *get_trace())
                 events.extend(item for item in self._bounded_list(payload) if isinstance(item, dict))
+                events = self._deduplicate_events(events)
                 window_start = current_end
             set_trace(traces)
             return events[: self._max_items]
@@ -65,6 +67,18 @@ class SupervisorHistoryReader:
                 raise
         params = {"entity": entity_id} if entity_id else {}
         return self._bounded_list(self._get_json(f"/logbook/{quote(start, safe='')}", default=[], params=params, diagnostic_path="/logbook"))
+
+    @staticmethod
+    def _deduplicate_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        unique: list[dict[str, Any]] = []
+        seen: set[str] = set()
+        for event in events:
+            fingerprint = json.dumps(event, sort_keys=True, separators=(",", ":"), default=str)
+            if fingerprint in seen:
+                continue
+            seen.add(fingerprint)
+            unique.append(event)
+        return unique
 
     @staticmethod
     def _parse_timestamp(value: str) -> datetime:
