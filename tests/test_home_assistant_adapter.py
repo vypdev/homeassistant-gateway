@@ -213,6 +213,8 @@ def test_extended_registry_uses_template_fallback_when_rest_route_is_unavailable
     client = make_client(handler)
     assert client.extended_read("areas") == [{"id": "area-casa", "name": "Casa", "entities": ["light.salon"], "devices": ["device-1"]}]
     assert requests == [("GET", "/core/api/config/area_registry/list"), ("POST", "/core/api/template")]
+    assert [step.transport for step in client.last_trace] == ["websocket", "rest", "template"]
+    assert [step.phase for step in client.last_trace] == ["connect", "fallback", "fallback"]
 
 
 def test_entity_registry_template_fallback_avoids_optional_area_function() -> None:

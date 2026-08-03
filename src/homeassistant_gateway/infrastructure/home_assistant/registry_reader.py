@@ -17,6 +17,19 @@ class SupervisorRegistryReader:
             "entity_registry": "/config/entity_registry/list",
         }
         if resource in registry_paths:
+            websocket_commands = {
+                "devices": "config/device_registry/list",
+                "areas": "config/area_registry/list",
+                "floors": "config/floor_registry/list",
+                "labels": "config/label_registry/list",
+                "entity_registry": "config/entity_registry/list",
+            }
+            try:
+                payload = self._ws_command(websocket_commands[resource])
+                return self._bounded_list(payload)
+            except HomeAssistantUnavailable as error:
+                if not self._is_websocket_fallback_allowed(error):
+                    raise
             try:
                 payload = self._get_json(registry_paths[resource], default=[], allow_not_found=False)
             except HomeAssistantUnavailable as error:
@@ -32,6 +45,14 @@ class SupervisorRegistryReader:
             domains = sorted({str(item.get("entity_id", "")).split(".", 1)[0] for item in states if "." in str(item.get("entity_id", ""))})
             return [{"domain": domain} for domain in domains]
         raise ValueError("unknown_extended_resource")
+
+    @staticmethod
+    def _is_websocket_fallback_allowed(error: HomeAssistantUnavailable) -> bool:
+        return error.code in {
+            "home_assistant_websocket_connection",
+            "home_assistant_websocket_timeout",
+            "home_assistant_websocket_closed",
+        }
 
     def _template_registry(self: Any, resource: str) -> list[dict[str, Any]]:
         templates = {

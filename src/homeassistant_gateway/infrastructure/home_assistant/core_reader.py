@@ -65,7 +65,12 @@ class SupervisorCoreReader:
         return {"name": name, "status": "ok", "latency_ms": max(0, round((monotonic() - started) * 1000)), "http_status": 200, "code": None}
 
     def ui_context(self: Any) -> dict[str, str]:
-        core = self._get_json("/config", default={})
+        try:
+            core = self._ws_command("get_config")
+        except HomeAssistantUnavailable as error:
+            if not self._is_websocket_fallback_allowed(error):
+                raise
+            core = self._get_json("/config", default={})
         if not isinstance(core, dict):
             return {"locale": "en", "theme": "auto"}
         language = str(core.get("language") or core.get("locale") or "en").replace("_", "-").lower()
@@ -73,7 +78,12 @@ class SupervisorCoreReader:
         return {"locale": language, "theme": theme if theme in {"light", "dark", "auto"} else "auto"}
 
     def configuration(self: Any) -> dict[str, Any]:
-        config = self._get_json("/config", default={})
+        try:
+            config = self._ws_command("get_config")
+        except HomeAssistantUnavailable as error:
+            if not self._is_websocket_fallback_allowed(error):
+                raise
+            config = self._get_json("/config", default={})
         return {
             "core": config,
             "entity_registry": self.extended_read("entity_registry"),

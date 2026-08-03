@@ -50,7 +50,19 @@ Cada resultado de desarrollo puede incluir:
   - `code`: código estable sanitizado.
   - `detail`: explicación técnica estable, no una excepción cruda.
 
-La fase inicial `execute/application` existe aunque el adaptador todavía no aporte pasos de transporte. Cuando se complete la migración WebSocket, los adaptadores podrán añadir las fases reales de handshake, comando, normalización y fallback sin cambiar el contrato público MCP.
+La fase actual implementa WebSocket primario para:
+
+- `config/device_registry/list`;
+- `config/area_registry/list`;
+- `config/floor_registry/list`;
+- `config/label_registry/list`;
+- `config/entity_registry/list`;
+- `get_config`;
+- `history/history_during_period`;
+- `logbook/get`.
+
+`states`, `services`, `events` y las comprobaciones de salud conservan REST en esta primera fase. No se declara completada la migración total hasta cubrirlos con contratos equivalentes.
+
 
 ## Interfaz
 

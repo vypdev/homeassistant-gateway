@@ -58,9 +58,30 @@ class DevelopmentToolRunner:
         if definition is None:
             raise ValueError("unknown_development_operation")
         safe_parameters = self._validate_parameters(definition, parameters)
+        begin_trace = getattr(self._home_assistant, "begin_trace", None)
+        if callable(begin_trace):
+            begin_trace()
         started = monotonic()
         data = self._operations[operation](**safe_parameters)
         duration_ms = max(0, round((monotonic() - started) * 1000))
+        upstream_trace = tuple(getattr(self._home_assistant, "last_trace", ()))
+        trace = upstream_trace or (DevelopmentTraceStep(
+            phase="execute",
+            transport="application",
+            status="warning" if self._is_empty_result(data) else "ok",
+            duration_ms=duration_ms,
+            command=operation,
+            detail="operation_completed",
+        ),)
+        if upstream_trace:
+            trace = (*trace, DevelopmentTraceStep(
+                phase="normalize",
+                transport="application",
+                status="warning" if self._is_empty_result(data) else "ok",
+                duration_ms=duration_ms,
+                command=operation,
+                detail="operation_normalized",
+            ))
         return DevelopmentResult(
             status="warning" if self._is_empty_result(data) else "ok",
             operation=operation,
@@ -68,14 +89,7 @@ class DevelopmentToolRunner:
             count=self._count(data),
             data=data,
             reason="empty_result" if self._is_empty_result(data) else None,
-            trace=(DevelopmentTraceStep(
-                phase="execute",
-                transport="application",
-                status="warning" if self._is_empty_result(data) else "ok",
-                duration_ms=duration_ms,
-                command=operation,
-                detail="operation_completed",
-            ),),
+            trace=trace,
         )
 
     def run_all(self) -> tuple[DevelopmentResult, ...]:
