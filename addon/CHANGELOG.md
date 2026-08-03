@@ -2,6 +2,15 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.5.5
+
+- Add the first native Home Assistant WebSocket read transport through `ws://supervisor/core/websocket`.
+- Migrate registry reads, `get_config`, history, and logbook to WebSocket-first execution with explicit transport-only REST/template fallback.
+- Add sanitized Developer Console trace phases for connection, authentication, commands, normalization, and fallback.
+- Add detailed warning/error evidence without exposing tokens, WebSocket frames, response bodies, or sensitive parameter values.
+- Keep the public MCP observer contract unchanged and preserve rollback compatibility with `0.5.4`.
+- This is a verification release: validate the real Supervisor `auth_ok` handshake and live operation counts from the Developer Console before treating it as stable.
+
 ## 0.5.4
 
 - Preserve sanitized Home Assistant upstream error code, logical path and HTTP status in MCP read results for actionable diagnostics.
