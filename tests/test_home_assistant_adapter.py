@@ -103,9 +103,25 @@ def test_logbook_websocket_uses_official_get_events_command() -> None:
         return [{"entity_id": "light.kitchen", "state": "on"}]
 
     client._ws_command = websocket
-    assert client.logbook("light.kitchen", "2026-08-01T00:00:00Z") == [{"entity_id": "light.kitchen", "state": "on"}]
-    assert calls[0][0] == "logbook/get_events"
-    assert calls[0][1]["entity_ids"] == ["light.kitchen"]
+    result = client.logbook("light.kitchen", "2026-08-01T00:00:00Z")
+    assert result
+    assert all(item == {"entity_id": "light.kitchen", "state": "on"} for item in result)
+    assert all(command == "logbook/get_events" for command, _payload in calls)
+    assert all(payload["entity_ids"] == ["light.kitchen"] for _command, payload in calls)
+
+
+def test_logbook_websocket_queries_bounded_hour_windows() -> None:
+    client = make_client(lambda request: httpx.Response(500))
+    calls: list[dict[str, object]] = []
+
+    def websocket(command: str, payload: dict[str, object]) -> list[dict[str, object]]:
+        calls.append(payload)
+        return []
+
+    client._ws_command = websocket
+    assert client.logbook(start_time="2026-08-01T00:00:00Z") == []
+    assert len(calls) >= 1
+    assert all("start_time" in item and "end_time" in item for item in calls)
 
 
 @pytest.mark.parametrize("status", [400, 401, 403, 404, 500])

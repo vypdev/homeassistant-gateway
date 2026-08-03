@@ -15,7 +15,7 @@ from homeassistant_gateway.application.home_assistant import HomeAssistantUnavai
 class WebSocketConnection(Protocol):
     def send(self, message: str) -> None: ...
 
-    def recv(self) -> str | bytes: ...
+    def recv(self, timeout: float | None = None) -> str | bytes: ...
 
     def close(self) -> None: ...
 
@@ -63,7 +63,7 @@ class SupervisorWebSocketClient:
                 command_started = monotonic()
                 self._send_json(socket, request)
                 while True:
-                    response = self._receive_json(socket)
+                    response = self._receive_json(socket, timeout=self._timeout)
                     if response.get("id") != message_id:
                         continue
                     if response.get("type") == "result" and response.get("success") is True:
@@ -94,8 +94,12 @@ class SupervisorWebSocketClient:
         socket.send(json.dumps(message, separators=(",", ":")))
 
     @staticmethod
-    def _receive_json(socket: WebSocketConnection) -> dict[str, Any]:
-        raw = socket.recv()
+    def _receive_json(socket: WebSocketConnection, timeout: float | None = None) -> dict[str, Any]:
+        try:
+            raw = socket.recv(timeout=timeout)
+        except TypeError:
+            # Keep lightweight injected test transports compatible with the port.
+            raw = socket.recv()
         if isinstance(raw, bytes):
             raw = raw.decode("utf-8")
         try:
@@ -107,7 +111,7 @@ class SupervisorWebSocketClient:
         return value
 
     def _receive_auth_required(self, socket: WebSocketConnection, trace: list[DevelopmentTraceStep]) -> None:
-        message = self._receive_json(socket)
+        message = self._receive_json(socket, timeout=self._timeout)
         if message.get("type") != "auth_required":
             trace.append(self._step("auth", "error", monotonic(), "websocket_auth_required_missing", "auth"))
             raise HomeAssistantUnavailable("home_assistant_websocket_auth_required_missing", path="/core/websocket")

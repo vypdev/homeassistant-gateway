@@ -2,6 +2,12 @@
 
 All notable changes to this app are documented in this file.
 
+## 0.5.8
+
+- Bound logbook WebSocket reads to one-hour windows to avoid oversized all-day queries closing the Home Assistant connection.
+- Aggregate bounded windows up to the configured result limit while preserving sanitized transport trace steps.
+- Apply an explicit receive timeout to WebSocket authentication and command responses.
+
 ## 0.5.7
 
 - Correct the native Home Assistant logbook WebSocket command to the official `logbook/get_events` contract.

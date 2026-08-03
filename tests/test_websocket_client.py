@@ -20,7 +20,7 @@ class FakeSocket:
     def send(self, message: str) -> None:
         self.sent.append(json.loads(message))
 
-    def recv(self) -> str:
+    def recv(self, timeout: float | None = None) -> str:
         return self.incoming.pop(0)
 
     def close(self) -> None:
