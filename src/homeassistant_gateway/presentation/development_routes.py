@@ -3,9 +3,11 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, Response
 
+from homeassistant_gateway.application.authentication import AuthenticateClient
+from homeassistant_gateway.application.authorization import AuthorizeRequest
 from homeassistant_gateway.application.development import (
     DevelopmentReportStore,
     development_catalog,
@@ -31,9 +33,25 @@ class DevelopmentRouteDependencies:
     enabled: bool
     operator_enabled: bool = False
     operator_mutations: OperatorMutationService | None = None
+    operator_capabilities: tuple[str, ...] = ()
+    registered_mutation_tools: tuple[str, ...] = ()
+    authenticate_client: AuthenticateClient | None = None
+    authorize_request: AuthorizeRequest | None = None
 
 
 def register_development_routes(app: FastAPI, dependencies: DevelopmentRouteDependencies) -> None:
+    def require_operator_client(request: Request, capability: str) -> None:
+        if dependencies.authenticate_client is None or dependencies.authorize_request is None:
+            raise HTTPException(status_code=503, detail="operator_authorization_not_configured")
+        from homeassistant_gateway.presentation.auth_headers import parse_bearer_token
+
+        client = dependencies.authenticate_client.execute(parse_bearer_token(request.headers.get("authorization")) or "")
+        if client is None:
+            raise HTTPException(status_code=401, detail="invalid_client_token")
+        decision = dependencies.authorize_request.execute(client.client_id, capability, mutation=True)
+        if decision.decision.value != "approval_required":
+            raise HTTPException(status_code=403, detail=decision.reason)
+
     @app.get("/api/development/catalog")
     def development_catalog_resource() -> dict[str, Any]:
         upstream = "disabled" if dependencies.home_assistant is None else ("ready" if dependencies.home_assistant.health() else "unavailable")
@@ -43,10 +61,12 @@ def register_development_routes(app: FastAPI, dependencies: DevelopmentRouteDepe
             "operations": [asdict(item) for item in development_catalog()],
             "packs": [asdict(item) for item in development_packs()],
             "mutations": {
-                "status": "disabled",
-                "reason": "mutation_execution_disabled",
+                "status": "ready" if dependencies.registered_mutation_tools else "disabled",
+                "reason": None if dependencies.registered_mutation_tools else "mutation_execution_disabled",
                 "approval_required": True,
                 "operator_enabled": dependencies.operator_enabled,
+                "capabilities": dependencies.operator_capabilities,
+                "registered_mutation_tools": dependencies.registered_mutation_tools,
             },
         }
 
@@ -55,10 +75,10 @@ def register_development_routes(app: FastAPI, dependencies: DevelopmentRouteDepe
         return {
             "profile": "operator",
             "operator_enabled": dependencies.operator_enabled,
-            "execution": "disabled",
-            "registered_mutation_tools": [],
-            "capabilities": [],
-            "reason": "mutation_execution_disabled",
+            "execution": "ready" if dependencies.registered_mutation_tools else "disabled",
+            "registered_mutation_tools": dependencies.registered_mutation_tools,
+            "capabilities": dependencies.operator_capabilities,
+            "reason": None if dependencies.registered_mutation_tools else "mutation_execution_disabled",
         }
 
     @app.post("/api/development/run", status_code=202)
@@ -92,28 +112,30 @@ def register_development_routes(app: FastAPI, dependencies: DevelopmentRouteDepe
             raise HTTPException(status_code=400, detail=str(error)) from error
 
     @app.post("/api/operator/approval")
-    def operator_approval_resource(request: OperatorApprovalRequest) -> dict[str, Any]:
+    def operator_approval_resource(request: Request, payload: OperatorApprovalRequest) -> dict[str, Any]:
         if not dependencies.operator_enabled or dependencies.operator_mutations is None:
             raise HTTPException(status_code=403, detail="operator_disabled")
+        require_operator_client(request, payload.capability)
         try:
-            grant = dependencies.operator_mutations.request_approval(request.operation, request.target, request.capability, request.proposed)
+            grant = dependencies.operator_mutations.request_approval(payload.operation, payload.target, payload.capability, payload.proposed)
         except (RuntimeError, ValueError) as error:
             raise HTTPException(status_code=400, detail=str(error)) from error
         return {"approval_id": grant.approval_id, "approval_token": grant.token, "expires_at": grant.expires_at.isoformat()}
 
     @app.post("/api/operator/execute")
-    def operator_execute_resource(request: OperatorExecuteRequest) -> dict[str, Any]:
+    def operator_execute_resource(request: Request, payload: OperatorExecuteRequest) -> dict[str, Any]:
         if not dependencies.operator_enabled or dependencies.operator_mutations is None:
             raise HTTPException(status_code=403, detail="operator_disabled")
+        require_operator_client(request, payload.capability)
         try:
             return dependencies.operator_mutations.execute(
-                request.operation,
-                request.target,
-                request.capability,
-                request.proposed,
-                request.approval_id,
-                request.approval_token,
-                request.idempotency_key,
+                payload.operation,
+                payload.target,
+                payload.capability,
+                payload.proposed,
+                payload.approval_id,
+                payload.approval_token,
+                payload.idempotency_key,
             )
         except PermissionError as error:
             raise HTTPException(status_code=403, detail=str(error)) from error

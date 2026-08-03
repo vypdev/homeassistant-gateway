@@ -45,6 +45,11 @@ def register_client_routes(app: FastAPI, dependencies: ClientRouteDependencies) 
         client = dependencies.authenticate_client.execute(token or "")
         if client is None:
             raise HTTPException(status_code=401, detail="invalid_client_token")
+        tools = ["gateway_diagnostics", "ha_inventory", "ha_states", "ha_automations", "ha_automation_config", "ha_configuration", "ha_services", "ha_events", "ha_history", "ha_logbook", "ha_devices", "ha_areas", "ha_floors", "ha_labels", "ha_entity_registry", "ha_scripts", "ha_scenes", "ha_helpers", "ha_integrations"]
+        if client.profile.value == "operator" and "ha.write.services" in client.capabilities:
+            tools.extend(("ha_request_service_approval", "ha_execute_service_call"))
+        if client.profile.value == "operator" and "ha.write.automations" in client.capabilities:
+            tools.extend(("ha_request_automation_approval", "ha_execute_automation"))
         return MCPDiscoveryResponse(
             server_name="homeassistant-gateway-observer",
             transport="streamable-http",
@@ -52,7 +57,7 @@ def register_client_routes(app: FastAPI, dependencies: ClientRouteDependencies) 
             client_id=client.client_id,
             profile=client.profile,
             capabilities=client.capabilities,
-            tools=("gateway_diagnostics", "ha_inventory", "ha_states", "ha_automations", "ha_automation_config", "ha_configuration", "ha_services", "ha_events", "ha_history", "ha_logbook", "ha_devices", "ha_areas", "ha_floors", "ha_labels", "ha_entity_registry", "ha_scripts", "ha_scenes", "ha_helpers", "ha_integrations"),
+            tools=tuple(tools),
         )
 
     @app.get("/api/client/me", response_model=ClientResponse)

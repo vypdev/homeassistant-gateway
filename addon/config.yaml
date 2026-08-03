@@ -26,10 +26,12 @@ map:
 options:
   log_level: info
   operator_enabled: false
+  operator_allowed_services: ""
   development_console_enabled: true
   mcp_allowed_hosts: "localhost,127.0.0.1,[::1],homeassistant,homeassistant.local"
 schema:
   log_level: list(trace|debug|info|warning|error|fatal)
   operator_enabled: bool
+  operator_allowed_services: str
   development_console_enabled: bool
   mcp_allowed_hosts: str

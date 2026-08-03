@@ -16,11 +16,17 @@ def load_settings() -> AppSettings:
         for host in os.getenv("GATEWAY_MCP_ALLOWED_HOSTS", "").split(",")
         if host.strip()
     )
+    allowed_services = tuple(
+        service.strip()
+        for service in os.getenv("GATEWAY_OPERATOR_ALLOWED_SERVICES", "").split(",")
+        if service.strip()
+    )
     return AppSettings(
         data_dir=data_dir,
         operator_enabled=operator_enabled,
         supervisor_token=os.getenv("SUPERVISOR_TOKEN") or None,
         supervisor_url=os.getenv("GATEWAY_SUPERVISOR_URL", "http://supervisor/core/api"),
+        operator_allowed_services=allowed_services,
         development_console_enabled=development_console_enabled,
         mcp_allowed_hosts=allowed_hosts or AppSettings(data_dir).mcp_allowed_hosts,
     )

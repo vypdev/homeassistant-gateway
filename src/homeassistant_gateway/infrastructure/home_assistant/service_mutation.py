@@ -15,7 +15,7 @@ class ServicePostTransport(Protocol):
 
 
 class SupervisorServiceMutationAdapter(HomeAssistantServiceMutationPort):
-    """Typed service-call adapter; composition deliberately does not register it yet."""
+    """Bounded, allowlisted Home Assistant service-call adapter."""
 
     def __init__(self, transport: ServicePostTransport, allowed_services: frozenset[str] = frozenset(), max_payload_keys: int = 50) -> None:
         if max_payload_keys < 1 or max_payload_keys > 200:
@@ -38,3 +38,37 @@ class SupervisorServiceMutationAdapter(HomeAssistantServiceMutationPort):
         if not isinstance(response, list) or not all(isinstance(item, dict) for item in response):
             raise HomeAssistantUnavailable("home_assistant_invalid_service_response", path=f"/services/{domain}/{service}", status=status)
         return redact(response)
+
+
+class SupervisorOperatorMutationAdapter:
+    """Translate the supported operator operation into the service-call port."""
+
+    def __init__(self, service_port: HomeAssistantServiceMutationPort) -> None:
+        self._service_port = service_port
+
+    def execute(self, operation: str, target: str, proposed: dict[str, Any]) -> dict[str, Any]:
+        if operation not in {"ha.call_service", "ha.update_automation"}:
+            return {"status": "unsupported", "reason": "operator_operation_not_connected"}
+        entity_id = proposed.get("entity_id")
+        if not isinstance(entity_id, str) or not re.fullmatch(r"[a-z0-9_]+\.[a-z0-9_]+", entity_id):
+            raise ValueError("service_entity_target_invalid")
+        if operation == "ha.update_automation":
+            if not entity_id.startswith("automation."):
+                raise ValueError("automation_entity_target_invalid")
+            action = proposed.get("action")
+            if action not in {"trigger", "turn_on", "turn_off"}:
+                raise ValueError("automation_action_invalid")
+            domain, service = "automation", action
+            target = f"{domain}.{service}"
+        else:
+            if "." not in target:
+                raise ValueError("service_target_invalid")
+            domain, service = target.split(".", 1)
+        payload = dict(proposed)
+        payload.pop("action", None)
+        return {
+            "status": "ok",
+            "operation": operation,
+            "target": target,
+            "data": self._service_port.call_service(domain, service, payload),
+        }

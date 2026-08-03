@@ -66,6 +66,8 @@ def create_app(
     development_console_enabled: bool = True,
     operator_enabled: bool = False,
     operator_mutations: OperatorMutationService | None = None,
+    operator_capabilities: tuple[str, ...] = (),
+    registered_mutation_tools: tuple[str, ...] = (),
     lifespan: Any | None = None,
 ) -> FastAPI:
     """Build the HTTP adapter around already-wired application use cases."""
@@ -111,6 +113,10 @@ def create_app(
             enabled=development_console_enabled,
             operator_enabled=operator_enabled,
             operator_mutations=operator_mutations,
+            operator_capabilities=operator_capabilities,
+            registered_mutation_tools=registered_mutation_tools,
+            authenticate_client=authenticate_client,
+            authorize_request=authorize_request,
         ),
     )
 

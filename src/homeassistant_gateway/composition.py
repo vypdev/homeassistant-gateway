@@ -20,6 +20,10 @@ from homeassistant_gateway.application.operator_security import (
     IdempotencyRegistry,
     OperatorControl,
 )
+from homeassistant_gateway.infrastructure.home_assistant.service_mutation import (
+    SupervisorOperatorMutationAdapter,
+    SupervisorServiceMutationAdapter,
+)
 from homeassistant_gateway.infrastructure.local_port_diagnostics import LocalGatewayPortDiagnostics
 from homeassistant_gateway.infrastructure.security.tokens import SecureTokenIssuer
 from homeassistant_gateway.infrastructure.storage.sqlite_audit import SQLiteAuditRepository
@@ -44,6 +48,7 @@ class AppSettings:
     operator_enabled: bool = False
     supervisor_token: str | None = None
     supervisor_url: str = "http://supervisor/core/api"
+    operator_allowed_services: tuple[str, ...] = ()
     development_console_enabled: bool = True
     mcp_allowed_hosts: tuple[str, ...] = (
         "localhost",
@@ -67,22 +72,31 @@ def build_app(settings: AppSettings) -> FastAPI:
     authenticate_client = AuthenticateClient(repository, token_issuer)
     authorize_request = AuthorizeRequest(repository, settings.operator_enabled)
     observer_diagnostics = ObserverDiagnostics(authenticate_client, authorize_request)
-    operator_mutations = OperatorMutationService(
-        OperatorControl(settings.operator_enabled),
-        ApprovalService(clock=clock, store=operator_state),
-        IdempotencyRegistry(store=operator_state),
-        audit=SQLiteOperatorAuditAdapter(audit_repository, clock),
-    )
     home_assistant = (
         SupervisorHomeAssistantClient(settings.supervisor_token, base_url=settings.supervisor_url)
         if settings.supervisor_token
         else None
+    )
+    mutation_port = None
+    if settings.operator_enabled and home_assistant is not None:
+        service_port = SupervisorServiceMutationAdapter(
+            home_assistant,
+            frozenset(settings.operator_allowed_services),
+        )
+        mutation_port = SupervisorOperatorMutationAdapter(service_port)
+    operator_mutations = OperatorMutationService(
+        OperatorControl(settings.operator_enabled),
+        ApprovalService(clock=clock, store=operator_state),
+        IdempotencyRegistry(store=operator_state),
+        mutation_port=mutation_port,
+        audit=SQLiteOperatorAuditAdapter(audit_repository, clock),
     )
     mcp_bundle = create_mcp_app(
         observer_diagnostics,
         authenticate_client.execute,
         authorize_request.execute,
         home_assistant=home_assistant,
+        operator_mutations=operator_mutations,
         allowed_hosts=settings.mcp_allowed_hosts,
     )
 
@@ -107,5 +121,22 @@ def build_app(settings: AppSettings) -> FastAPI:
         development_console_enabled=settings.development_console_enabled,
         operator_enabled=settings.operator_enabled,
         operator_mutations=operator_mutations,
+        operator_capabilities=tuple(
+            capability
+            for capability, services in (
+                ("ha.write.services", tuple(service for service in settings.operator_allowed_services if not service.startswith("automation."))),
+                ("ha.write.automations", tuple(service for service in settings.operator_allowed_services if service.startswith("automation."))),
+            )
+            if settings.operator_enabled and services
+        ),
+        registered_mutation_tools=tuple(
+            tool
+            for tool, services in (
+                (("ha_request_service_approval", "ha_execute_service_call"), tuple(service for service in settings.operator_allowed_services if not service.startswith("automation."))),
+                (("ha_request_automation_approval", "ha_execute_automation"), tuple(service for service in settings.operator_allowed_services if service.startswith("automation."))),
+            )
+            if settings.operator_enabled and services
+            for tool in tool
+        ),
         lifespan=mcp_bundle.lifespan,
     )
