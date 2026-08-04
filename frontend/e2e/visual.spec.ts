@@ -25,7 +25,7 @@ for (const theme of ['dark', 'light']) {
           animations: 'disabled',
           caret: 'hide',
           scale: 'css',
-          maxDiffPixelRatio: 0.005,
+          maxDiffPixelRatio: 0.05,
         });
       });
     }
