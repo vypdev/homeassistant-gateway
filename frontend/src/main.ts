@@ -267,7 +267,7 @@ export class GatewayApp extends LitElement {
     .clients-table td:nth-child(3) { overflow-wrap: normal; word-break: normal; }
     .clients-table td:nth-child(3) .tag { white-space: nowrap; }
     td { color: #d7e8f7; }
-    code, .mono { color: #9bdbff; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px; }
+    code, .mono { color: #9bdbff; font-family: ui-monospace, monospace; font-size: 12px; }
     .tag { display: inline-block; color: #9bdbff; background: #123651; border: 1px solid #27516a; border-radius: 999px; padding: 3px 8px; margin: 2px 3px 2px 0; font-size: 11px; }
     .ok { color: #67e2a0; } .warn { color: #ffd27d; } .bad { color: #ff8e9e; }
     .result-row .ok, .result-row .warn, .result-row .bad { margin-left: 6px; }
@@ -282,7 +282,7 @@ export class GatewayApp extends LitElement {
     .modal { width: min(560px, 100%); border: 1px solid #3b7796; border-radius: 18px; background: #0b1b2c; padding: 22px; box-shadow: 0 30px 100px #0009; }
     .empty { padding: 28px 10px; text-align: center; color: #8ea5bd; }
     .dev-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 20px; align-items: start; }
-    .dev-output { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; border: 1px solid #23415e; border-radius: 10px; padding: 14px; background: #06101b; color: #b8ecff; font: 12px/1.5 "JetBrains Mono", ui-monospace, monospace; }
+    .dev-output { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; border: 1px solid #23415e; border-radius: 10px; padding: 14px; background: #06101b; color: #b8ecff; font: 12px/1.5 ui-monospace, monospace; }
     .result-list { display: grid; gap: 8px; margin-top: 14px; }
     .pack-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 16px 0; }
     .pack-grid button { display: grid; gap: 5px; text-align: left; padding: 12px 13px; min-height: 72px; }
