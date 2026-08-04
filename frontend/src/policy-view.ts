@@ -4,6 +4,7 @@ import type { Client, OperatorService, OperatorServicePolicy } from './models';
 type Translator = (key: string) => string;
 type EvaluatePolicy = (event: Event) => void;
 type ToggleService = (service: string, checked: boolean) => void;
+type ToggleServiceGroup = (services: string[], checked: boolean) => void;
 
 export type PolicyViewContext = {
   clients: Client[];
@@ -12,6 +13,7 @@ export type PolicyViewContext = {
   evaluatePolicy: EvaluatePolicy;
   operatorPolicy: OperatorServicePolicy | null;
   toggleOperatorService: ToggleService;
+  toggleOperatorServiceGroup: ToggleServiceGroup;
 };
 
 export function policyView(ctx: PolicyViewContext): TemplateResult {
@@ -76,7 +78,13 @@ export function policyView(ctx: PolicyViewContext): TemplateResult {
         <div class="operator-service-groups">
           ${[...grouped.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([domain, services]) => html`
             <section class="operator-service-group" aria-labelledby=${`operator-domain-${domain}`}>
-              <h3 id=${`operator-domain-${domain}`}>${domain}</h3>
+              <div class="operator-service-group-header">
+                <h3 id=${`operator-domain-${domain}`}>${domain}</h3>
+                ${(() => {
+                  const groupSelected = services.some((service) => selected.has(service.id));
+                  return html`<button type="button" class="secondary operator-service-group-action" @click=${() => ctx.toggleOperatorServiceGroup(services.map((service) => service.id), !groupSelected)}>${ctx.t(groupSelected ? 'operatorServicesClearAll' : 'operatorServicesSelectAll')}</button>`;
+                })()}
+              </div>
               <div class="operator-service-list">
                 ${services.map((service) => html`
                   <label class="operator-service-option">

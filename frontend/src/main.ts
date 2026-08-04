@@ -336,6 +336,8 @@ export class GatewayApp extends LitElement {
     .operator-policy-change-note { margin: 14px 0 18px; }
     .operator-service-groups { display: grid; gap: 30px; }
     .operator-service-group { display: grid; gap: 13px; padding: 16px; border: 1px solid #29465f; border-radius: 14px; background: #07152233; }
+    .operator-service-group-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-width: 0; }
+    .operator-service-group-action { flex: 0 0 auto; min-height: 34px; padding: 7px 12px; font-size: 12px; }
     .operator-service-group h3 { margin: 0; color: #cfe5f5; font-size: 15px; letter-spacing: .01em; }
     .operator-service-list { display: grid; gap: 13px; }
     .operator-service-option { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; padding: 16px; border: 1px solid #3d617c; border-radius: 12px; background: #0b2133cc; cursor: pointer; box-shadow: 0 4px 12px #0002; }
@@ -553,11 +555,7 @@ export class GatewayApp extends LitElement {
   auditView() { return auditView({ audit: this.audit, t: this.t.bind(this), loadAudit: (decision) => void this.loadAudit(decision) }); }
 
   async loadAudit(decision: string) { this.busy = true; try { this.audit = await api<AuditEvent[]>(`/audit?limit=100${decision ? `&decision=${encodeURIComponent(decision)}` : ''}`); } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorAudit'); } finally { this.busy = false; } }
-  toggleOperatorService(service: string, checked: boolean) {
-    if (!this.operatorPolicy) return;
-    const selected = new Set(this.operatorPolicy.selected);
-    if (checked) selected.add(service); else selected.delete(service);
-    this.operatorPolicy = { ...this.operatorPolicy, selected: [...selected].sort() };
+  private queueOperatorPolicySave() {
     this.operatorPolicySaveQueue = this.operatorPolicySaveQueue.then(async () => {
       if (!this.operatorPolicy) return;
       this.busy = true; this.error = '';
@@ -566,8 +564,24 @@ export class GatewayApp extends LitElement {
       finally { this.busy = false; }
     });
   }
+  toggleOperatorService(service: string, checked: boolean) {
+    if (!this.operatorPolicy) return;
+    const selected = new Set(this.operatorPolicy.selected);
+    if (checked) selected.add(service); else selected.delete(service);
+    this.operatorPolicy = { ...this.operatorPolicy, selected: [...selected].sort() };
+    this.queueOperatorPolicySave();
+  }
+  toggleOperatorServiceGroup(services: string[], checked: boolean) {
+    if (!this.operatorPolicy) return;
+    const selected = new Set(this.operatorPolicy.selected);
+    for (const service of services) {
+      if (checked) selected.add(service); else selected.delete(service);
+    }
+    this.operatorPolicy = { ...this.operatorPolicy, selected: [...selected].sort() };
+    this.queueOperatorPolicySave();
+  }
 
-  policyView() { return renderPolicyView({ clients: this.clients, busy: this.busy, t: this.t.bind(this), evaluatePolicy: this.evaluatePolicy.bind(this), operatorPolicy: this.operatorPolicy, toggleOperatorService: this.toggleOperatorService.bind(this) }); }
+  policyView() { return renderPolicyView({ clients: this.clients, busy: this.busy, t: this.t.bind(this), evaluatePolicy: this.evaluatePolicy.bind(this), operatorPolicy: this.operatorPolicy, toggleOperatorService: this.toggleOperatorService.bind(this), toggleOperatorServiceGroup: this.toggleOperatorServiceGroup.bind(this) }); }
   async evaluatePolicy(event: Event) { event.preventDefault(); const data = new FormData(event.target as HTMLFormElement); this.busy = true; try { const result = await api<{ decision: string; reason: string }>('/policy/evaluate', { method: 'POST', body: JSON.stringify({ client_id: data.get('client_id'), capability: data.get('capability'), mutation: data.has('mutation') }) }); window.alert(`${result.decision}: ${result.reason}`); } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorPolicy'); } finally { this.busy = false; } }
   mcpView() { return renderMcpView({ ready: this.ready, discovery: this.discovery, busy: this.busy, t: this.t.bind(this), loadDiscovery: this.loadDiscovery.bind(this) }); }
   tokenModal() { return html`<div class="modal-backdrop" role="dialog" aria-modal="true"><div class="modal"><div class="eyebrow">${this.t('oneTimeCredential')}</div><h2>${this.t('tokenOnce')}</h2><p>${this.t('tokenOnlyOnce')}</p><div class="token mono">${this.issuedToken}</div><div class="form-actions"><button class="secondary" @click=${() => navigator.clipboard?.writeText(this.issuedToken)}>${this.t('copyToken')}</button><button class="primary" @click=${() => { this.issuedToken = ''; }}>${this.t('savedIt')}</button></div></div></div>`; }
