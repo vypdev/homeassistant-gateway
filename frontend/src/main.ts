@@ -154,17 +154,17 @@ export class GatewayApp extends LitElement {
   private operatorPolicySaveQueue: Promise<void> = Promise.resolve();
 
   static styles = css`
-    :host { display: block; color: #e7f0fb; min-height: 100vh; font: 14px/1.5 Inter, ui-sans-serif, system-ui, sans-serif; }
+    :host { --ha-primary: #0277bd; --ha-primary-hover: #01579b; --ha-primary-active: #004c75; --ha-surface: #0c1b2d; --ha-surface-raised: #12263a; --ha-surface-muted: #071522; --ha-border: #29465f; --ha-text: #e7f0fb; --ha-text-secondary: #9fb8cc; --ha-text-muted: #718aa0; --ha-success: #67e2a0; --ha-warning: #ffd27d; --ha-danger: #ff8e9e; --ha-radius-card: 12px; --ha-radius-control: 10px; --ha-radius-pill: 999px; --ha-shadow-card: 0 8px 24px #00000024; display: block; color: var(--ha-text); min-height: 100vh; font: 14px/1.5 Inter, ui-sans-serif, system-ui, sans-serif; }
     * { box-sizing: border-box; }
     .shell { min-height: 100vh; position: relative; overflow: hidden; background: #07111f; }
-    .shell.light { color: #243447; background: #f4f7fb; }
+    .shell.light { --ha-primary: #0277bd; --ha-primary-hover: #01579b; --ha-primary-active: #004c75; --ha-surface: #ffffff; --ha-surface-raised: #f8fbfe; --ha-surface-muted: #edf3f7; --ha-border: #c7d6e1; --ha-text: #243447; --ha-text-secondary: #607286; --ha-text-muted: #718394; --ha-success: #2d9864; --ha-warning: #a66f16; --ha-danger: #b34b58; --ha-shadow-card: 0 8px 24px #38516b14; color: var(--ha-text); background: #f4f7fb; }
     .shell.light aside, .shell.light .card { background: #ffffffee; border-color: #d3deea; box-shadow: 0 18px 50px #38516b14; }
     .shell.light p, .shell.light .muted, .shell.light .brand small, .shell.light .card-label, .shell.light .side-foot, .shell.light nav button { color: #607286; }
     .shell.light .status-pill { color: #237b54; background: #e7f7ee; border-color: #9bd1b1; }
     .shell.light button.primary { color: #ffffff; background: #28708e; border-color: #1e5d77; }
     .shell.light button.primary:hover:not(:disabled) { color: #ffffff; background: #1f607b; border-color: #174e65; }
-    .shell.light button.secondary { color: #ffffff; background: #45657b; border-color: #35566d; }
-    .shell.light button.secondary:hover:not(:disabled) { color: #ffffff; background: #35566d; border-color: #29495e; }
+    .shell.light button.secondary { color: var(--ha-text); background: var(--ha-surface-raised); border-color: var(--ha-border); }
+    .shell.light button.secondary:hover:not(:disabled) { color: var(--ha-text); background: var(--ha-surface-muted); border-color: var(--ha-primary); }
     .shell.light button.danger { color: #ffffff; background: #8a3d54; border-color: #713044; }
     .shell.light button.danger:hover:not(:disabled) { color: #ffffff; background: #713044; border-color: #5e2638; }
     .shell.light .result-row { border-color: #c8d6e1; background: #f8fbfd; }
@@ -180,11 +180,13 @@ export class GatewayApp extends LitElement {
     .shell.light .grid { opacity: .25; background-image: linear-gradient(#5c88a31c 1px, transparent 1px), linear-gradient(90deg, #5c88a31c 1px, transparent 1px); }
     .shell::before { content: ''; position: fixed; inset: -20%; pointer-events: none; background: radial-gradient(circle at 18% 0%, #087fb52b, transparent 34%), radial-gradient(circle at 90% 20%, #234b9c22, transparent 36%); animation: drift 32s ease-in-out infinite alternate; }
     .dot-field { position: fixed; inset: 0; pointer-events: none; overflow: hidden; opacity: .9; background-image: radial-gradient(circle, #8fc9ed2e 1px, transparent 1.45px); background-size: 24px 24px; mask-image: radial-gradient(ellipse at center, black 12%, transparent 82%); }
+    .dot-field::before { content: ''; position: absolute; width: 72vw; height: 58vw; max-width: 980px; max-height: 760px; min-width: 420px; min-height: 330px; left: 14%; top: 8%; background-image: radial-gradient(circle, #b4e6ff 1.35px, transparent 1.9px); background-size: 24px 24px; mask-image: radial-gradient(ellipse at center, black 0%, transparent 68%); opacity: .16; filter: blur(.15px); animation: dot-focus-drift 42s ease-in-out infinite alternate; transform-origin: center; }
     .dot-field__zone { position: absolute; width: 54vw; height: 42vw; max-width: 760px; max-height: 590px; min-width: 360px; min-height: 270px; background-image: radial-gradient(circle, #93d8ff 1.45px, transparent 2px); background-size: 24px 24px; mask-image: radial-gradient(ellipse at center, black 0%, transparent 70%); opacity: .23; filter: blur(.1px); animation: dot-zone-drift 28s ease-in-out infinite alternate; }
     .dot-field__zone--one { top: -12%; left: -10%; }
     .dot-field__zone--two { top: 20%; right: -16%; animation-duration: 34s; animation-delay: -9s; }
     .dot-field__zone--three { bottom: -24%; left: 24%; animation-duration: 40s; animation-delay: -18s; opacity: .16; }
     .shell.light .dot-field { opacity: .78; background-image: radial-gradient(circle, #5e89a52b 1px, transparent 1.45px); }
+    .shell.light .dot-field::before { background-image: radial-gradient(circle, #6d9bb8 1.35px, transparent 1.9px); opacity: .13; }
     .shell.light .dot-field__zone { background-image: radial-gradient(circle, #6d9bb8 1.45px, transparent 2px); opacity: .2; }
     .boot-stage { min-height: min(620px, calc(100vh - 56px)); display: grid; place-items: center; padding: 28px; }
     .boot-card { position: relative; width: min(520px, 100%); padding: 42px 38px; text-align: center; border: 1px solid #31536f; border-radius: 22px; background: #071522d9; box-shadow: 0 24px 70px #02081266; backdrop-filter: blur(14px); }
@@ -225,23 +227,23 @@ export class GatewayApp extends LitElement {
     .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 14px currentColor; }
     .cards { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 18px; }
     .topology-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 14px; margin: 0; }
-    .card { border: 1px solid #23415e; border-radius: 16px; background: #0c1b2ddd; padding: 18px; box-shadow: 0 18px 50px #0003; }
+    .card { border: 1px solid var(--ha-border); border-radius: var(--ha-radius-card); background: var(--ha-surface); padding: 18px; box-shadow: var(--ha-shadow-card); }
     .card strong.metric { display: block; margin-top: 8px; font-size: 28px; letter-spacing: -.04em; }
     .card-label { color: #8ea5bd; font-size: 12px; }
     .wide { min-height: 180px; }
     .split { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, .7fr); gap: 14px; }
     .split > *, .layout > * { min-width: 0; }
     .toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 14px; }
-    button.primary, button.secondary, button.danger { border: 1px solid transparent; border-radius: 9px; padding: 9px 13px; color: #ffffff; background: #126b8f; cursor: pointer; font: 700 13px inherit; transition: background .15s ease, border-color .15s ease, transform .15s ease; }
-    button.primary:hover:not(:disabled) { background: #0e5875; border-color: #2585aa; }
-    button.primary:active:not(:disabled) { background: #0a4760; }
-    button.secondary { color: #ffffff; background: #28506d; border-color: #3b6d8d; }
-    button.secondary:hover:not(:disabled) { background: #346b8f; border-color: #5b9cbd; transform: none; }
-    button.secondary:active:not(:disabled) { background: #1e435d; }
-    button.danger { color: #ffffff; background: #7b334a; border-color: #a64e69; }
-    button.danger:hover:not(:disabled) { background: #99415d; border-color: #c36883; }
-    button.danger:active:not(:disabled) { background: #62283b; }
-    button:focus-visible, nav button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #7ddcff; outline-offset: 2px; }
+    button.primary, button.secondary, button.danger { min-height: 40px; border: 1px solid transparent; border-radius: var(--ha-radius-pill); padding: 8px 16px; color: #ffffff; background: var(--ha-primary); cursor: pointer; font: 500 14px/1.2 inherit; letter-spacing: .01em; box-shadow: 0 2px 5px #00000026; transition: background-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+    button.primary:hover:not(:disabled) { background: var(--ha-primary-hover); box-shadow: 0 3px 8px #00000033; }
+    button.primary:active:not(:disabled) { background: var(--ha-primary-active); box-shadow: none; transform: translateY(1px); }
+    button.secondary { color: var(--ha-text); background: var(--ha-surface-raised); border-color: var(--ha-border); box-shadow: none; }
+    button.secondary:hover:not(:disabled) { color: var(--ha-text); background: var(--ha-surface-muted); border-color: var(--ha-primary); transform: none; }
+    button.secondary:active:not(:disabled) { background: var(--ha-border); }
+    button.danger { background: #b23a4d; }
+    button.danger:hover:not(:disabled) { background: #9d3042; }
+    button.danger:active:not(:disabled) { background: #842738; }
+    button:focus-visible, nav button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--ha-primary); outline-offset: 2px; }
     button:disabled { opacity: .55; cursor: not-allowed; }
     .table-wrap { overflow: visible; min-width: 0; }
     .desktop-only { display: block; }
@@ -268,12 +270,12 @@ export class GatewayApp extends LitElement {
     .clients-table td:nth-child(3) .tag { white-space: nowrap; }
     td { color: #d7e8f7; }
     code, .mono { color: #9bdbff; font-family: ui-monospace, monospace; font-size: 12px; }
-    .tag { display: inline-block; color: #9bdbff; background: #123651; border: 1px solid #27516a; border-radius: 999px; padding: 3px 8px; margin: 2px 3px 2px 0; font-size: 11px; }
+    .tag { display: inline-flex; align-items: center; min-height: 24px; color: #b8e8ff; background: #173b55; border: 1px solid #315b75; border-radius: var(--ha-radius-pill); padding: 3px 9px; margin: 2px 3px 2px 0; font-size: 12px; line-height: 1.2; }
     .ok { color: #67e2a0; } .warn { color: #ffd27d; } .bad { color: #ff8e9e; }
     .result-row .ok, .result-row .warn, .result-row .bad { margin-left: 6px; }
     .form { display: grid; gap: 12px; }
-    label { display: grid; gap: 6px; color: #8ea5bd; font-size: 12px; }
-    input, select, textarea { width: 100%; border: 1px solid #2a4e6d; border-radius: 8px; padding: 10px 11px; color: #e7f0fb; background: #071522; font: inherit; }
+    label { display: grid; gap: 6px; color: var(--ha-text-secondary); font-size: 13px; font-weight: 500; }
+    input, select, textarea { width: 100%; min-height: 40px; border: 1px solid #3a5b73; border-radius: var(--ha-radius-control); padding: 9px 11px; color: var(--ha-text); background: var(--ha-surface-muted); font: inherit; }
     textarea { min-height: 70px; resize: vertical; }
     .form-actions { display: flex; justify-content: flex-end; gap: 8px; }
     .alert { border: 1px solid #91455a; border-radius: 10px; padding: 10px 12px; color: #ffb9c1; background: #552b3a66; margin-bottom: 15px; }
@@ -352,11 +354,12 @@ export class GatewayApp extends LitElement {
     @keyframes boot-progress { 0% { transform: translateX(-130%); } 55%, 100% { transform: translateX(250%); } }
     @keyframes drift { from { transform: translate3d(-1%, -1%, 0) scale(1); } to { transform: translate3d(2%, 2%, 0) scale(1.04); } }
     @keyframes dot-zone-drift { from { transform: translate3d(-8%, -5%, 0) scale(.92); } to { transform: translate3d(10%, 8%, 0) scale(1.12); } }
+    @keyframes dot-focus-drift { 0% { transform: translate3d(-8%, -5%, 0) scale(.86); } 38% { transform: translate3d(5%, 8%, 0) scale(1.02); } 72% { transform: translate3d(12%, -4%, 0) scale(.94); } 100% { transform: translate3d(-3%, 10%, 0) scale(1.1); } }
     @media (max-width: 1100px) { .split, .dev-grid { grid-template-columns: 1fr; } }
     @media (max-width: 1000px) { .cards { grid-template-columns: repeat(2, 1fr); } .topology-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .split, .dev-grid { grid-template-columns: 1fr; } }
     @media (max-width: 1600px) { .desktop-only { display: none; } .responsive-records { display: grid; gap: 10px; } }
     @media (max-width: 720px) { .layout { width: min(100% - 24px, 600px); display: block; padding-top: 12px; } aside { height: auto; position: static; margin-bottom: 18px; } nav { grid-template-columns: repeat(4, 1fr); } nav button { text-align: center; padding: 9px 4px; font-size: 12px; } .side-foot { display: none; } .cards, .topology-grid, .split, .dev-grid, .pack-grid { grid-template-columns: 1fr; } .topline { display: block; } .topline > div { min-width: 0; } .status-pill { margin-top: 16px; } .toolbar, .capability-toolbar, .permission-tabs, .operator-service-selection-toolbar { flex-wrap: wrap; align-items: flex-start; } .capability-actions { width: 100%; justify-content: flex-start; } .capability-actions button { flex: 1 1 140px; } .toolbar > div, .toolbar button { min-width: 0; } .toolbar button, .form-actions button { max-width: 100%; } .form-actions { flex-wrap: wrap; } .operator-policy-header { flex-wrap: wrap; } .operator-policy-header > * { max-width: 100%; } .operator-policy-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .result-row { flex-direction: column; } .result-row > * { max-width: 100%; } .pack-grid button { min-width: 0; } .operator-service-selection-actions { width: 100%; justify-content: flex-start; } .operator-service-selection-actions button { flex: 1 1 140px; } .card { min-width: 0; padding: 16px; } h1 { overflow-wrap: anywhere; } }
-    @media (prefers-reduced-motion: reduce) { .shell::before, .dot-field__zone, .boot-orbit, .boot-core, .boot-progress::before { animation: none; } *, *::before, *::after { transition-duration: .01ms !important; } }
+    @media (prefers-reduced-motion: reduce) { .shell::before, .dot-field::before, .dot-field__zone, .boot-orbit, .boot-core, .boot-progress::before { animation: none; } *, *::before, *::after { transition-duration: .01ms !important; } }
     @media (prefers-contrast: more) { .card, aside, input, select, textarea, .result-row { border-color: currentColor; } .muted, p, label, th { color: currentColor; } .tag, button.secondary { border-color: currentColor; } }
   `;
 

@@ -30,6 +30,8 @@ assert.match(development, /retry/);
 assert.match(main, /prefers-reduced-motion/);
 assert.match(main, /\.dot-field/);
 assert.match(main, /dot-zone-drift/);
+assert.match(main, /dot-focus-drift/);
+assert.match(main, /\.dot-field::before/);
 assert.match(shell, /dot-field__zone/);
 assert.match(main, /src="\/icon\.png"/);
 assert.match(index, /href="\/favicon\.png"/);
@@ -50,5 +52,7 @@ assert.match(styles, /\.operator-service-group \{ display: grid; gap: 13px; padd
 assert.match(main, /clientProfile !== 'operator'/);
 assert.match(styles, /button\.primary:hover:not\(:disabled\)/);
 assert.match(styles, /button\.secondary:hover:not\(:disabled\)/);
+assert.match(styles, /--ha-primary/);
+assert.match(styles, /border-radius: var\(--ha-radius-pill\)/);
 
 console.log('frontend UX contracts: ok');

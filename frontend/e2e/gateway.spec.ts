@@ -49,9 +49,11 @@ test('keeps the ambient shell motion reduced when requested', async ({ page }) =
 
   const animationNames = await page.locator('.shell').evaluate((element) => {
     const before = getComputedStyle(element, '::before').animationName;
+    const dotField = element.querySelector('.dot-field');
+    const dotFocus = dotField ? getComputedStyle(dotField, '::before').animationName : '';
     const neural = element.querySelector('.neural');
     const neuralBefore = neural ? getComputedStyle(neural, '::before').animationName : '';
-    return `${before},${neuralBefore}`;
+    return `${before},${dotFocus},${neuralBefore}`;
   });
   expect(animationNames).toMatch(/none/);
 });
