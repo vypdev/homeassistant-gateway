@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.5.20
+
+- Split client permissions into complete Capabilities and Operator Services tabs.
+- Disable all `ha.write.*` capabilities while the observer/read-only profile is selected.
+- Add localized explanations for permission tabs and read-only write restrictions.
+- Improve button contrast across dark and light themes with readable hover and active states.
+- Increase separation, padding and grouping between Operator services in the Policy view.
+- Keep narrow Clients layouts contained and add browser regressions for accessibility and overflow.
+
 ## 0.5.19
 
 - Treat the graphical Operator services policy as a global permission ceiling, not a client grant.

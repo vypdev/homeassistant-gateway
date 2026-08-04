@@ -26,7 +26,8 @@ export function policyView(ctx: PolicyViewContext): TemplateResult {
     current.push(service);
     grouped.set(service.domain, current);
   }
-  const grantedClients = ctx.clients.filter((client) => client.profile === 'operator' && client.operator_services.some((service) => selected.has(service))).length;
+  const serviceGrantCount = (serviceId: string) => ctx.clients.filter((client) => client.profile === 'operator' && client.status === 'active' && client.operator_services.includes(serviceId)).length;
+  const grantedClients = ctx.clients.filter((client) => client.profile === 'operator' && client.status === 'active' && client.operator_services.some((service) => selected.has(service))).length;
   const domainCount = grouped.size;
 
   return html`
@@ -84,7 +85,7 @@ export function policyView(ctx: PolicyViewContext): TemplateResult {
                 ${services.map((service) => html`
                   <label class="operator-service-option">
                     <input type="checkbox" .checked=${selected.has(service.id)} @change=${(event: Event) => ctx.toggleOperatorService(service.id, (event.target as HTMLInputElement).checked)} />
-                    <span><strong>${service.name} · <code>${service.id}</code></strong><small>${service.description}</small></span>
+                    <span><strong>${service.name} · <code>${service.id}</code></strong><small>${service.description}</small><small class="operator-service-meta">${ctx.t('operatorServicesGrantedTo').replace('{count}', String(serviceGrantCount(service.id)))}${!selected.has(service.id) && serviceGrantCount(service.id) ? ` · ${ctx.t('operatorServicesGlobalBlocked')}` : ''}</small></span>
                   </label>
                 `)}
               </div>

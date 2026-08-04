@@ -44,6 +44,11 @@ assert.match(policy, /operatorServicesNotGrant/);
 assert.match(policy, /operator-policy-summary/);
 assert.match(policy, /operator-service-option/);
 assert.match(styles, /\.operator-policy-summary/);
-assert.match(styles, /\.operator-service-list \{ display: grid; gap: 8px; \}/);
+assert.match(styles, /\.permission-tabs/);
+assert.match(styles, /\.operator-service-list \{ display: grid; gap: 13px; \}/);
+assert.match(styles, /\.operator-service-group \{ display: grid; gap: 13px; padding: 16px/);
+assert.match(main, /clientProfile !== 'operator'/);
+assert.match(styles, /button\.primary:hover:not\(:disabled\)/);
+assert.match(styles, /button\.secondary:hover:not\(:disabled\)/);
 
 console.log('frontend UX contracts: ok');

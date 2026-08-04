@@ -1,5 +1,5 @@
 import { html, type TemplateResult } from 'lit';
-import type { Client, OperatorService } from './models';
+import type { Client, OperatorService, Profile } from './models';
 
 type Translator = (key: string) => string;
 
@@ -14,9 +14,15 @@ export type ClientsViewContext = {
   capabilitySelector: () => TemplateResult;
   operatorEnabled: boolean;
   operatorServices: OperatorService[];
+  navigateToPolicy: () => void;
+  permissionTab: 'capabilities' | 'operator-services';
+  setPermissionTab: (tab: 'capabilities' | 'operator-services') => void;
+  profile: Profile;
+  setProfile: (profile: Profile) => void;
 };
 
 export function clientsView(ctx: ClientsViewContext): TemplateResult {
+  const globallyEnabled = new Set(ctx.operatorServices.map((service) => service.id));
   return html`
     <div class="split">
       <div class="card">
@@ -33,7 +39,7 @@ export function clientsView(ctx: ClientsViewContext): TemplateResult {
               <td><span class="tag">${client.profile}</span></td>
               <td>
                 ${client.capabilities.map((capability) => html`<span class="tag">${capability}</span>`)}
-                ${client.profile === 'operator' ? html`<br><small class="muted">Services: ${client.operator_services.length ? client.operator_services.join(', ') : 'none'}</small>` : ''}
+                ${client.profile === 'operator' ? html`<br><small class="muted">${ctx.t('operatorServiceGrants')}: ${client.operator_services.filter((service) => globallyEnabled.has(service)).length ? client.operator_services.filter((service) => globallyEnabled.has(service)).join(', ') : ctx.t('operatorServicesNoneAvailable')}</small>` : ''}
               </td>
               <td class=${client.status === 'active' ? 'ok' : 'bad'}>${client.status}</td>
               <td>${client.status === 'active' ? html`
@@ -47,19 +53,29 @@ export function clientsView(ctx: ClientsViewContext): TemplateResult {
         <form class="form" @submit=${ctx.createClient}>
           <label>${ctx.t('clientId')}<input name="client_id" required maxlength="128" placeholder="nido-observer" /></label>
           <label>${ctx.t('displayName')}<input name="display_name" required maxlength="256" placeholder="Nido house monitor" /></label>
-          <label>${ctx.t('profile')}<select name="profile">
+          <label>${ctx.t('profile')}<select name="profile" @change=${(event: Event) => ctx.setProfile((event.target as HTMLSelectElement).value as Profile)}>
             <option value="observer">${ctx.t('readOnly')}</option>
             <option value="operator" ?disabled=${!ctx.operatorEnabled}>operator${ctx.operatorEnabled ? '' : ` · ${ctx.t('operatorDisabledOption')}`}</option>
           </select></label>
-          <label>${ctx.t('capabilities')}<small class="muted">${ctx.t('capabilitiesHelp')}</small>${ctx.capabilitySelector()}</label>
-          <fieldset class="form capability-option operator">
-            <legend>Operator service grants</legend>
-            <small class="muted">These grants belong only to this credential. A mutation still requires approval.</small>
-            ${ctx.operatorServices.map((service) => html`<label class="check-row">
-              <input type="checkbox" name="operator_services" value=${service.id} ?disabled=${!ctx.operatorEnabled} />
-              <span><strong>${service.name}</strong> · <span class="mono">${service.id}</span><br><small>${service.description}</small></span>
-            </label>`)}
-          </fieldset>
+          <div class="permission-tabs" role="tablist" aria-label=${ctx.t('permissionsCapabilitiesTab')}>
+            <button id="capabilities-tab" type="button" class="permission-tab" role="tab" aria-controls="capabilities-panel" aria-selected=${ctx.permissionTab === 'capabilities'} @click=${() => ctx.setPermissionTab('capabilities')}>${ctx.t('permissionsCapabilitiesTab')}</button>
+            <button id="operator-services-tab" type="button" class="permission-tab" role="tab" aria-controls="operator-services-panel" aria-selected=${ctx.permissionTab === 'operator-services'} @click=${() => ctx.setPermissionTab('operator-services')}>${ctx.t('permissionsOperatorServicesTab')}</button>
+          </div>
+          ${ctx.permissionTab === 'capabilities' ? html`<section id="capabilities-panel" class="permission-panel" role="tabpanel" aria-labelledby="capabilities-tab">
+            <p class="permission-panel-description">${ctx.t('permissionsCapabilitiesDescription')}</p>
+            ${ctx.profile === 'observer' ? html`<p class="permission-disabled-note" role="note">${ctx.t('permissionsObserverWriteDisabled')}</p>` : ''}
+            ${ctx.capabilitySelector()}
+          </section>` : html`<section id="operator-services-panel" class="permission-panel" role="tabpanel" aria-labelledby="operator-services-tab">
+            <p class="permission-panel-description">${ctx.t('permissionsOperatorServicesDescription')}</p>
+            <fieldset class="form capability-option operator">
+              <legend>${ctx.t('operatorServiceGrants')}</legend>
+              <small class="muted">${ctx.t('operatorServiceGrantDescription')}</small>
+              ${ctx.operatorServices.length ? ctx.operatorServices.map((service) => html`<label class="check-row">
+                <input type="checkbox" name="operator_services" value=${service.id} ?disabled=${!ctx.operatorEnabled} />
+                <span><strong>${service.name}</strong> · <span class="mono">${service.id}</span><br><small>${service.description}</small></span>
+              </label>`) : html`<div class="operator-services-empty" role="note"><span>${ctx.t('operatorServicesNoneAvailable')}</span><button class="link-button" type="button" @click=${ctx.navigateToPolicy}>${ctx.t('operatorServicesOpenPolicy')}</button></div>`}
+            </fieldset>
+          </section>`}
           <div class="form-actions"><button class="primary" ?disabled=${ctx.busy}>${ctx.t('issueClient')}</button></div>
         </form>
       </div>

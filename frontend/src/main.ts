@@ -20,6 +20,8 @@ import { DEVELOPMENT_EXTRA_TRANSLATIONS } from './i18n-development-extra';
 import { UI_TRANSLATIONS } from './i18n-ui';
 import { UI_EXTRA_TRANSLATIONS } from './i18n-ui-extra';
 import { POLICY_TRANSLATIONS } from './i18n-policy';
+import { CLIENT_POLICY_TRANSLATIONS } from './i18n-client-policy';
+import { PERMISSION_TABS_TRANSLATIONS } from './i18n-permission-tabs';
 import { FINAL_TRANSLATIONS } from './i18n-final';
 
 import {
@@ -143,6 +145,8 @@ export class GatewayApp extends LitElement {
   @state() developmentEntity = '';
   @state() developmentStartTime = '';
   @state() selectedCapabilities = new Set<string>(['ha.read.diagnostics']);
+  @state() clientProfile: Profile = 'observer';
+  @state() permissionTab: 'capabilities' | 'operator-services' = 'capabilities';
   @state() bootState: 'checking' | 'ready' | 'error' = 'checking';
   @state() operatorEnabled = false;
   @state() operatorStatus: OperatorStatus = { operator_enabled: false, execution: 'disabled', registered_mutation_tools: [], capabilities: [], reason: 'loading' };
@@ -157,9 +161,12 @@ export class GatewayApp extends LitElement {
     .shell.light aside, .shell.light .card { background: #ffffffee; border-color: #d3deea; box-shadow: 0 18px 50px #38516b14; }
     .shell.light p, .shell.light .muted, .shell.light .brand small, .shell.light .card-label, .shell.light .side-foot, .shell.light nav button { color: #607286; }
     .shell.light nav button:hover, .shell.light nav button.active { color: #17324d; background: #dceefa; }
-    .shell.light button.primary { color: #17324d; background: #b8dbe8; border-color: #9fc5d4; }
-    .shell.light button.primary:hover:not(:disabled) { background: #a8cfdf; border-color: #86b5c8; }
-    .shell.light button.secondary { color: #29445d; background: #e5eef5; border-color: #b9cad9; }
+    .shell.light button.primary { color: #ffffff; background: #28708e; border-color: #1e5d77; }
+    .shell.light button.primary:hover:not(:disabled) { color: #ffffff; background: #1f607b; border-color: #174e65; }
+    .shell.light button.secondary { color: #ffffff; background: #45657b; border-color: #35566d; }
+    .shell.light button.secondary:hover:not(:disabled) { color: #ffffff; background: #35566d; border-color: #29495e; }
+    .shell.light button.danger { color: #ffffff; background: #8a3d54; border-color: #713044; }
+    .shell.light button.danger:hover:not(:disabled) { color: #ffffff; background: #713044; border-color: #5e2638; }
     .shell.light .result-row { border-color: #c8d6e1; background: #f8fbfd; }
     .shell.light code, .shell.light .mono { color: #47728d; }
     .shell.light .tag { color: #365f79; background: #e7f0f5; border-color: #c1d2de; }
@@ -222,14 +229,20 @@ export class GatewayApp extends LitElement {
     .card strong.metric { display: block; margin-top: 8px; font-size: 28px; letter-spacing: -.04em; }
     .card-label { color: #8ea5bd; font-size: 12px; }
     .wide { min-height: 180px; }
-    .split { display: grid; grid-template-columns: 1.3fr .7fr; gap: 14px; }
+    .split { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, .7fr); gap: 14px; }
+    .split > *, .layout > * { min-width: 0; }
     .toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 14px; }
-    button.primary, button.secondary, button.danger { border: 1px solid transparent; border-radius: 9px; padding: 9px 13px; color: #031522; background: #63d8ff; cursor: pointer; font: 700 13px inherit; transition: background .15s ease, border-color .15s ease, transform .15s ease; }
-    button.secondary { color: #c5e8ff; background: #173b55; border-color: #315b75; }
-    button.secondary:hover:not(:disabled) { background: #20516f; border-color: #4d87a8; transform: none; }
-    button.secondary:focus-visible, nav button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #7ddcff; outline-offset: 2px; }
-    button.danger { color: #ffd7d7; background: #552b3a; border-color: #91455a; }
-    button:disabled { opacity: .55; cursor: wait; }
+    button.primary, button.secondary, button.danger { border: 1px solid transparent; border-radius: 9px; padding: 9px 13px; color: #ffffff; background: #126b8f; cursor: pointer; font: 700 13px inherit; transition: background .15s ease, border-color .15s ease, transform .15s ease; }
+    button.primary:hover:not(:disabled) { background: #0e5875; border-color: #2585aa; }
+    button.primary:active:not(:disabled) { background: #0a4760; }
+    button.secondary { color: #ffffff; background: #28506d; border-color: #3b6d8d; }
+    button.secondary:hover:not(:disabled) { background: #346b8f; border-color: #5b9cbd; transform: none; }
+    button.secondary:active:not(:disabled) { background: #1e435d; }
+    button.danger { color: #ffffff; background: #7b334a; border-color: #a64e69; }
+    button.danger:hover:not(:disabled) { background: #99415d; border-color: #c36883; }
+    button.danger:active:not(:disabled) { background: #62283b; }
+    button:focus-visible, nav button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #7ddcff; outline-offset: 2px; }
+    button:disabled { opacity: .55; cursor: not-allowed; }
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; min-width: 620px; }
     th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #1b3550; }
@@ -255,15 +268,24 @@ export class GatewayApp extends LitElement {
     .pack-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 16px 0; }
     .pack-grid button { display: grid; gap: 5px; text-align: left; padding: 12px 13px; min-height: 72px; }
     .pack-grid small { color: #9fb8cc; line-height: 1.4; }
-    .capability-toolbar { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 8px; }
-    .capability-grid { display: grid; gap: 8px; max-height: 360px; overflow: auto; padding-right: 3px; }
+    .capability-toolbar { display: flex; justify-content: space-between; gap: 8px; align-items: center; margin-bottom: 14px; }
+    .capability-grid { display: grid; gap: 12px; padding-right: 1px; }
+    .permission-tabs { display: flex; gap: 8px; margin-top: 18px; padding-bottom: 8px; border-bottom: 1px solid #29465f; }
+    .permission-tab { border: 1px solid #315b75; border-radius: 9px 9px 0 0; padding: 10px 14px; color: #b8d9eb; background: #173b55; cursor: pointer; font: 700 13px inherit; }
+    .permission-tab[aria-selected="true"] { color: #ffffff; background: #126b8f; border-color: #2585aa; }
+    .permission-tab:hover:not([aria-selected="true"]) { color: #ffffff; background: #28506d; }
+    .permission-panel { padding-top: 16px; }
+    .permission-panel-description { margin-bottom: 12px; }
+    .permission-disabled-note { margin-bottom: 12px; padding: 10px 12px; border: 1px solid #805d35; border-radius: 9px; color: #ffd98a; background: #3a281233; }
     .capability-option { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; border: 1px solid #23415e; border-radius: 10px; padding: 10px; background: #07152299; cursor: pointer; }
     .capability-option:hover { border-color: #4bc9ff; }
     .capability-option input { width: auto; margin-top: 3px; }
     .capability-option strong { display: block; color: #d7e8f7; font-size: 12px; }
     .capability-option small { display: block; color: #8ea5bd; margin-top: 2px; }
+    .capability-option:has(input:disabled) { opacity: .52; cursor: not-allowed; }
+    .capability-option:has(input:disabled):hover { border-color: #23415e; }
     .capability-option.operator { opacity: 1; cursor: pointer; }
-    .capability-option.operator:has(input:disabled) { opacity: .5; cursor: not-allowed; }
+    .capability-option.operator:has(input:disabled) { opacity: .52; cursor: not-allowed; }
     .policy-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
     .operator-policy-card { margin-top: 20px; }
     .operator-policy-header { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; }
@@ -275,19 +297,24 @@ export class GatewayApp extends LitElement {
     .policy-summary-item strong { color: #d7f5ff; font-size: 22px; line-height: 1; }
     .policy-summary-item span { color: #8ea5bd; font-size: 12px; line-height: 1.35; }
     .operator-policy-change-note { margin: 14px 0 18px; }
-    .operator-service-groups { display: grid; gap: 22px; }
-    .operator-service-group { display: grid; gap: 9px; }
+    .operator-service-groups { display: grid; gap: 30px; }
+    .operator-service-group { display: grid; gap: 13px; padding: 16px; border: 1px solid #29465f; border-radius: 14px; background: #07152233; }
     .operator-service-group h3 { margin: 0; color: #cfe5f5; font-size: 15px; letter-spacing: .01em; }
-    .operator-service-list { display: grid; gap: 8px; }
-    .operator-service-option { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; padding: 13px 14px; border: 1px solid #29465f; border-radius: 11px; background: #07152266; cursor: pointer; }
+    .operator-service-list { display: grid; gap: 13px; }
+    .operator-service-option { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; padding: 16px; border: 1px solid #3d617c; border-radius: 12px; background: #0b2133cc; cursor: pointer; box-shadow: 0 4px 12px #0002; }
     .operator-service-option:hover { border-color: #4bc9ff; background: #0b243699; }
     .operator-service-option input { width: auto; margin-top: 3px; }
     .operator-service-option strong { display: block; color: #d7e8f7; font-size: 13px; line-height: 1.35; }
     .operator-service-option small { display: block; margin-top: 4px; color: #8ea5bd; line-height: 1.4; }
+    .operator-service-meta { color: #9ed9b8 !important; }
+    .operator-services-empty { display: grid; gap: 8px; padding: 10px 0; color: #cfe5f5; }
+    .link-button { width: fit-content; padding: 0; border: 0; color: #63d8ff; background: none; cursor: pointer; font: inherit; text-decoration: underline; }
+    .link-button:focus-visible { outline: 3px solid #7ddcff; outline-offset: 3px; }
     .inline-checkbox { width: auto; margin-right: 7px; }
     .shell.light .operator-policy-notice { color: #29445d; background: #edf8fc; border-color: #a6c8d8; }
     .shell.light .operator-policy-notice strong, .shell.light .operator-service-group h3, .shell.light .operator-service-option strong { color: #29445d; }
-    .shell.light .policy-summary-item, .shell.light .operator-service-option { background: #f8fbfe; border-color: #b9cad9; }
+    .shell.light .policy-summary-item, .shell.light .operator-service-option, .shell.light .operator-service-group { background: #f8fbfe; border-color: #b9cad9; }
+    .shell.light .operator-service-option { box-shadow: 0 3px 10px #38516b12; }
     .shell.light .policy-summary-item strong { color: #29445d; }
     .shell.light .policy-summary-item span, .shell.light .operator-service-option small { color: #5d7488; }
     .shell.light .capability-option { background: #f8fbfe; border-color: #b9cad9; }
@@ -299,8 +326,9 @@ export class GatewayApp extends LitElement {
     @keyframes boot-progress { 0% { transform: translateX(-130%); } 55%, 100% { transform: translateX(250%); } }
     @keyframes drift { from { transform: translate3d(-1%, -1%, 0) scale(1); } to { transform: translate3d(2%, 2%, 0) scale(1.04); } }
     @keyframes dot-zone-drift { from { transform: translate3d(-8%, -5%, 0) scale(.92); } to { transform: translate3d(10%, 8%, 0) scale(1.12); } }
+    @media (max-width: 1100px) { .split, .dev-grid { grid-template-columns: 1fr; } }
     @media (max-width: 1000px) { .cards { grid-template-columns: repeat(2, 1fr); } .topology-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .split, .dev-grid { grid-template-columns: 1fr; } }
-    @media (max-width: 720px) { .layout { width: min(100% - 24px, 600px); display: block; padding-top: 12px; } aside { height: auto; position: static; margin-bottom: 18px; } nav { grid-template-columns: repeat(4, 1fr); } nav button { text-align: center; padding: 9px 4px; font-size: 12px; } .side-foot { display: none; } .cards, .topology-grid, .split, .dev-grid, .pack-grid { grid-template-columns: 1fr; } .topline { display: block; } .topline > div { min-width: 0; } .status-pill { margin-top: 16px; } .toolbar, .capability-toolbar { flex-wrap: wrap; align-items: flex-start; } .toolbar > div, .toolbar button { min-width: 0; } .toolbar button, .form-actions button { max-width: 100%; } .form-actions { flex-wrap: wrap; } .operator-policy-header { flex-wrap: wrap; } .operator-policy-header > * { max-width: 100%; } .operator-policy-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .result-row { flex-direction: column; } .result-row > * { max-width: 100%; } .pack-grid button { min-width: 0; } .card { min-width: 0; padding: 16px; } h1 { overflow-wrap: anywhere; } }
+    @media (max-width: 720px) { .layout { width: min(100% - 24px, 600px); display: block; padding-top: 12px; } aside { height: auto; position: static; margin-bottom: 18px; } nav { grid-template-columns: repeat(4, 1fr); } nav button { text-align: center; padding: 9px 4px; font-size: 12px; } .side-foot { display: none; } .cards, .topology-grid, .split, .dev-grid, .pack-grid { grid-template-columns: 1fr; } .topline { display: block; } .topline > div { min-width: 0; } .status-pill { margin-top: 16px; } .toolbar, .capability-toolbar, .permission-tabs { flex-wrap: wrap; align-items: flex-start; } .toolbar > div, .toolbar button { min-width: 0; } .toolbar button, .form-actions button { max-width: 100%; } .form-actions { flex-wrap: wrap; } .operator-policy-header { flex-wrap: wrap; } .operator-policy-header > * { max-width: 100%; } .operator-policy-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .result-row { flex-direction: column; } .result-row > * { max-width: 100%; } .pack-grid button { min-width: 0; } .card { min-width: 0; padding: 16px; } h1 { overflow-wrap: anywhere; } }
     @media (prefers-reduced-motion: reduce) { .shell::before, .dot-field__zone, .boot-orbit, .boot-core, .boot-progress::before { animation: none; } *, *::before, *::after { transition-duration: .01ms !important; } }
     @media (prefers-contrast: more) { .card, aside, input, select, textarea, .result-row { border-color: currentColor; } .muted, p, label, th { color: currentColor; } .tag, button.secondary { border-color: currentColor; } }
   `;
@@ -309,7 +337,7 @@ export class GatewayApp extends LitElement {
 
   get locale() { return resolveLocale(this.localeOverride, this.uiContext.locale, TRANSLATIONS); }
   t(key: string) {
-    return translate(key, this.locale, [TRANSLATIONS, DEVELOPMENT_TRANSLATIONS, DEVELOPMENT_EXTRA_TRANSLATIONS, UI_TRANSLATIONS, UI_EXTRA_TRANSLATIONS, POLICY_TRANSLATIONS, FINAL_TRANSLATIONS], TRANSLATIONS);
+    return translate(key, this.locale, [TRANSLATIONS, DEVELOPMENT_TRANSLATIONS, DEVELOPMENT_EXTRA_TRANSLATIONS, UI_TRANSLATIONS, UI_EXTRA_TRANSLATIONS, POLICY_TRANSLATIONS, CLIENT_POLICY_TRANSLATIONS, PERMISSION_TABS_TRANSLATIONS, FINAL_TRANSLATIONS], TRANSLATIONS);
   }
   setLocale(locale: string) { this.localeOverride = locale; if (locale) localStorage.setItem('gateway-locale', locale); else localStorage.removeItem('gateway-locale'); }
   get effectiveTheme() { return resolveTheme(this.uiContext.theme, Boolean(window.matchMedia?.('(prefers-color-scheme: light)').matches)); }
@@ -330,12 +358,18 @@ export class GatewayApp extends LitElement {
     this.busy = true; this.error = '';
     try {
       const result = await api<Client & { token: string }>('/clients', { method: 'POST', body: JSON.stringify({ client_id: data.get('client_id'), display_name: data.get('display_name'), profile: data.get('profile'), capabilities: [...this.selectedCapabilities], operator_services: data.getAll('operator_services') }) });
-      this.issuedToken = result.token; form.reset(); this.selectedCapabilities = new Set(['ha.read.diagnostics']); await this.refresh();
+      this.issuedToken = result.token; form.reset(); this.selectedCapabilities = new Set(['ha.read.diagnostics']); this.clientProfile = 'observer'; this.permissionTab = 'capabilities'; await this.refresh();
     } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorIssueClient'); }
     finally { this.busy = false; }
   }
 
+  setClientProfile(profile: Profile) {
+    this.clientProfile = profile;
+    if (profile === 'observer') this.selectedCapabilities = new Set([...this.selectedCapabilities].filter((name) => !name.startsWith('ha.write.')));
+  }
+
   toggleCapability(name: string, checked: boolean) {
+    if (this.clientProfile === 'observer' && name.startsWith('ha.write.')) return;
     const next = new Set(this.selectedCapabilities);
     if (checked) next.add(name); else next.delete(name);
     this.selectedCapabilities = next;
@@ -362,7 +396,7 @@ export class GatewayApp extends LitElement {
   }
 
   capabilitySelector() {
-    return html`<div class="capability-toolbar"><span class="muted">${this.selectedCapabilities.size} ${this.t('selectedCapabilities')}</span><span><button type="button" class="secondary" @click=${() => this.selectObserverCapabilities()}>${this.t('selectAllObserver')}</button> <button type="button" class="secondary" @click=${() => this.clearCapabilities()}>${this.t('clearSelection')}</button></span></div><div class="capability-grid">${CAPABILITY_DEFINITIONS.map((item) => html`<label class="capability-option ${item.group === 'operator' ? 'operator' : ''}"><input type="checkbox" .checked=${this.selectedCapabilities.has(item.name)} ?disabled=${item.group === 'operator' && !this.operatorEnabled} @change=${(event: Event) => this.toggleCapability(item.name, (event.target as HTMLInputElement).checked)} /><span><strong>${this.capabilityText(item.name, 'Label', item.label)} · <code>${item.name}</code></strong><small>${this.capabilityText(item.name, 'Description', item.description)}</small></span></label>`)}</div>`;
+    return html`<div class="capability-toolbar"><span class="muted">${this.selectedCapabilities.size} ${this.t('selectedCapabilities')}</span><span><button type="button" class="secondary" @click=${() => this.selectObserverCapabilities()}>${this.t('selectAllObserver')}</button> <button type="button" class="secondary" @click=${() => this.clearCapabilities()}>${this.t('clearSelection')}</button></span></div><div class="capability-grid">${CAPABILITY_DEFINITIONS.map((item) => html`<label class="capability-option ${item.group === 'operator' ? 'operator' : ''}"><input type="checkbox" value=${item.name} .checked=${this.selectedCapabilities.has(item.name)} ?disabled=${item.group === 'operator' && (!this.operatorEnabled || this.clientProfile !== 'operator')} @change=${(event: Event) => this.toggleCapability(item.name, (event.target as HTMLInputElement).checked)} /><span><strong>${this.capabilityText(item.name, 'Label', item.label)} · <code>${item.name}</code></strong><small>${this.capabilityText(item.name, 'Description', item.description)}</small></span></label>`)}</div>`;
   }
 
   async revoke(clientId: string) {
@@ -474,7 +508,7 @@ export class GatewayApp extends LitElement {
 
   developmentView() { return renderDevelopmentView({ catalog: this.development, progress: this.developmentProgress, results: this.developmentResults, reports: this.developmentReports, output: this.developmentOutput, entity: this.developmentEntity, startTime: this.developmentStartTime, busy: this.busy, t: this.t.bind(this), statusText: this.statusText.bind(this), packText: this.packText.bind(this), operationText: this.operationText.bind(this), setEntity: (value) => { this.developmentEntity = value; }, setStartTime: (value) => { this.developmentStartTime = value; }, runAll: () => void this.runAllDevelopment(), runPack: (name) => void this.runDevelopmentPack(name), runOperation: (name) => void this.runDevelopment(name), download: () => this.downloadDiagnostic(), copyProblemReports: () => void this.copyProblemReports(), copyDiagnostic: (result) => void this.copyDiagnostic(result), retry: (operation) => void this.retryDevelopment(operation), reasonText: (reason) => reason === 'empty_result' ? this.t('statusPartial') : reason }); }
 
-  clientsView() { return renderClientsView({ clients: this.clients, busy: this.busy, t: this.t.bind(this), refresh: () => void this.refresh(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), rotate: (clientId) => void this.rotate(clientId), capabilitySelector: () => this.capabilitySelector(), operatorEnabled: this.operatorEnabled, operatorServices: this.operatorPolicy?.services.filter((service) => this.operatorPolicy?.selected.includes(service.id)) ?? [] }); }
+  clientsView() { return renderClientsView({ clients: this.clients, busy: this.busy, t: this.t.bind(this), refresh: () => void this.refresh(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), rotate: (clientId) => void this.rotate(clientId), capabilitySelector: () => this.capabilitySelector(), operatorEnabled: this.operatorEnabled, operatorServices: this.operatorPolicy?.services.filter((service) => this.operatorPolicy?.selected.includes(service.id)) ?? [], navigateToPolicy: () => this.setView('policy'), permissionTab: this.permissionTab, setPermissionTab: (tab) => { this.permissionTab = tab; }, profile: this.clientProfile, setProfile: (profile) => this.setClientProfile(profile) }); }
 
   auditView() { return auditView({ audit: this.audit, t: this.t.bind(this), loadAudit: (decision) => void this.loadAudit(decision) }); }
 
