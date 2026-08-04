@@ -237,6 +237,7 @@ export class GatewayApp extends LitElement {
     .evidence-toolbar { display: grid; justify-items: end; gap: 10px; min-width: 0; max-width: 100%; }
     .evidence-metrics, .evidence-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 10px; max-width: 100%; }
     button.primary, button.secondary, button.danger { min-height: 40px; border: 1px solid transparent; border-radius: var(--ha-radius-pill); padding: 8px 16px; color: #ffffff; background: var(--ha-primary); cursor: pointer; font: 500 14px/1.2 inherit; letter-spacing: .01em; box-shadow: 0 2px 5px #00000026; transition: background-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+    .button-leading-icon { display: inline-flex; align-items: center; justify-content: center; width: 1.1em; margin-inline-end: 8px; color: currentColor; font-size: 1.35em; font-weight: 400; line-height: 0; vertical-align: -1px; }
     button.primary:hover:not(:disabled) { background: var(--ha-primary-hover); box-shadow: 0 3px 8px #00000033; }
     button.primary:active:not(:disabled) { background: var(--ha-primary-active); box-shadow: none; transform: translateY(1px); }
     button.secondary { color: var(--ha-text); background: var(--ha-surface-raised); border-color: var(--ha-border); box-shadow: none; }

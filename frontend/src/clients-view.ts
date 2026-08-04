@@ -101,7 +101,7 @@ export function clientsView(ctx: ClientsViewContext): TemplateResult {
               </label>`)}</div>` : html`<div class="operator-services-empty" role="note"><span>${ctx.t('operatorServicesNoneAvailable')}</span><button class="link-button" type="button" @click=${ctx.navigateToPolicy}>${ctx.t('operatorServicesOpenPolicy')}</button></div>`}
             </fieldset>
           </section>`}
-          <div class="form-actions"><button class="primary" ?disabled=${ctx.busy}>${ctx.t('issueClient')}</button></div>
+          <div class="form-actions"><button class="primary" ?disabled=${ctx.busy}><span class="button-leading-icon" aria-hidden="true">+</span>${ctx.t('issueClient')}</button></div>
         </form>
       </div>
     </div>`;

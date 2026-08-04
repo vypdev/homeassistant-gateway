@@ -35,7 +35,7 @@ export function developmentView(ctx: DevelopmentViewContext): TemplateResult {
   const catalog = ctx.catalog;
   return html`<div class="dev-grid">
     <div class="card">
-      <div class="toolbar"><div><h2>${ctx.t('observerProbes')}</h2><p>${ctx.t('internalSurface')}</p></div><button class="primary" @click=${() => ctx.runAll()} ?disabled=${ctx.busy || !catalog?.enabled}>${ctx.t('runAll')}</button></div>
+      <div class="toolbar"><div><h2>${ctx.t('observerProbes')}</h2><p>${ctx.t('internalSurface')}</p></div><button class="primary" @click=${() => ctx.runAll()} ?disabled=${ctx.busy || !catalog?.enabled}><span class="button-leading-icon" aria-hidden="true">▶</span>${ctx.t('runAll')}</button></div>
       <div class="pack-grid">${catalog?.packs.map((pack: DevelopmentPack) => html`<button class="secondary" @click=${() => ctx.runPack(pack.name)} ?disabled=${ctx.busy || !catalog.enabled}><strong>${ctx.packText(pack.name, 'Label', pack.label)}</strong><small>${ctx.packText(pack.name, 'Description', pack.description)}</small></button>`)}</div>
       <p>${ctx.t('devUpstreamStatus')}: <span class=${catalog?.upstream === 'ready' ? 'ok' : 'warn'}>${ctx.statusText(catalog?.upstream ?? 'loading')}</span>.</p>
       <div class="form" style="margin-top:16px">

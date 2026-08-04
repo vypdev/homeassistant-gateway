@@ -37,6 +37,7 @@ test.describe('development console flows', () => {
     await page.getByRole('button', { name: 'Dev Console', exact: true }).click();
 
     await expect(page.getByRole('button', { name: 'Run all' })).toBeEnabled();
+    await expect(page.getByRole('button', { name: 'Run all' }).locator('.button-leading-icon')).toHaveAttribute('aria-hidden', 'true');
     await expect(page.getByRole('button', { name: 'Basic inventory' })).toBeEnabled();
     await expect(page.locator('.pack-grid > button.secondary').first()).toHaveCSS('border-radius', '8px');
     await expect(page.locator('.evidence-actions')).toHaveCSS('gap', '10px');
