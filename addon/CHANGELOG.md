@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.22
+
+- Replace the two-column Operator Services client selector with a readable single-column responsive list.
+- Add localized Select all and Clear selection actions for operator service grants.
+- Preserve the empty-state guidance when no Operator services are enabled globally.
+- Add Playwright and visual regression coverage for multi-service selection, individual changes, empty states and responsive containment.
+
 ## 0.5.21
 
 - Replace internal scrolling with natural page scrolling across the responsive Clients, Audit and Development Console layouts.
