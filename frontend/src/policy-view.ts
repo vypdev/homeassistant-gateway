@@ -45,7 +45,7 @@ export function policyView(ctx: PolicyViewContext): TemplateResult {
           <label>${ctx.t('client')}<select name="client_id">${ctx.clients.map((client) => html`<option value=${client.client_id}>${client.display_name} · ${client.client_id}</option>`)}</select></label>
           <label>${ctx.t('capability')}<input name="capability" value="ha.read.diagnostics" required /></label>
           <label><span><input name="mutation" type="checkbox" class="inline-checkbox" /> ${ctx.t('mutationRequest')}</span></label>
-          <div class="form-actions"><button class="primary" ?disabled=${ctx.busy}>${ctx.t('evaluate')}</button></div>
+          <div class="form-actions"><button class="primary" ?disabled=${ctx.busy}><span class="button-leading-icon" aria-hidden="true">✓</span>${ctx.t('evaluate')}</button></div>
         </form>
       </div>
     </div>

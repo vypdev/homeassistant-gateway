@@ -154,15 +154,15 @@ export class GatewayApp extends LitElement {
   private operatorPolicySaveQueue: Promise<void> = Promise.resolve();
 
   static styles = css`
-    :host { --ha-primary: #0277bd; --ha-primary-hover: #01579b; --ha-primary-active: #004c75; --ha-surface: #0c1b2d; --ha-surface-raised: #12263a; --ha-surface-muted: #071522; --ha-border: #29465f; --ha-text: #e7f0fb; --ha-text-secondary: #9fb8cc; --ha-text-muted: #718aa0; --ha-success: #67e2a0; --ha-warning: #ffd27d; --ha-danger: #ff8e9e; --ha-radius-card: 12px; --ha-radius-control: 10px; --ha-radius-pill: 999px; --ha-shadow-card: 0 8px 24px #00000024; display: block; color: var(--ha-text); min-height: 100vh; font: 14px/1.5 Inter, ui-sans-serif, system-ui, sans-serif; }
+    :host { --ha-primary: #03a9f4; --ha-primary-hover: #0288d1; --ha-primary-active: #0277bd; --ha-surface: #0c1b2d; --ha-surface-raised: #12263a; --ha-surface-muted: #071522; --ha-border: #29465f; --ha-text: #e7f0fb; --ha-text-secondary: #9fb8cc; --ha-text-muted: #718aa0; --ha-success: #67e2a0; --ha-warning: #ffd27d; --ha-danger: #ff8e9e; --ha-radius-card: 12px; --ha-radius-control: 10px; --ha-radius-pill: 999px; --ha-shadow-card: 0 8px 24px #00000024; display: block; color: var(--ha-text); min-height: 100vh; font: 14px/1.5 Inter, ui-sans-serif, system-ui, sans-serif; }
     * { box-sizing: border-box; }
     .shell { min-height: 100vh; position: relative; overflow: hidden; background: #07111f; }
-    .shell.light { --ha-primary: #0277bd; --ha-primary-hover: #01579b; --ha-primary-active: #004c75; --ha-surface: #ffffff; --ha-surface-raised: #f8fbfe; --ha-surface-muted: #edf3f7; --ha-border: #c7d6e1; --ha-text: #243447; --ha-text-secondary: #607286; --ha-text-muted: #718394; --ha-success: #2d9864; --ha-warning: #a66f16; --ha-danger: #b34b58; --ha-shadow-card: 0 8px 24px #38516b14; color: var(--ha-text); background: #f4f7fb; }
+    .shell.light { --ha-primary: #03a9f4; --ha-primary-hover: #0288d1; --ha-primary-active: #0277bd; --ha-surface: #ffffff; --ha-surface-raised: #f8fbfe; --ha-surface-muted: #edf3f7; --ha-border: #c7d6e1; --ha-text: #243447; --ha-text-secondary: #607286; --ha-text-muted: #718394; --ha-success: #2d9864; --ha-warning: #a66f16; --ha-danger: #b34b58; --ha-shadow-card: 0 8px 24px #38516b14; color: var(--ha-text); background: #f4f7fb; }
     .shell.light aside, .shell.light .card { background: #ffffffee; border-color: #d3deea; box-shadow: 0 18px 50px #38516b14; }
     .shell.light p, .shell.light .muted, .shell.light .brand small, .shell.light .card-label, .shell.light .side-foot, .shell.light nav button { color: #607286; }
     .shell.light .status-pill { color: #237b54; background: #e7f7ee; border-color: #9bd1b1; }
-    .shell.light button.primary { color: #ffffff; background: #28708e; border-color: #1e5d77; }
-    .shell.light button.primary:hover:not(:disabled) { color: #ffffff; background: #1f607b; border-color: #174e65; }
+    .shell.light button.primary { color: #ffffff; background: var(--ha-primary); border-color: var(--ha-primary-active); }
+    .shell.light button.primary:hover:not(:disabled) { color: #ffffff; background: var(--ha-primary-hover); border-color: var(--ha-primary-active); }
     .shell.light button.secondary { color: var(--ha-text); background: var(--ha-surface-raised); border-color: var(--ha-border); }
     .shell.light button.secondary:hover:not(:disabled) { color: var(--ha-text); background: var(--ha-surface-muted); border-color: var(--ha-primary); }
     .shell.light button.danger { color: #ffffff; background: #8a3d54; border-color: #713044; }
