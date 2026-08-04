@@ -91,6 +91,7 @@ export class GatewayApp extends LitElement {
   @state() operatorPolicy: OperatorServicePolicy | null = null;
   private readonly gatewayController: GatewayController;
   private refreshVersion = 0;
+  private policySaveVersion = 0;
 
   static styles = APP_STYLES;
 
@@ -110,7 +111,7 @@ export class GatewayApp extends LitElement {
 
   private errorMessage(error: unknown, fallbackKey: string): string {
     if (error instanceof GatewayError) {
-      if (error.code === 'server_error' && error.message) return error.message;
+      if (error.code === 'server_error' && error.status) return `Request failed (${error.status})`;
       const keyByCode: Record<string, string> = {
         operator_service_policy_invalid: 'operatorServicesPolicyInvalid',
         unauthorized: fallbackKey,
@@ -161,7 +162,7 @@ export class GatewayApp extends LitElement {
     event.preventDefault();
     const form = event.target as HTMLFormElement;
     const data = new FormData(form);
-    this.busy = true; this.error = '';
+    this.busy = true; this.error = ''; this.refreshVersion++;
     try {
       const result = await this.gatewayController.createClient({ client_id: String(data.get('client_id') ?? ''), display_name: String(data.get('display_name') ?? ''), profile: String(data.get('profile') ?? 'observer'), capabilities: [...this.selectedCapabilities], operator_services: data.getAll('operator_services').map(String) });
       this.issuedToken = result.client.token; form.reset(); this.selectedCapabilities = new Set(['ha.read.diagnostics']); this.clientProfile = 'observer'; this.permissionTab = 'capabilities'; this.applyBootstrap(result.bootstrap); this.bootState = 'ready';
@@ -205,7 +206,7 @@ export class GatewayApp extends LitElement {
 
   async revoke(clientId: string) {
     if (!window.confirm(this.t('revokeConfirm').replace('{client}', clientId))) return;
-    this.busy = true;
+    this.busy = true; this.refreshVersion++;
     try { this.applyBootstrap(await this.gatewayController.revokeClient(clientId)); }
     catch (error) { this.error = this.errorMessage(error, 'errorRevokeClient'); }
     finally { this.busy = false; }
@@ -213,7 +214,7 @@ export class GatewayApp extends LitElement {
 
   async rotate(clientId: string) {
     if (!window.confirm(this.t('rotateConfirm').replace('{client}', clientId))) return;
-    this.busy = true; this.error = '';
+    this.busy = true; this.error = ''; this.refreshVersion++;
     try { const result = await this.gatewayController.rotateClient(clientId); this.issuedToken = result.client.token; this.applyBootstrap(result.bootstrap); }
     catch (error) { this.error = this.errorMessage(error, 'errorRotateClient'); }
     finally { this.busy = false; }
@@ -319,10 +320,11 @@ export class GatewayApp extends LitElement {
   async loadAudit(decision: string) { this.busy = true; try { this.audit = await this.gatewayController.loadAudit(decision); } catch (error) { this.error = this.errorMessage(error, 'errorAudit'); } finally { this.busy = false; } }
   private queueOperatorPolicySave() {
     if (!this.operatorPolicy) return;
+    const saveVersion = ++this.policySaveVersion;
     this.busy = true; this.error = '';
     void this.gatewayController.saveOperatorPolicy(this.operatorPolicy.selected)
-      .catch((error) => { this.error = this.errorMessage(error, 'operatorServicesPolicyInvalid'); })
-      .finally(() => { this.busy = false; });
+      .catch((error) => { if (saveVersion === this.policySaveVersion) this.error = this.errorMessage(error, 'operatorServicesPolicyInvalid'); })
+      .finally(() => { if (saveVersion === this.policySaveVersion) this.busy = false; });
   }
   toggleOperatorService(service: string, checked: boolean) {
     if (!this.operatorPolicy) return;

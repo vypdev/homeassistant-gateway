@@ -48,8 +48,7 @@ export function gatewayErrorFromResponse(status: number, body: unknown): Gateway
   const code = knownCodes.has(rawCode as GatewayErrorCode)
     ? rawCode as GatewayErrorCode
     : statusCode(status);
-  const detail = typeof record.detail === 'string' ? record.detail : `Request failed (${status})`;
-  return new GatewayError(code, detail, status);
+  return new GatewayError(code, `Request failed (${status})`, status);
 }
 
 export function gatewayErrorFromUnknown(error: unknown): GatewayError {

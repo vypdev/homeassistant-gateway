@@ -10,7 +10,7 @@ const tempDir = await mkdtemp(join(tmpdir(), 'homeassistant-gateway-ui-'));
 
 try {
   await writeFile(join(tempDir, 'api.mjs'), 'export const api = async () => { throw new Error("unexpected default api call"); };\n');
-  for (const name of ['locale', 'view-helpers', 'capability-policy', 'operator-policy', 'gateway-errors', 'operator-policy-service', 'operation-runner', 'gateway-contracts', 'gateway-api', 'gateway-controller']) {
+  for (const name of ['locale', 'view-helpers', 'capability-policy', 'operator-policy', 'gateway-errors', 'operator-policy-service', 'gateway-contracts', 'gateway-api', 'gateway-controller']) {
     const source = await readFile(new URL(`${name}.ts`, sourceDir), 'utf8');
     let output = ts.transpileModule(source, {
       compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
@@ -87,13 +87,6 @@ try {
   await assert.rejects(() => policyService.save(['fail']));
   await policyService.save(['after-failure']);
   assert.deepEqual(policyCalls.at(-1), ['after-failure']);
-
-  const runnerModule = await import(pathToFileURL(join(tempDir, 'operation-runner.mjs')));
-  const states = [];
-  const runner = runnerModule.createOperationRunner((state) => states.push(state));
-  assert.equal(await runner.run('load', async () => 42), 42);
-  await assert.rejects(() => runner.run('fail', async () => { throw new Error('boom'); }));
-  assert.deepEqual(states.map((state) => state.status), ['running', 'success', 'running', 'error']);
 
   const gatewayApiModule = await import(pathToFileURL(join(tempDir, 'gateway-api.mjs')));
   const calls = [];
