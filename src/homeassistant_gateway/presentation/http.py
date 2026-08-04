@@ -1,5 +1,5 @@
 import uuid
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Collection
 from datetime import UTC, datetime
 from typing import Any
 
@@ -70,6 +70,7 @@ def create_app(
     operator_capabilities: tuple[str, ...] | Callable[[], tuple[str, ...]] = (),
     registered_mutation_tools: tuple[str, ...] | Callable[[], tuple[str, ...]] = (),
     operator_service_policy: OperatorServicePolicyPort | None = None,
+    operator_services_ceiling: Callable[[], Collection[str]] | None = None,
     lifespan: Any | None = None,
 ) -> FastAPI:
     """Build the HTTP adapter around already-wired application use cases."""
@@ -117,6 +118,7 @@ def create_app(
             operator_mutations=operator_mutations,
             operator_capabilities=operator_capabilities,
             registered_mutation_tools=registered_mutation_tools,
+            operator_services_ceiling=operator_services_ceiling,
             authenticate_client=authenticate_client,
             authorize_request=authorize_request,
         ),
@@ -135,6 +137,7 @@ def create_app(
             authorize_request=authorize_request,
             home_assistant=home_assistant,
             operator_service_policy=operator_service_policy,
+            operator_services_ceiling=operator_services_ceiling,
         ),
     )
 

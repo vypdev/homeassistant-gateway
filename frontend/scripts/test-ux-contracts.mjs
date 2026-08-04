@@ -8,6 +8,7 @@ const viewHelpers = await readFile(new URL('view-helpers.ts', root), 'utf8');
 const main = await readFile(new URL('main.ts', root), 'utf8');
 const shell = await readFile(new URL('shell-view.ts', root), 'utf8');
 const overview = await readFile(new URL('overview-view.ts', root), 'utf8');
+const policy = await readFile(new URL('policy-view.ts', root), 'utf8');
 const index = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const styles = main;
 
@@ -39,5 +40,10 @@ assert.match(styles, /:focus-visible/);
 assert.match(styles, /\.split, \.dev-grid \{ grid-template-columns: 1fr; \}/);
 assert.match(styles, /\.cards, \.topology-grid, \.split, \.dev-grid, \.pack-grid \{ grid-template-columns: 1fr; \}/);
 assert.match(styles, /\.result-row \{ flex-direction: column; \}/);
+assert.match(policy, /operatorServicesNotGrant/);
+assert.match(policy, /operator-policy-summary/);
+assert.match(policy, /operator-service-option/);
+assert.match(styles, /\.operator-policy-summary/);
+assert.match(styles, /\.operator-service-list \{ display: grid; gap: 8px; \}/);
 
 console.log('frontend UX contracts: ok');

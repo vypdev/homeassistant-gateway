@@ -96,7 +96,7 @@ class FakeHomeAssistant:
     def ui_context(self):
         return {"locale": "es", "theme": "light"}
 
-def make_app(audit_sink=None, home_assistant=None, development_console_enabled=True, operator_enabled=False, operator_service_policy=None):
+def make_app(audit_sink=None, home_assistant=None, development_console_enabled=True, operator_enabled=False, operator_service_policy=None, operator_services_ceiling=None):
     repository = InMemoryClientRepository()
     tokens = SecureTokenIssuer()
     clock = lambda: datetime(2026, 7, 31, tzinfo=UTC)
@@ -114,6 +114,7 @@ def make_app(audit_sink=None, home_assistant=None, development_console_enabled=T
         development_console_enabled=development_console_enabled,
         operator_enabled=operator_enabled,
         operator_service_policy=operator_service_policy,
+        operator_services_ceiling=operator_services_ceiling,
     )
 
 
@@ -543,3 +544,21 @@ def test_operator_service_policy_is_graphical_and_validated() -> None:
     assert policy.get_allowed_services() == ("automation.trigger", "light.turn_on")
     rejected = request(app, "PUT", "/api/operator/service-policy", headers=headers, json={"selected": ["light.nope"]})
     assert rejected.status_code == 400
+
+
+def test_global_operator_policy_is_a_ceiling_not_a_client_grant() -> None:
+    policy = InMemoryOperatorPolicy(("light.turn_on",))
+    app = make_app(home_assistant=ServiceHomeAssistant(), operator_enabled=True, operator_service_policy=policy, operator_services_ceiling=policy.get_allowed_services)
+    headers = ingress_headers()
+    denied = request(app, "POST", "/api/clients", headers=headers, json={"client_id": "operator", "display_name": "Operator", "profile": "operator", "capabilities": ["ha.write.services"], "operator_services": ["light.turn_off"]})
+    assert denied.status_code == 400
+    created = request(app, "POST", "/api/clients", headers=headers, json={"client_id": "operator", "display_name": "Operator", "profile": "operator", "capabilities": ["ha.write.services"], "operator_services": ["light.turn_on"]})
+    assert created.status_code == 201
+    token = created.json()["token"]
+    discovery = request(app, "GET", "/api/mcp/discovery", headers={**headers, "Authorization": f"Bearer {token}"})
+    assert "ha_request_service_approval" in discovery.json()["tools"]
+    policy.set_allowed_services(())
+    blocked_discovery = request(app, "GET", "/api/mcp/discovery", headers={**headers, "Authorization": f"Bearer {token}"})
+    assert "ha_request_service_approval" not in blocked_discovery.json()["tools"]
+    denied_when_empty = request(app, "POST", "/api/clients", headers=headers, json={"client_id": "operator-two", "display_name": "Operator Two", "profile": "operator", "capabilities": ["ha.write.services"], "operator_services": ["light.turn_on"]})
+    assert denied_when_empty.status_code == 400

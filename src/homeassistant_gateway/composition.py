@@ -80,8 +80,12 @@ def build_app(settings: AppSettings) -> FastAPI:
         if settings.supervisor_token
         else None
     )
+    def operator_services_ceiling() -> tuple[str, ...]:
+        return operator_state.get_allowed_services()
+
     def effective_client_services() -> tuple[str, ...]:
-        return tuple(sorted({service for client in repository.list() if client.profile is Profile.OPERATOR and client.status.value == "active" for service in client.operator_services}))
+        ceiling = set(operator_services_ceiling())
+        return tuple(sorted({service for client in repository.list() if client.profile is Profile.OPERATOR and client.status.value == "active" for service in client.operator_services if service in ceiling}))
 
     mutation_port = None
     if settings.operator_enabled and home_assistant is not None:
@@ -103,6 +107,7 @@ def build_app(settings: AppSettings) -> FastAPI:
         authorize_request.execute,
         home_assistant=home_assistant,
         operator_mutations=operator_mutations,
+        operator_services_ceiling=operator_services_ceiling,
         allowed_hosts=settings.mcp_allowed_hosts,
     )
 
@@ -151,6 +156,7 @@ def build_app(settings: AppSettings) -> FastAPI:
         operator_enabled=settings.operator_enabled,
         operator_mutations=operator_mutations,
         operator_service_policy=operator_state,
+        operator_services_ceiling=operator_services_ceiling,
         operator_capabilities=operator_capabilities,
         registered_mutation_tools=registered_mutation_tools,
         lifespan=mcp_bundle.lifespan,

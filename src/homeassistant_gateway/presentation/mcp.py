@@ -1,6 +1,6 @@
 import contextvars
 import json
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Collection
 from dataclasses import asdict, dataclass
 from typing import Any
 
@@ -78,6 +78,7 @@ def create_mcp_app(
     authorize: Callable[..., Any],
     home_assistant: HomeAssistantReadPort | None = None,
     operator_mutations: OperatorMutationService | None = None,
+    operator_services_ceiling: Callable[[], Collection[str]] | None = None,
     allowed_hosts: tuple[str, ...] = ("localhost", "127.0.0.1", "[::1]"),
 ) -> MCPApp:
     server = FastMCP(
@@ -142,7 +143,8 @@ def create_mcp_app(
             if capability == "ha.write.automations":
                 action = (proposed or {}).get("action")
                 service = f"automation.{action}" if isinstance(action, str) else ""
-            if service not in client.operator_services:
+            ceiling = None if operator_services_ceiling is None else set(operator_services_ceiling())
+            if service not in client.operator_services or (ceiling is not None and service not in ceiling):
                 return {"status": "denied", "reason": "service_not_granted_to_client"}, None
         decision = authorize(client.client_id, capability, mutation=True)
         if decision.decision.value != "approval_required":

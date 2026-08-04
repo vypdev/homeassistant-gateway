@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from dataclasses import asdict, dataclass
 from typing import Any
 
@@ -36,6 +36,7 @@ class DevelopmentRouteDependencies:
     operator_mutations: OperatorMutationService | None = None
     operator_capabilities: tuple[str, ...] | Callable[[], tuple[str, ...]] = ()
     registered_mutation_tools: tuple[str, ...] | Callable[[], tuple[str, ...]] = ()
+    operator_services_ceiling: Callable[[], Collection[str]] | None = None
     authenticate_client: AuthenticateClient | None = None
     authorize_request: AuthorizeRequest | None = None
 
@@ -60,7 +61,8 @@ def register_development_routes(app: FastAPI, dependencies: DevelopmentRouteDepe
             if capability == "ha.write.automations":
                 action = (proposed or {}).get("action")
                 service = f"automation.{action}" if isinstance(action, str) else ""
-            if service not in client.operator_services:
+            ceiling = None if dependencies.operator_services_ceiling is None else set(dependencies.operator_services_ceiling())
+            if service not in client.operator_services or (ceiling is not None and service not in ceiling):
                 raise HTTPException(status_code=403, detail="service_not_granted_to_client")
         decision = dependencies.authorize_request.execute(client.client_id, capability, mutation=True)
         if decision.decision.value != "approval_required":

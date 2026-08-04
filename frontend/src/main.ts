@@ -19,6 +19,7 @@ import { DEVELOPMENT_TRANSLATIONS } from './i18n-development';
 import { DEVELOPMENT_EXTRA_TRANSLATIONS } from './i18n-development-extra';
 import { UI_TRANSLATIONS } from './i18n-ui';
 import { UI_EXTRA_TRANSLATIONS } from './i18n-ui-extra';
+import { POLICY_TRANSLATIONS } from './i18n-policy';
 import { FINAL_TRANSLATIONS } from './i18n-final';
 
 import {
@@ -263,6 +264,32 @@ export class GatewayApp extends LitElement {
     .capability-option small { display: block; color: #8ea5bd; margin-top: 2px; }
     .capability-option.operator { opacity: 1; cursor: pointer; }
     .capability-option.operator:has(input:disabled) { opacity: .5; cursor: not-allowed; }
+    .policy-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+    .operator-policy-card { margin-top: 20px; }
+    .operator-policy-header { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; }
+    .operator-policy-header > div { min-width: 0; }
+    .operator-policy-notice { display: grid; gap: 6px; margin: 18px 0 14px; padding: 14px 16px; border: 1px solid #3b7796; border-radius: 12px; background: #052a4055; color: #c8e8f7; line-height: 1.45; }
+    .operator-policy-notice strong { color: #f1fbff; }
+    .operator-policy-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin: 16px 0 10px; }
+    .policy-summary-item { display: grid; gap: 4px; min-height: 72px; padding: 12px 13px; border: 1px solid #29465f; border-radius: 10px; background: #07152266; }
+    .policy-summary-item strong { color: #d7f5ff; font-size: 22px; line-height: 1; }
+    .policy-summary-item span { color: #8ea5bd; font-size: 12px; line-height: 1.35; }
+    .operator-policy-change-note { margin: 14px 0 18px; }
+    .operator-service-groups { display: grid; gap: 22px; }
+    .operator-service-group { display: grid; gap: 9px; }
+    .operator-service-group h3 { margin: 0; color: #cfe5f5; font-size: 15px; letter-spacing: .01em; }
+    .operator-service-list { display: grid; gap: 8px; }
+    .operator-service-option { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: start; padding: 13px 14px; border: 1px solid #29465f; border-radius: 11px; background: #07152266; cursor: pointer; }
+    .operator-service-option:hover { border-color: #4bc9ff; background: #0b243699; }
+    .operator-service-option input { width: auto; margin-top: 3px; }
+    .operator-service-option strong { display: block; color: #d7e8f7; font-size: 13px; line-height: 1.35; }
+    .operator-service-option small { display: block; margin-top: 4px; color: #8ea5bd; line-height: 1.4; }
+    .inline-checkbox { width: auto; margin-right: 7px; }
+    .shell.light .operator-policy-notice { color: #29445d; background: #edf8fc; border-color: #a6c8d8; }
+    .shell.light .operator-policy-notice strong, .shell.light .operator-service-group h3, .shell.light .operator-service-option strong { color: #29445d; }
+    .shell.light .policy-summary-item, .shell.light .operator-service-option { background: #f8fbfe; border-color: #b9cad9; }
+    .shell.light .policy-summary-item strong { color: #29445d; }
+    .shell.light .policy-summary-item span, .shell.light .operator-service-option small { color: #5d7488; }
     .shell.light .capability-option { background: #f8fbfe; border-color: #b9cad9; }
     .shell.light .capability-option strong { color: #29445d; }
     .result-row { display: flex; justify-content: space-between; gap: 14px; align-items: flex-start; border: 1px solid #29465f; border-radius: 10px; padding: 12px 13px; background: #07152233; }
@@ -273,7 +300,7 @@ export class GatewayApp extends LitElement {
     @keyframes drift { from { transform: translate3d(-1%, -1%, 0) scale(1); } to { transform: translate3d(2%, 2%, 0) scale(1.04); } }
     @keyframes dot-zone-drift { from { transform: translate3d(-8%, -5%, 0) scale(.92); } to { transform: translate3d(10%, 8%, 0) scale(1.12); } }
     @media (max-width: 1000px) { .cards { grid-template-columns: repeat(2, 1fr); } .topology-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .split, .dev-grid { grid-template-columns: 1fr; } }
-    @media (max-width: 720px) { .layout { width: min(100% - 24px, 600px); display: block; padding-top: 12px; } aside { height: auto; position: static; margin-bottom: 18px; } nav { grid-template-columns: repeat(4, 1fr); } nav button { text-align: center; padding: 9px 4px; font-size: 12px; } .side-foot { display: none; } .cards, .topology-grid, .split, .dev-grid, .pack-grid { grid-template-columns: 1fr; } .topline { display: block; } .topline > div { min-width: 0; } .status-pill { margin-top: 16px; } .toolbar, .capability-toolbar { flex-wrap: wrap; align-items: flex-start; } .toolbar > div, .toolbar button { min-width: 0; } .toolbar button, .form-actions button { max-width: 100%; } .form-actions { flex-wrap: wrap; } .result-row { flex-direction: column; } .result-row > * { max-width: 100%; } .pack-grid button { min-width: 0; } .card { min-width: 0; padding: 16px; } h1 { overflow-wrap: anywhere; } }
+    @media (max-width: 720px) { .layout { width: min(100% - 24px, 600px); display: block; padding-top: 12px; } aside { height: auto; position: static; margin-bottom: 18px; } nav { grid-template-columns: repeat(4, 1fr); } nav button { text-align: center; padding: 9px 4px; font-size: 12px; } .side-foot { display: none; } .cards, .topology-grid, .split, .dev-grid, .pack-grid { grid-template-columns: 1fr; } .topline { display: block; } .topline > div { min-width: 0; } .status-pill { margin-top: 16px; } .toolbar, .capability-toolbar { flex-wrap: wrap; align-items: flex-start; } .toolbar > div, .toolbar button { min-width: 0; } .toolbar button, .form-actions button { max-width: 100%; } .form-actions { flex-wrap: wrap; } .operator-policy-header { flex-wrap: wrap; } .operator-policy-header > * { max-width: 100%; } .operator-policy-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .result-row { flex-direction: column; } .result-row > * { max-width: 100%; } .pack-grid button { min-width: 0; } .card { min-width: 0; padding: 16px; } h1 { overflow-wrap: anywhere; } }
     @media (prefers-reduced-motion: reduce) { .shell::before, .dot-field__zone, .boot-orbit, .boot-core, .boot-progress::before { animation: none; } *, *::before, *::after { transition-duration: .01ms !important; } }
     @media (prefers-contrast: more) { .card, aside, input, select, textarea, .result-row { border-color: currentColor; } .muted, p, label, th { color: currentColor; } .tag, button.secondary { border-color: currentColor; } }
   `;
@@ -282,7 +309,7 @@ export class GatewayApp extends LitElement {
 
   get locale() { return resolveLocale(this.localeOverride, this.uiContext.locale, TRANSLATIONS); }
   t(key: string) {
-    return translate(key, this.locale, [TRANSLATIONS, DEVELOPMENT_TRANSLATIONS, DEVELOPMENT_EXTRA_TRANSLATIONS, UI_TRANSLATIONS, UI_EXTRA_TRANSLATIONS], TRANSLATIONS);
+    return translate(key, this.locale, [TRANSLATIONS, DEVELOPMENT_TRANSLATIONS, DEVELOPMENT_EXTRA_TRANSLATIONS, UI_TRANSLATIONS, UI_EXTRA_TRANSLATIONS, POLICY_TRANSLATIONS, FINAL_TRANSLATIONS], TRANSLATIONS);
   }
   setLocale(locale: string) { this.localeOverride = locale; if (locale) localStorage.setItem('gateway-locale', locale); else localStorage.removeItem('gateway-locale'); }
   get effectiveTheme() { return resolveTheme(this.uiContext.theme, Boolean(window.matchMedia?.('(prefers-color-scheme: light)').matches)); }
@@ -447,7 +474,7 @@ export class GatewayApp extends LitElement {
 
   developmentView() { return renderDevelopmentView({ catalog: this.development, progress: this.developmentProgress, results: this.developmentResults, reports: this.developmentReports, output: this.developmentOutput, entity: this.developmentEntity, startTime: this.developmentStartTime, busy: this.busy, t: this.t.bind(this), statusText: this.statusText.bind(this), packText: this.packText.bind(this), operationText: this.operationText.bind(this), setEntity: (value) => { this.developmentEntity = value; }, setStartTime: (value) => { this.developmentStartTime = value; }, runAll: () => void this.runAllDevelopment(), runPack: (name) => void this.runDevelopmentPack(name), runOperation: (name) => void this.runDevelopment(name), download: () => this.downloadDiagnostic(), copyProblemReports: () => void this.copyProblemReports(), copyDiagnostic: (result) => void this.copyDiagnostic(result), retry: (operation) => void this.retryDevelopment(operation), reasonText: (reason) => reason === 'empty_result' ? this.t('statusPartial') : reason }); }
 
-  clientsView() { return renderClientsView({ clients: this.clients, busy: this.busy, t: this.t.bind(this), refresh: () => void this.refresh(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), rotate: (clientId) => void this.rotate(clientId), capabilitySelector: () => this.capabilitySelector(), operatorEnabled: this.operatorEnabled, operatorServices: this.operatorPolicy?.services ?? [] }); }
+  clientsView() { return renderClientsView({ clients: this.clients, busy: this.busy, t: this.t.bind(this), refresh: () => void this.refresh(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), rotate: (clientId) => void this.rotate(clientId), capabilitySelector: () => this.capabilitySelector(), operatorEnabled: this.operatorEnabled, operatorServices: this.operatorPolicy?.services.filter((service) => this.operatorPolicy?.selected.includes(service.id)) ?? [] }); }
 
   auditView() { return auditView({ audit: this.audit, t: this.t.bind(this), loadAudit: (decision) => void this.loadAudit(decision) }); }
 

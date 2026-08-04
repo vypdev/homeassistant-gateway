@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Collection
 from dataclasses import dataclass
 
 from fastapi import FastAPI, HTTPException, Request, status
@@ -39,7 +40,7 @@ class ClientRouteDependencies:
     authorize_request: AuthorizeRequest
     home_assistant: HomeAssistantReadPort | None = None
     operator_service_policy: OperatorServicePolicyPort | None = None
-
+    operator_services_ceiling: Callable[[], Collection[str]] | None = None
 def register_client_routes(app: FastAPI, dependencies: ClientRouteDependencies) -> None:
     @app.get("/api/clients", response_model=list[ClientResponse])
     def list_client_resources() -> list[ClientResponse]:
@@ -52,9 +53,10 @@ def register_client_routes(app: FastAPI, dependencies: ClientRouteDependencies) 
         if client is None:
             raise HTTPException(status_code=401, detail="invalid_client_token")
         tools = ["gateway_diagnostics", "ha_inventory", "ha_states", "ha_automations", "ha_automation_config", "ha_configuration", "ha_services", "ha_events", "ha_history", "ha_logbook", "ha_devices", "ha_areas", "ha_floors", "ha_labels", "ha_entity_registry", "ha_scripts", "ha_scenes", "ha_helpers", "ha_integrations"]
-        if client.profile.value == "operator" and "ha.write.services" in client.capabilities:
+        ceiling = None if dependencies.operator_services_ceiling is None else set(dependencies.operator_services_ceiling())
+        if client.profile.value == "operator" and "ha.write.services" in client.capabilities and (ceiling is None or client.operator_services & ceiling):
             tools.extend(("ha_request_service_approval", "ha_execute_service_call"))
-        if client.profile.value == "operator" and "ha.write.automations" in client.capabilities:
+        if client.profile.value == "operator" and "ha.write.automations" in client.capabilities and (ceiling is None or any(service.startswith("automation.") for service in client.operator_services & ceiling)):
             tools.extend(("ha_request_automation_approval", "ha_execute_automation"))
         return MCPDiscoveryResponse(
             server_name="homeassistant-gateway-observer",
@@ -110,7 +112,8 @@ def register_client_routes(app: FastAPI, dependencies: ClientRouteDependencies) 
         if request.operator_services:
             catalog = normalize_service_catalog(dependencies.home_assistant.services() if dependencies.home_assistant is not None else [])
             available = {item["id"] for item in catalog}
-            if any(service == "*" or (available and service not in available) for service in request.operator_services):
+            ceiling = None if dependencies.operator_services_ceiling is None else set(dependencies.operator_services_ceiling())
+            if any(service == "*" or (available and service not in available) or (ceiling is not None and service not in ceiling) for service in request.operator_services):
                 raise HTTPException(status_code=400, detail="operator_service_not_available")
         try:
             issued = dependencies.issue_client.execute(client_id=request.client_id, display_name=request.display_name, profile=request.profile, capabilities=request.capabilities, operator_services=request.operator_services)

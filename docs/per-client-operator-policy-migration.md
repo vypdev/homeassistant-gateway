@@ -2,7 +2,7 @@
 
 ## Goal
 
-Move the operator service allowlist from one global gateway policy to an explicit grant set attached to each client credential. Keep `operator_enabled` as the global safety switch.
+Move from a single global grant to a two-level policy: a global operator-service ceiling defines which services may be granted, while an explicit grant set attached to each client credential determines which of those services that credential can actually request. Keep `operator_enabled` as the global safety switch.
 
 ## Target contract
 
@@ -17,9 +17,9 @@ Move the operator service allowlist from one global gateway policy to an explici
 ## Migration phases
 
 1. **Contract and storage**: add a bounded `operator_services` field to the client model and persist it in an additive JSON column. Existing global services remain only as a deprecated compatibility seed; new clients default to an empty set.
-2. **Runtime enforcement**: carry `client_id` through preview, approval and execution. Resolve the requesting client's grants at execution time. Do not use a process-global allowlist for authorization.
+2. **Runtime enforcement**: carry `client_id` through preview, approval and execution. Resolve the requesting client's grants at execution time and intersect them with the current global service ceiling. A global ceiling never grants a service by itself.
 3. **HTTP/MCP contracts**: expose grants in client responses to the authenticated GUI and ensure MCP discovery is derived from that client's capabilities/grants. A dedicated update route for existing credentials remains the next incremental slice.
-4. **GUI**: configure services inside each client editor. Show the effective grant count and descriptions, with separate Hermes/OpenClaw credentials. Do not present a global service selector as authoritative.
+4. **GUI**: configure the global ceiling in the Policy view and configure grants inside each client editor. Show the effective grant count and descriptions, with separate Hermes/OpenClaw credentials. Make the distinction between ceiling and grant explicit.
 5. **Compatibility and removal**: retain the legacy global setting as a deprecated migration input for one release. It seeds existing operator clients once, is never applied to observers, and is not used for new authorization decisions. Remove the legacy setting after migration evidence and documentation.
 
 ## Safety and rollback

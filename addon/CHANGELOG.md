@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.19
+
+- Treat the graphical Operator services policy as a global permission ceiling, not a client grant.
+- Enforce the intersection of the global ceiling and each credential's explicit operator service grants across HTTP, MCP, discovery and development mutation paths.
+- Redesign the Policy view with a clear ceiling explanation, permission summary, responsive spacing and accessible service groups.
+- Add complete localized copy for the revised Operator services screen across supported locales.
+
 ## 0.5.18
 
 - Add GitHub-style per-credential operator service grants.
