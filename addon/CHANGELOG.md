@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.23
+
+- Align buttons, cards, labels, fields, chips and status surfaces with a Home Assistant-inspired visual system.
+- Add consistent light and dark theme tokens with WCAG AA primary-button contrast.
+- Add a subtle animated dot-field focus that moves its position and radius while respecting reduced-motion preferences.
+- Add Playwright coverage for reduced motion, accessibility, responsive containment and light/dark visual regressions.
+
 ## 0.5.22
 
 - Replace the two-column Operator Services client selector with a readable single-column responsive list.
