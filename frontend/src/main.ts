@@ -2,6 +2,7 @@ import { LitElement, html } from 'lit';
 import { downloadDiagnostic as downloadDiagnosticFile, copyDiagnostic as copyDiagnosticFile, copyProblemReports as copyProblemReportsFile } from './diagnostics-service';
 import { api } from './api';
 import { CAPABILITY_DEFINITIONS } from './capabilities';
+import { capabilitiesAfterProfileChange, capabilitiesForProfile, toggleCapability as applyCapabilityToggle } from './capability-policy';
 import { resolveLocale, resolveTheme, translate } from './locale';
 import { capabilityText as resolveCapabilityText, operationText as resolveOperationText, packText as resolvePackText, pageSubtitle, pageTitle, statusText as resolveStatusText } from './view-helpers';
 import { navigationView } from './navigation-view';
@@ -121,18 +122,15 @@ export class GatewayApp extends LitElement {
 
   setClientProfile(profile: Profile) {
     this.clientProfile = profile;
-    if (profile === 'observer') this.selectedCapabilities = new Set([...this.selectedCapabilities].filter((name) => !name.startsWith('ha.write.')));
+    this.selectedCapabilities = new Set(capabilitiesAfterProfileChange(profile, this.selectedCapabilities));
   }
 
   toggleCapability(name: string, checked: boolean) {
-    if (this.clientProfile === 'observer' && name.startsWith('ha.write.')) return;
-    const next = new Set(this.selectedCapabilities);
-    if (checked) next.add(name); else next.delete(name);
-    this.selectedCapabilities = next;
+    this.selectedCapabilities = new Set(applyCapabilityToggle(this.clientProfile, this.selectedCapabilities, name, checked));
   }
 
   selectObserverCapabilities() {
-    this.selectedCapabilities = new Set(CAPABILITY_DEFINITIONS.filter((item) => item.group === 'observer').map((item) => item.name));
+    this.selectedCapabilities = new Set(capabilitiesForProfile('observer', CAPABILITY_DEFINITIONS));
   }
 
   clearCapabilities() { this.selectedCapabilities = new Set(); }
@@ -152,7 +150,7 @@ export class GatewayApp extends LitElement {
   }
 
   capabilitySelector() {
-    const selectAll = this.clientProfile === 'operator' ? () => { this.selectedCapabilities = new Set(CAPABILITY_DEFINITIONS.map((item) => item.name)); } : () => this.selectObserverCapabilities();
+    const selectAll = this.clientProfile === 'operator' ? () => { this.selectedCapabilities = new Set(capabilitiesForProfile('operator', CAPABILITY_DEFINITIONS)); } : () => this.selectObserverCapabilities();
     return html`<div class="capability-toolbar"><span class="muted">${this.selectedCapabilities.size} ${this.t('selectedCapabilities')}</span><span class="capability-actions"><button type="button" class="secondary" @click=${selectAll}>${this.t('selectAllObserver')}</button><button type="button" class="secondary" @click=${() => this.clearCapabilities()}>${this.t('clearSelection')}</button></span></div><div class="capability-grid">${CAPABILITY_DEFINITIONS.map((item) => html`<label class="capability-option ${item.group === 'operator' ? 'operator' : ''}"><input type="checkbox" value=${item.name} .checked=${this.selectedCapabilities.has(item.name)} ?disabled=${item.group === 'operator' && (!this.operatorEnabled || this.clientProfile !== 'operator')} @change=${(event: Event) => this.toggleCapability(item.name, (event.target as HTMLInputElement).checked)} /><span><strong>${this.capabilityText(item.name, 'Label', item.label)} · <code>${item.name}</code></strong><small>${this.capabilityText(item.name, 'Description', item.description)}</small></span></label>`)}</div>`;
   }
 

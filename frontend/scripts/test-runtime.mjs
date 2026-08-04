@@ -9,7 +9,7 @@ const sourceDir = new URL('../src/', import.meta.url);
 const tempDir = await mkdtemp(join(tmpdir(), 'homeassistant-gateway-ui-'));
 
 try {
-  for (const name of ['locale', 'view-helpers']) {
+  for (const name of ['locale', 'view-helpers', 'capability-policy']) {
     const source = await readFile(new URL(`${name}.ts`, sourceDir), 'utf8');
     const output = ts.transpileModule(source, {
       compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
@@ -37,6 +37,18 @@ try {
   assert.equal(helpers.operationText(translate, 'unknown', 'Label', 'Fallback'), 'Fallback');
   assert.equal(helpers.pageTitle((key) => key, 'overview'), 'overviewTitle');
   assert.equal(helpers.pageSubtitle((key) => key, 'unknown'), 'overviewSubtitle');
+
+  const policy = await import(pathToFileURL(join(tempDir, 'capability-policy.mjs')));
+  const definitions = [
+    { name: 'ha.read.states', group: 'observer' },
+    { name: 'ha.write.services', group: 'operator' },
+  ];
+  assert.deepEqual(policy.capabilitiesForProfile('observer', definitions), ['ha.read.states']);
+  assert.deepEqual(policy.capabilitiesForProfile('operator', definitions), ['ha.read.states', 'ha.write.services']);
+  assert.deepEqual(policy.capabilitiesAfterProfileChange('observer', ['ha.read.states', 'ha.write.services']), ['ha.read.states']);
+  assert.deepEqual(policy.toggleCapability('observer', ['ha.read.states'], 'ha.write.services', true), ['ha.read.states']);
+  assert.deepEqual(policy.toggleCapability('operator', ['ha.read.states'], 'ha.write.services', true), ['ha.read.states', 'ha.write.services']);
+  assert.deepEqual(policy.toggleCapability('operator', ['ha.read.states', 'ha.write.services'], 'ha.write.services', false), ['ha.read.states']);
 
   console.log('frontend runtime helpers: ok');
 } finally {
