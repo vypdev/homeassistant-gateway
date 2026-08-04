@@ -290,6 +290,7 @@ export class GatewayApp extends LitElement {
     .dev-output { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; border: 1px solid #23415e; border-radius: 10px; padding: 14px; background: #06101b; color: #b8ecff; font: 12px/1.5 ui-monospace, monospace; }
     .result-list { display: grid; gap: 8px; margin-top: 14px; }
     .pack-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 16px 0; }
+    .pack-grid > button.secondary { border-radius: 8px; text-align: left; }
     .pack-grid button { display: grid; gap: 5px; text-align: left; padding: 12px 13px; min-height: 72px; }
     .pack-grid small { color: #9fb8cc; line-height: 1.4; }
     .capability-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 14px; }

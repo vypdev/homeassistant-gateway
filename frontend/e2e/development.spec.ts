@@ -38,6 +38,7 @@ test.describe('development console flows', () => {
 
     await expect(page.getByRole('button', { name: 'Run all' })).toBeEnabled();
     await expect(page.getByRole('button', { name: 'Basic inventory' })).toBeEnabled();
+    await expect(page.locator('.pack-grid > button.secondary').first()).toHaveCSS('border-radius', '8px');
     await expect(page.getByRole('button', { name: 'Run', exact: true })).toBeEnabled();
     await expect(page.getByRole('textbox', { name: 'Entity filter' })).toBeVisible();
     await assertResponsivePage(page);
