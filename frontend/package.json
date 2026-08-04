@@ -8,6 +8,7 @@
     "dev": "vite",
     "check": "tsc --noEmit",
     "test:runtime": "node scripts/test-runtime.mjs",
+    "test:architecture": "node scripts/check-architecture-boundaries.mjs",
     "test:ux": "node scripts/test-ux-contracts.mjs",
     "test:e2e": "playwright test"
   },

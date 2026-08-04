@@ -10,13 +10,18 @@ const tempDir = await mkdtemp(join(tmpdir(), 'homeassistant-gateway-ui-'));
 
 try {
   await writeFile(join(tempDir, 'api.mjs'), 'export const api = async () => { throw new Error("unexpected default api call"); };\n');
-  for (const name of ['locale', 'view-helpers', 'capability-policy', 'operator-policy', 'gateway-api', 'gateway-controller']) {
+  for (const name of ['locale', 'view-helpers', 'capability-policy', 'operator-policy', 'gateway-errors', 'operator-policy-service', 'operation-runner', 'gateway-contracts', 'gateway-api', 'gateway-controller']) {
     const source = await readFile(new URL(`${name}.ts`, sourceDir), 'utf8');
     let output = ts.transpileModule(source, {
       compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
       fileName: `${name}.ts`,
     }).outputText;
-    if (name === 'gateway-api') output = output.replace("from './api'", "from './api.mjs'");
+    if (name === 'gateway-api') {
+      output = output.replace("from './api'", "from './api.mjs'");
+      output = output.replace("from './gateway-contracts'", "from './gateway-contracts.mjs'");
+    }
+    if (name === 'gateway-controller') output = output.replace("from './operator-policy-service'", "from './operator-policy-service.mjs'");
+    if (name === 'gateway-contracts') output = output.replace("from './gateway-errors'", "from './gateway-errors.mjs'");
     await writeFile(join(tempDir, `${name}.mjs`), output);
   }
 
@@ -61,12 +66,41 @@ try {
   assert.deepEqual(operatorPolicy.selectedOperatorServices(samplePolicy), [{ id: 'switch.turn_on' }]);
   assert.deepEqual(operatorPolicy.selectedOperatorServices(null), []);
 
+  const errors = await import(pathToFileURL(join(tempDir, 'gateway-errors.mjs')));
+  assert.equal(errors.gatewayErrorFromResponse(422, { code: 'operator_service_policy_invalid', detail: 'invalid policy' }).code, 'operator_service_policy_invalid');
+  assert.equal(errors.gatewayErrorFromResponse(401, {}).code, 'unauthorized');
+  assert.equal(errors.gatewayErrorFromResponse(500, {}).code, 'server_error');
+  assert.equal(errors.gatewayErrorFromUnknown(new Error('offline')).code, 'network_error');
+
+  const policyServiceModule = await import(pathToFileURL(join(tempDir, 'operator-policy-service.mjs')));
+  const policyCalls = [];
+  const policyService = policyServiceModule.createOperatorPolicyService(async (selected) => {
+    policyCalls.push([...selected]);
+    if (selected[0] === 'fail') throw new Error('failed');
+  });
+  const first = ['first'];
+  const firstSave = policyService.save(first);
+  first.push('mutated');
+  const secondSave = policyService.save(['second']);
+  await Promise.all([firstSave, secondSave]);
+  assert.deepEqual(policyCalls, [['first'], ['second']]);
+  await assert.rejects(() => policyService.save(['fail']));
+  await policyService.save(['after-failure']);
+  assert.deepEqual(policyCalls.at(-1), ['after-failure']);
+
+  const runnerModule = await import(pathToFileURL(join(tempDir, 'operation-runner.mjs')));
+  const states = [];
+  const runner = runnerModule.createOperationRunner((state) => states.push(state));
+  assert.equal(await runner.run('load', async () => 42), 42);
+  await assert.rejects(() => runner.run('fail', async () => { throw new Error('boom'); }));
+  assert.deepEqual(states.map((state) => state.status), ['running', 'success', 'running', 'error']);
+
   const gatewayApiModule = await import(pathToFileURL(join(tempDir, 'gateway-api.mjs')));
   const calls = [];
   const fakeRequest = async (path, init) => {
     calls.push({ path, init });
     if (path === '/../ready') return { status: 'ready' };
-    if (path === '/clients') return init?.method === 'POST' ? { token: 'token' } : [];
+    if (path === '/clients') return init?.method === 'POST' ? { client_id: 'id', token: 'token' } : [];
     if (path === '/audit') return [];
     if (path === '/development/catalog') return { operations: [] };
     if (path === '/development/reports') return [];

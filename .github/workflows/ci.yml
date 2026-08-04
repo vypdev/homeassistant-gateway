@@ -42,6 +42,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Test frontend runtime helpers
         run: pnpm run test:runtime
+      - name: Check frontend architecture boundaries
+        run: pnpm run test:architecture
       - name: Test frontend UX contracts
         run: pnpm run test:ux
       - name: Type-check frontend

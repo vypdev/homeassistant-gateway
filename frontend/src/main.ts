@@ -1,7 +1,8 @@
 import { LitElement, html } from 'lit';
 import { downloadDiagnostic as downloadDiagnosticFile, copyDiagnostic as copyDiagnosticFile, copyProblemReports as copyProblemReportsFile } from './diagnostics-service';
-import { createGatewayApi } from './gateway-api';
-import { createGatewayController, type GatewayController } from './gateway-controller';
+import { createGatewayAppDependencies } from './composition-root';
+import type { GatewayController } from './gateway-controller';
+import { GatewayError } from './gateway-errors';
 import { CAPABILITY_DEFINITIONS } from './capabilities';
 import { capabilitiesAfterProfileChange, capabilitiesForProfile, toggleCapability as applyCapabilityToggle } from './capability-policy';
 import { selectedOperatorServices, toggleOperatorServiceGroupSelection, toggleOperatorServiceSelection } from './operator-policy';
@@ -88,12 +89,12 @@ export class GatewayApp extends LitElement {
   @state() operatorEnabled = false;
   @state() operatorStatus: OperatorStatus = { operator_enabled: false, execution: 'disabled', registered_mutation_tools: [], capabilities: [], reason: 'loading' };
   @state() operatorPolicy: OperatorServicePolicy | null = null;
-  private operatorPolicySaveQueue: Promise<void> = Promise.resolve();
   private readonly gatewayController: GatewayController;
+  private refreshVersion = 0;
 
   static styles = APP_STYLES;
 
-  constructor(gatewayController: GatewayController = createGatewayController(createGatewayApi())) {
+  constructor(gatewayController: GatewayController = createGatewayAppDependencies().gatewayController) {
     super();
     this.gatewayController = gatewayController;
   }
@@ -106,6 +107,25 @@ export class GatewayApp extends LitElement {
   }
   setLocale(locale: string) { this.localeOverride = locale; if (locale) localStorage.setItem('gateway-locale', locale); else localStorage.removeItem('gateway-locale'); }
   get effectiveTheme() { return resolveTheme(this.uiContext.theme, Boolean(window.matchMedia?.('(prefers-color-scheme: light)').matches)); }
+
+  private errorMessage(error: unknown, fallbackKey: string): string {
+    if (error instanceof GatewayError) {
+      if (error.code === 'server_error' && error.message) return error.message;
+      const keyByCode: Record<string, string> = {
+        operator_service_policy_invalid: 'operatorServicesPolicyInvalid',
+        unauthorized: fallbackKey,
+        forbidden: fallbackKey,
+        not_found: fallbackKey,
+        validation_error: fallbackKey,
+        network_error: fallbackKey,
+        invalid_response: 'errorLoadState',
+        server_error: fallbackKey,
+        unknown_error: fallbackKey,
+      };
+      return this.t(keyByCode[error.code] ?? fallbackKey);
+    }
+    return this.t(fallbackKey);
+  }
 
   private applyBootstrap(snapshot: Awaited<ReturnType<GatewayController['refresh']>>) {
     this.ready = snapshot.ready;
@@ -121,10 +141,18 @@ export class GatewayApp extends LitElement {
   }
 
   async refresh() {
+    const version = ++this.refreshVersion;
     this.busy = true; this.bootState = 'checking'; this.error = '';
-    try { this.applyBootstrap(await this.gatewayController.refresh()); this.bootState = 'ready'; }
-    catch (error) { this.error = error instanceof Error ? error.message : this.t('errorLoadState'); this.bootState = 'error'; }
-    finally { this.busy = false; }
+    try {
+      const snapshot = await this.gatewayController.refresh();
+      if (version !== this.refreshVersion) return;
+      this.applyBootstrap(snapshot); this.bootState = 'ready';
+    }
+    catch (error) {
+      if (version !== this.refreshVersion) return;
+      this.error = this.errorMessage(error, 'errorLoadState'); this.bootState = 'error';
+    }
+    finally { if (version === this.refreshVersion) this.busy = false; }
   }
 
   setView(view: View) { this.view = view; this.error = ''; }
@@ -137,7 +165,7 @@ export class GatewayApp extends LitElement {
     try {
       const result = await this.gatewayController.createClient({ client_id: String(data.get('client_id') ?? ''), display_name: String(data.get('display_name') ?? ''), profile: String(data.get('profile') ?? 'observer'), capabilities: [...this.selectedCapabilities], operator_services: data.getAll('operator_services').map(String) });
       this.issuedToken = result.client.token; form.reset(); this.selectedCapabilities = new Set(['ha.read.diagnostics']); this.clientProfile = 'observer'; this.permissionTab = 'capabilities'; this.applyBootstrap(result.bootstrap); this.bootState = 'ready';
-    } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorIssueClient'); }
+    } catch (error) { this.error = this.errorMessage(error, 'errorIssueClient'); }
     finally { this.busy = false; }
   }
 
@@ -179,7 +207,7 @@ export class GatewayApp extends LitElement {
     if (!window.confirm(this.t('revokeConfirm').replace('{client}', clientId))) return;
     this.busy = true;
     try { this.applyBootstrap(await this.gatewayController.revokeClient(clientId)); }
-    catch (error) { this.error = error instanceof Error ? error.message : this.t('errorRevokeClient'); }
+    catch (error) { this.error = this.errorMessage(error, 'errorRevokeClient'); }
     finally { this.busy = false; }
   }
 
@@ -187,7 +215,7 @@ export class GatewayApp extends LitElement {
     if (!window.confirm(this.t('rotateConfirm').replace('{client}', clientId))) return;
     this.busy = true; this.error = '';
     try { const result = await this.gatewayController.rotateClient(clientId); this.issuedToken = result.client.token; this.applyBootstrap(result.bootstrap); }
-    catch (error) { this.error = error instanceof Error ? error.message : this.t('errorRotateClient'); }
+    catch (error) { this.error = this.errorMessage(error, 'errorRotateClient'); }
     finally { this.busy = false; }
   }
 
@@ -195,7 +223,7 @@ export class GatewayApp extends LitElement {
     event.preventDefault(); const form = event.target as HTMLFormElement; const token = String(new FormData(form).get('token') ?? '');
     this.busy = true; this.error = '';
     try { this.discovery = await this.gatewayController.loadDiscovery(token); }
-    catch (error) { this.error = error instanceof Error ? error.message : this.t('errorDiscovery'); }
+    catch (error) { this.error = this.errorMessage(error, 'errorDiscovery'); }
     finally { this.busy = false; }
   }
 
@@ -214,7 +242,7 @@ export class GatewayApp extends LitElement {
         },
         onFinished: () => this.loadDevelopmentReports(),
       });
-    } catch (error) { this.error = error instanceof Error ? error.message : this.t(errorKey); }
+    } catch (error) { this.error = this.errorMessage(error, errorKey); }
     finally { this.busy = false; }
   }
 
@@ -288,15 +316,13 @@ export class GatewayApp extends LitElement {
 
   auditView() { return auditView({ audit: this.audit, t: this.t.bind(this), loadAudit: (decision) => void this.loadAudit(decision) }); }
 
-  async loadAudit(decision: string) { this.busy = true; try { this.audit = await this.gatewayController.loadAudit(decision); } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorAudit'); } finally { this.busy = false; } }
+  async loadAudit(decision: string) { this.busy = true; try { this.audit = await this.gatewayController.loadAudit(decision); } catch (error) { this.error = this.errorMessage(error, 'errorAudit'); } finally { this.busy = false; } }
   private queueOperatorPolicySave() {
-    this.operatorPolicySaveQueue = this.operatorPolicySaveQueue.then(async () => {
-      if (!this.operatorPolicy) return;
-      this.busy = true; this.error = '';
-      try { await this.gatewayController.saveOperatorPolicy(this.operatorPolicy.selected); }
-      catch (error) { this.error = error instanceof Error && error.message === 'operator_service_policy_invalid' ? this.t('operatorServicesPolicyInvalid') : error instanceof Error ? error.message : this.t('operatorServicesPolicyInvalid'); }
-      finally { this.busy = false; }
-    });
+    if (!this.operatorPolicy) return;
+    this.busy = true; this.error = '';
+    void this.gatewayController.saveOperatorPolicy(this.operatorPolicy.selected)
+      .catch((error) => { this.error = this.errorMessage(error, 'operatorServicesPolicyInvalid'); })
+      .finally(() => { this.busy = false; });
   }
   toggleOperatorService(service: string, checked: boolean) {
     if (!this.operatorPolicy) return;
@@ -310,7 +336,7 @@ export class GatewayApp extends LitElement {
   }
 
   policyView() { return renderPolicyView({ clients: this.clients, busy: this.busy, t: this.t.bind(this), evaluatePolicy: this.evaluatePolicy.bind(this), operatorPolicy: this.operatorPolicy, toggleOperatorService: this.toggleOperatorService.bind(this), toggleOperatorServiceGroup: this.toggleOperatorServiceGroup.bind(this) }); }
-  async evaluatePolicy(event: Event) { event.preventDefault(); const data = new FormData(event.target as HTMLFormElement); this.busy = true; try { const result = await this.gatewayController.evaluatePolicy({ client_id: String(data.get('client_id') ?? ''), capability: String(data.get('capability') ?? ''), mutation: data.has('mutation') }); window.alert(`${result.decision}: ${result.reason}`); } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorPolicy'); } finally { this.busy = false; } }
+  async evaluatePolicy(event: Event) { event.preventDefault(); const data = new FormData(event.target as HTMLFormElement); this.busy = true; try { const result = await this.gatewayController.evaluatePolicy({ client_id: String(data.get('client_id') ?? ''), capability: String(data.get('capability') ?? ''), mutation: data.has('mutation') }); window.alert(`${result.decision}: ${result.reason}`); } catch (error) { this.error = this.errorMessage(error, 'errorPolicy'); } finally { this.busy = false; } }
   mcpView() { return renderMcpView({ ready: this.ready, discovery: this.discovery, busy: this.busy, t: this.t.bind(this), loadDiscovery: this.loadDiscovery.bind(this) }); }
   tokenModal() { return html`<div class="modal-backdrop" role="dialog" aria-modal="true"><div class="modal"><div class="eyebrow">${this.t('oneTimeCredential')}</div><h2>${this.t('tokenOnce')}</h2><p>${this.t('tokenOnlyOnce')}</p><div class="token mono">${this.issuedToken}</div><div class="form-actions"><button class="secondary" @click=${() => navigator.clipboard?.writeText(this.issuedToken)}>${this.t('copyToken')}</button><button class="primary" @click=${() => { this.issuedToken = ''; }}>${this.t('savedIt')}</button></div></div></div>`; }
 }
