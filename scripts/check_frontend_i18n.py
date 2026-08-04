@@ -8,7 +8,7 @@ from pathlib import Path
 
 LANGUAGES = ("en", "es", "fr", "it", "de", "pt", "zh", "ja", "ru", "hi", "ar")
 ROOT = Path(__file__).parents[1]
-MAIN = ROOT / "frontend" / "src" / "main.ts"
+MAIN = ROOT / "frontend" / "src" / "i18n-base.ts"
 EXTRA = ROOT / "frontend" / "src" / "i18n-extra.ts"
 DEVELOPMENT = ROOT / "frontend" / "src" / "i18n-development.ts"
 UI = ROOT / "frontend" / "src" / "i18n-ui.ts"
@@ -19,6 +19,9 @@ def keys_in_object(body: str) -> set[str]:
 
 
 def main_locale_keys(source: str, language: str) -> set[str]:
+    compact = re.search(rf"^  {language}: \{{(?P<body>[^\n]*)\}},?$", source, re.MULTILINE)
+    if compact is not None:
+        return keys_in_object(compact.group("body"))
     match = re.search(rf"^  {language}: \{{(?P<body>.*?)^  \}},?", source, re.MULTILINE | re.DOTALL)
     if match is None:
         raise ValueError(f"missing_locale:{language}")
