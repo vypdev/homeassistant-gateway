@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.24
+
+- Allow the global Operator service ceiling to persist the complete bounded catalog of up to 500 services, including configurations with 234 selected services.
+- Replace the raw `operator_service_policy_invalid` failure with a localized explanation when the submitted policy is invalid.
+- Rename and clarify the Policy view's access decision rules so the global ceiling, capabilities and approval boundaries are understandable.
+- Add regression coverage for large Operator service policies, policy accessibility and localized error handling.
+
 ## 0.5.23
 
 - Align buttons, cards, labels, fields, chips and status surfaces with a Home Assistant-inspired visual system.
