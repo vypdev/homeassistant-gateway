@@ -51,7 +51,17 @@ jobs:
         run: python scripts/check_frontend_i18n.py
       - name: Build frontend
         run: pnpm run build
-      - name: Install Playwright Chromium
-        run: pnpm exec playwright install --with-deps chromium
-      - name: Run browser smoke
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - name: Run browser smoke against the development server
+        run: pnpm run test:e2e
+      - name: Start production preview
+        run: |
+          pnpm exec vite preview --host 127.0.0.1 --port 4174 > /tmp/gateway-vite-preview.log 2>&1 &
+          for attempt in $(seq 1 30); do curl --fail --silent http://127.0.0.1:4174/ >/dev/null && exit 0; sleep 1; done
+          cat /tmp/gateway-vite-preview.log
+          exit 1
+      - name: Run browser smoke against the production bundle
+        env:
+          PW_BASE_URL: http://127.0.0.1:4174
         run: pnpm run test:e2e

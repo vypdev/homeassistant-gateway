@@ -160,7 +160,7 @@ export class GatewayApp extends LitElement {
     .shell.light { color: #243447; background: #f4f7fb; }
     .shell.light aside, .shell.light .card { background: #ffffffee; border-color: #d3deea; box-shadow: 0 18px 50px #38516b14; }
     .shell.light p, .shell.light .muted, .shell.light .brand small, .shell.light .card-label, .shell.light .side-foot, .shell.light nav button { color: #607286; }
-    .shell.light nav button:hover, .shell.light nav button.active { color: #17324d; background: #dceefa; }
+    .shell.light .status-pill { color: #237b54; background: #e7f7ee; border-color: #9bd1b1; }
     .shell.light button.primary { color: #ffffff; background: #28708e; border-color: #1e5d77; }
     .shell.light button.primary:hover:not(:disabled) { color: #ffffff; background: #1f607b; border-color: #174e65; }
     .shell.light button.secondary { color: #ffffff; background: #45657b; border-color: #35566d; }
@@ -243,10 +243,29 @@ export class GatewayApp extends LitElement {
     button.danger:active:not(:disabled) { background: #62283b; }
     button:focus-visible, nav button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #7ddcff; outline-offset: 2px; }
     button:disabled { opacity: .55; cursor: not-allowed; }
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; min-width: 620px; }
-    th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #1b3550; }
-    th { color: #8ea5bd; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; }
+    .table-wrap { overflow: visible; min-width: 0; }
+    .desktop-only { display: block; }
+    .responsive-records { display: none; }
+    .responsive-record { display: grid; gap: 11px; border: 1px solid #29465f; border-radius: 12px; padding: 14px; background: #07152233; min-width: 0; }
+    .responsive-record-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; min-width: 0; }
+    .responsive-record-header strong { min-width: 0; overflow-wrap: anywhere; }
+    .responsive-field { display: grid; grid-template-columns: minmax(88px, .35fr) minmax(0, 1fr); gap: 10px; align-items: start; min-width: 0; }
+    .responsive-field > span:first-child { color: #8ea5bd; font-size: 12px; }
+    .responsive-field-stack { grid-template-columns: 1fr; gap: 5px; }
+    .responsive-values { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+    .responsive-wrap { min-width: 0; overflow-wrap: anywhere; word-break: break-word; white-space: normal; }
+    .responsive-actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 3px; }
+    .shell.light .responsive-record { border-color: #b9cad9; background: #f8fbfe; }
+    .shell.light .responsive-field > span:first-child { color: #5d7488; }
+    table { width: 100%; border-collapse: collapse; min-width: 0; table-layout: fixed; }
+    th, td { padding: 12px 10px; text-align: left; border-bottom: 1px solid #1b3550; overflow-wrap: anywhere; word-break: break-word; }
+    .clients-table th:nth-child(1), .clients-table td:nth-child(1) { width: 24%; }
+    .clients-table th:nth-child(2), .clients-table td:nth-child(2) { width: 13%; }
+    .clients-table th:nth-child(3), .clients-table td:nth-child(3) { width: 28%; }
+    .clients-table th:nth-child(4), .clients-table td:nth-child(4) { width: 12%; }
+    .clients-table th:nth-child(5), .clients-table td:nth-child(5) { width: 23%; }
+    .clients-table td:nth-child(3) { overflow-wrap: normal; word-break: normal; }
+    .clients-table td:nth-child(3) .tag { white-space: nowrap; }
     td { color: #d7e8f7; }
     code, .mono { color: #9bdbff; font-family: "JetBrains Mono", ui-monospace, monospace; font-size: 12px; }
     .tag { display: inline-block; color: #9bdbff; background: #123651; border: 1px solid #27516a; border-radius: 999px; padding: 3px 8px; margin: 2px 3px 2px 0; font-size: 11px; }
@@ -263,7 +282,7 @@ export class GatewayApp extends LitElement {
     .modal { width: min(560px, 100%); border: 1px solid #3b7796; border-radius: 18px; background: #0b1b2c; padding: 22px; box-shadow: 0 30px 100px #0009; }
     .empty { padding: 28px 10px; text-align: center; color: #8ea5bd; }
     .dev-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); gap: 20px; align-items: start; }
-    .dev-output { max-height: 420px; overflow: auto; white-space: pre-wrap; word-break: break-word; border: 1px solid #23415e; border-radius: 10px; padding: 14px; background: #06101b; color: #b8ecff; font: 12px/1.5 "JetBrains Mono", ui-monospace, monospace; }
+    .dev-output { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; border: 1px solid #23415e; border-radius: 10px; padding: 14px; background: #06101b; color: #b8ecff; font: 12px/1.5 "JetBrains Mono", ui-monospace, monospace; }
     .result-list { display: grid; gap: 8px; margin-top: 14px; }
     .pack-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 16px 0; }
     .pack-grid button { display: grid; gap: 5px; text-align: left; padding: 12px 13px; min-height: 72px; }
@@ -328,6 +347,7 @@ export class GatewayApp extends LitElement {
     @keyframes dot-zone-drift { from { transform: translate3d(-8%, -5%, 0) scale(.92); } to { transform: translate3d(10%, 8%, 0) scale(1.12); } }
     @media (max-width: 1100px) { .split, .dev-grid { grid-template-columns: 1fr; } }
     @media (max-width: 1000px) { .cards { grid-template-columns: repeat(2, 1fr); } .topology-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .split, .dev-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 1600px) { .desktop-only { display: none; } .responsive-records { display: grid; gap: 10px; } }
     @media (max-width: 720px) { .layout { width: min(100% - 24px, 600px); display: block; padding-top: 12px; } aside { height: auto; position: static; margin-bottom: 18px; } nav { grid-template-columns: repeat(4, 1fr); } nav button { text-align: center; padding: 9px 4px; font-size: 12px; } .side-foot { display: none; } .cards, .topology-grid, .split, .dev-grid, .pack-grid { grid-template-columns: 1fr; } .topline { display: block; } .topline > div { min-width: 0; } .status-pill { margin-top: 16px; } .toolbar, .capability-toolbar, .permission-tabs { flex-wrap: wrap; align-items: flex-start; } .toolbar > div, .toolbar button { min-width: 0; } .toolbar button, .form-actions button { max-width: 100%; } .form-actions { flex-wrap: wrap; } .operator-policy-header { flex-wrap: wrap; } .operator-policy-header > * { max-width: 100%; } .operator-policy-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .result-row { flex-direction: column; } .result-row > * { max-width: 100%; } .pack-grid button { min-width: 0; } .card { min-width: 0; padding: 16px; } h1 { overflow-wrap: anywhere; } }
     @media (prefers-reduced-motion: reduce) { .shell::before, .dot-field__zone, .boot-orbit, .boot-core, .boot-progress::before { animation: none; } *, *::before, *::after { transition-duration: .01ms !important; } }
     @media (prefers-contrast: more) { .card, aside, input, select, textarea, .result-row { border-color: currentColor; } .muted, p, label, th { color: currentColor; } .tag, button.secondary { border-color: currentColor; } }
