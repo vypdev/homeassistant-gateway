@@ -33,22 +33,27 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Enable pnpm
+        run: corepack enable
+      - name: Enforce pnpm package-manager policy
+        working-directory: .
+        run: python scripts/check_package_manager.py
       - name: Install frontend dependencies
-        run: npm ci --no-audit --no-fund
+        run: pnpm install --frozen-lockfile
       - name: Test frontend runtime helpers
-        run: npm run test:runtime
+        run: pnpm run test:runtime
       - name: Test frontend UX contracts
-        run: npm run test:ux
+        run: pnpm run test:ux
       - name: Type-check frontend
-        run: npm run check
+        run: pnpm run check
       - name: Check frontend translation coverage
         working-directory: .
         run: python scripts/check_frontend_i18n.py
       - name: Build frontend
-        run: npm run build
+        run: pnpm run build
       - name: Install Playwright Chromium
-        run: npx playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium
       - name: Run browser smoke
-        run: npm run test:e2e
+        run: pnpm run test:e2e

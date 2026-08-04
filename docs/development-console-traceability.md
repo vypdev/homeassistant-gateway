@@ -100,10 +100,10 @@ Relevant local gates:
 python scripts/check_frontend_i18n.py
 python scripts/check_frontend_i18n_runtime.py
 cd frontend
-npm run test:runtime
-npm run test:ux
-npm run check
-npm run build
+pnpm run test:runtime
+pnpm run test:ux
+pnpm run check
+pnpm run build
 ```
 
 The UX contract test verifies that the console preserves the separation between successful results, warnings and errors and renders traceability. The i18n validation checks all 11 locales and runtime catalog resolution.

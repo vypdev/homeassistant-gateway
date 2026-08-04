@@ -17,9 +17,10 @@ RUN python -m pip wheel --no-cache-dir --wheel-dir /wheels /src
 FROM --platform=$BUILDPLATFORM node:22-alpine AS ui-builder
 COPY --from=builder /src/frontend /frontend
 WORKDIR /frontend
-RUN npm ci --no-audit --no-fund \
-    && npm run check \
-    && npm run build
+RUN corepack enable \
+    && corepack pnpm install --frozen-lockfile \
+    && corepack pnpm run check \
+    && corepack pnpm run build
 
 FROM python:3.12-slim
 ENV PYTHONUNBUFFERED=1 \

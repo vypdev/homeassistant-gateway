@@ -118,8 +118,8 @@ The effective list is always verified with `tools/list`; connectivity does not p
 ```bash
 python -m pytest
 .venv/bin/ruff check src tests scripts
-npm --prefix frontend run check
-npm --prefix frontend run build
+pnpm --dir frontend run check
+pnpm --dir frontend run build
 ```
 
 Read the architecture and consumer guides before changing MCP contracts, profiles or security boundaries.

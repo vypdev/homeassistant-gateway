@@ -17,9 +17,9 @@ From the repository root:
 .venv/bin/python -m pip_audit --skip-editable
 .venv/bin/python scripts/check_frontend_i18n.py
 .venv/bin/python scripts/check_frontend_i18n_runtime.py
-npm --prefix frontend run test:runtime
-npm --prefix frontend run check
-npm --prefix frontend run build
+pnpm --dir frontend run test:runtime
+pnpm --dir frontend run check
+pnpm --dir frontend run build
 git diff --check
 git status --short
 ```

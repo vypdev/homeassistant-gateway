@@ -8,6 +8,7 @@
 - Improve button contrast across dark and light themes with readable hover and active states.
 - Increase separation, padding and grouping between Operator services in the Policy view.
 - Keep narrow Clients layouts contained and add browser regressions for accessibility and overflow.
+- Make pnpm 11.15.1 mandatory for frontend installs, scripts, CI, Docker builds and Playwright tooling; remove the npm lockfile.
 
 ## 0.5.19
 

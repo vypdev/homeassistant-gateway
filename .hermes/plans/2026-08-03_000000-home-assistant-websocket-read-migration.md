@@ -70,7 +70,7 @@ git diff --stat
 .venv/bin/python -m pytest -q
 .venv/bin/ruff check src tests scripts
 .venv/bin/python -m compileall -q src tests scripts
-cd frontend && npm run test:runtime && npm run test:ux && npm run check && npm run build
+cd frontend && pnpm run test:runtime && pnpm run test:ux && pnpm run check && pnpm run build
 ```
 
 Expected: the current UI-only changes are visible in `git status`; existing gates pass. If any gate fails, record the failure and fix/separate it before beginning transport work.
@@ -369,7 +369,7 @@ Run:
 .venv/bin/pip-audit --skip-editable
 python scripts/check_frontend_i18n.py
 python scripts/check_frontend_i18n_runtime.py
-cd frontend && npm run test:runtime && npm run test:ux && npm run check && npm run build
+cd frontend && pnpm run test:runtime && pnpm run test:ux && pnpm run check && pnpm run build
 cd .. && git diff --check
 ```
 

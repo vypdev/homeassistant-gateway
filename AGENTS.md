@@ -56,11 +56,24 @@ Do not import Home Assistant, MCP SDKs, HTTP clients, or environment/config read
 
 The Supervisor App is the primary runtime boundary. The optional custom integration must not duplicate policy or credential logic. Public MCP tool names and capability identifiers are contracts; change them deliberately and document migrations.
 
+## JavaScript package manager
+
+`pnpm` is mandatory for every JavaScript/TypeScript project in this repository. Use the version declared by `frontend/package.json` through Corepack. Do not use `npm`, `npx`, Yarn, or Bun for dependency installation, scripts, executable resolution, CI, Docker builds, or documentation commands.
+
+```bash
+corepack enable
+pnpm --dir frontend install --frozen-lockfile
+pnpm --dir frontend run check
+pnpm --dir frontend exec playwright install --with-deps chromium
+```
+
+Run `python scripts/check_package_manager.py` when changing frontend tooling; CI enforces this policy.
+
 ## Verification commands
 
 ```bash
 .venv/bin/python -m pytest
 .venv/bin/python -m compileall -q .
 git diff --check
-npx -y @google/design.md lint DESIGN.md
+pnpm --dir frontend exec @google/design.md lint DESIGN.md
 ```

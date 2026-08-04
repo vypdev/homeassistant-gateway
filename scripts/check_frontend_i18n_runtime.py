@@ -35,7 +35,7 @@ def main() -> int:
         return 1
 
     result = subprocess.run(
-        ["npm", "run", "test:runtime"],
+        ["pnpm", "run", "test:runtime"],
         cwd=FRONTEND,
         check=False,
         text=True,
