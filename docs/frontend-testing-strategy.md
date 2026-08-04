@@ -39,6 +39,7 @@ Canonical visual baselines are Chromium-only to avoid requiring pixel-identical 
 Tests use deterministic API fixtures in `e2e/fixtures/gateway-api.ts`. Fixtures must:
 
 - model empty, populated, disabled, error, loading and completed states;
+- use complete DTO shapes required by the runtime validators, including nested readiness/health/operator fields;
 - track requests so tests can assert method, path and sanitized payload;
 - never contain real Home Assistant tokens, entities or private data;
 - remain aligned with backend response contracts.
