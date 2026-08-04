@@ -62,13 +62,18 @@ test('keeps topology status chips separated from their labels', async ({ page })
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /system topology|topología del sistema/i })).toBeVisible();
 
-  const gaps = await page.locator('.topology-grid .inline-chip').evaluateAll((chips) => chips.map((chip) => {
+  const spacing = await page.locator('.topology-grid .inline-chip').evaluateAll((chips) => chips.map((chip) => {
     const label = chip.parentElement?.querySelector('strong');
-    if (!label) return -1;
-    return chip.getBoundingClientRect().left - label.getBoundingClientRect().right;
+    if (!label) return { horizontal: -1, vertical: -1 };
+    const chipRect = chip.getBoundingClientRect();
+    const labelRect = label.getBoundingClientRect();
+    return {
+      horizontal: chipRect.left - labelRect.right,
+      vertical: chipRect.top - labelRect.bottom,
+    };
   }));
-  expect(gaps.length).toBe(5);
-  expect(gaps.every((gap) => gap >= 7.5), JSON.stringify(gaps)).toBe(true);
+  expect(spacing.length).toBe(5);
+  expect(spacing.every(({ horizontal, vertical }) => horizontal >= 7.5 || vertical >= 5.5), JSON.stringify(spacing)).toBe(true);
 });
 
 test('keeps the Clients view contained and links to the global service policy', async ({ page }) => {
