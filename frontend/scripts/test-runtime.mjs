@@ -92,10 +92,10 @@ try {
   const calls = [];
   const fakeRequest = async (path, init) => {
     calls.push({ path, init });
-    if (path === '/../ready') return { status: 'ready' };
+    if (path === '/../ready') return { status: 'ready', storage: 'ready', mcp: 'ready', home_assistant: 'ready' };
     if (path === '/clients') return init?.method === 'POST' ? { client_id: 'id', token: 'token' } : [];
     if (path === '/audit') return [];
-    if (path === '/development/catalog') return { operations: [] };
+    if (path === '/development/catalog') return { enabled: true, upstream: 'fake', operations: [], packs: [], mutations: { status: 'blocked', reason: 'test', approval_required: true } };
     if (path === '/development/reports') return [];
     if (path === '/ui/context') return { locale: 'en', theme: 'auto' };
     if (path === '/health/details') return { status: 'healthy', checks: [] };

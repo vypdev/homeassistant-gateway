@@ -1,8 +1,10 @@
 import { api } from './api';
 import { assertGatewayBootstrap, assertIssuedClient, assertOperatorPolicy, assertPolicyEvaluation } from './gateway-contracts';
 import type {
-  AuditEvent,
+  GatewayBootstrap,
   Client,
+  AuditEvent,
+  UiContext,
   Discovery,
   DevelopmentCatalog,
   DevelopmentReport,
@@ -10,22 +12,11 @@ import type {
   OperatorServicePolicy,
   OperatorStatus,
   Ready,
-  UiContext,
 } from './models';
 
-type Request = <T>(path: string, init?: RequestInit) => Promise<T>;
+export type { GatewayBootstrap } from './models';
 
-export type GatewayBootstrap = {
-  ready: Ready;
-  clients: Client[];
-  audit: AuditEvent[];
-  development: DevelopmentCatalog;
-  developmentReports: DevelopmentReport[];
-  uiContext: UiContext;
-  healthDetails: HealthDetails;
-  operatorStatus: OperatorStatus;
-  operatorPolicy: OperatorServicePolicy;
-};
+type Request = <T>(path: string, init?: RequestInit) => Promise<T>;
 
 export type CreateClientInput = {
   client_id: string;

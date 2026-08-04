@@ -26,3 +26,14 @@ export type View = 'overview' | 'clients' | 'policy' | 'mcp' | 'audit' | 'develo
 export type CapabilityDefinition = { name: string; group: 'observer' | 'operator'; label: string; description: string };
 export type OperatorService = { id: string; domain: string; service: string; name: string; description: string; fields: Record<string, unknown> };
 export type OperatorServicePolicy = { services: OperatorService[]; selected: string[] };
+export type GatewayBootstrap = {
+  ready: Ready;
+  clients: Client[];
+  audit: AuditEvent[];
+  development: DevelopmentCatalog;
+  developmentReports: DevelopmentReport[];
+  uiContext: UiContext;
+  healthDetails: HealthDetails;
+  operatorStatus: OperatorStatus;
+  operatorPolicy: OperatorServicePolicy;
+};
