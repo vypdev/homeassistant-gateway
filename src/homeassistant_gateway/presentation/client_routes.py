@@ -84,7 +84,7 @@ def register_client_routes(app: FastAPI, dependencies: ClientRouteDependencies) 
         if dependencies.operator_service_policy is None:
             raise HTTPException(status_code=503, detail="operator_policy_not_configured")
         raw_selected = payload.get("selected")
-        if not isinstance(raw_selected, list) or len(raw_selected) > 200 or not all(isinstance(item, str) for item in raw_selected):
+        if not isinstance(raw_selected, list) or len(raw_selected) > 500 or not all(isinstance(item, str) for item in raw_selected):
             raise HTTPException(status_code=400, detail="operator_service_policy_invalid")
         catalog = normalize_service_catalog(dependencies.home_assistant.services() if dependencies.home_assistant is not None else [])
         available = {item["id"] for item in catalog}

@@ -531,6 +531,11 @@ class ServiceHomeAssistant(FakeHomeAssistant):
         return [{"domain": "light", "services": {"turn_on": {"name": "Turn on", "description": "Turn on a light."}, "turn_off": {"name": "Turn off", "description": "Turn off a light."}}}, {"domain": "automation", "services": {"trigger": {"name": "Trigger", "description": "Trigger an automation."}}}]
 
 
+class ManyServiceHomeAssistant(FakeHomeAssistant):
+    def services(self):
+        return [{"domain": "light", "services": {f"service_{index}": {"name": f"Service {index}", "description": "Test service."} for index in range(234)}}]
+
+
 def test_operator_service_policy_is_graphical_and_validated() -> None:
     policy = InMemoryOperatorPolicy()
     app = make_app(home_assistant=ServiceHomeAssistant(), operator_enabled=True, operator_service_policy=policy)
@@ -544,6 +549,16 @@ def test_operator_service_policy_is_graphical_and_validated() -> None:
     assert policy.get_allowed_services() == ("automation.trigger", "light.turn_on")
     rejected = request(app, "PUT", "/api/operator/service-policy", headers=headers, json={"selected": ["light.nope"]})
     assert rejected.status_code == 400
+
+
+def test_operator_service_policy_accepts_234_services() -> None:
+    policy = InMemoryOperatorPolicy()
+    app = make_app(home_assistant=ManyServiceHomeAssistant(), operator_enabled=True, operator_service_policy=policy)
+    headers = ingress_headers()
+    selected = [f"light.service_{index}" for index in range(234)]
+    response = request(app, "PUT", "/api/operator/service-policy", headers=headers, json={"selected": selected})
+    assert response.status_code == 200
+    assert len(response.json()["selected"]) == 234
 
 
 def test_global_operator_policy_is_a_ceiling_not_a_client_grant() -> None:
