@@ -92,6 +92,7 @@ export class GatewayApp extends LitElement {
   private readonly gatewayController: GatewayController;
   private refreshVersion = 0;
   private policySaveVersion = 0;
+  private refreshController: AbortController | null = null;
 
   static styles = APP_STYLES;
 
@@ -143,17 +144,29 @@ export class GatewayApp extends LitElement {
 
   async refresh() {
     const version = ++this.refreshVersion;
+    this.refreshController?.abort();
+    const controller = new AbortController();
+    this.refreshController = controller;
     this.busy = true; this.bootState = 'checking'; this.error = '';
     try {
-      const snapshot = await this.gatewayController.refresh();
+      const snapshot = await this.gatewayController.refresh(controller.signal);
       if (version !== this.refreshVersion) return;
       this.applyBootstrap(snapshot); this.bootState = 'ready';
     }
     catch (error) {
-      if (version !== this.refreshVersion) return;
+      if (version !== this.refreshVersion || controller.signal.aborted) return;
       this.error = this.errorMessage(error, 'errorLoadState'); this.bootState = 'error';
     }
-    finally { if (version === this.refreshVersion) this.busy = false; }
+    finally {
+      if (this.refreshController === controller) this.refreshController = null;
+      if (version === this.refreshVersion) this.busy = false;
+    }
+  }
+
+  private invalidateRefresh() {
+    this.refreshVersion++;
+    this.refreshController?.abort();
+    this.refreshController = null;
   }
 
   setView(view: View) { this.view = view; this.error = ''; }
@@ -162,7 +175,7 @@ export class GatewayApp extends LitElement {
     event.preventDefault();
     const form = event.target as HTMLFormElement;
     const data = new FormData(form);
-    this.busy = true; this.error = ''; this.refreshVersion++;
+    this.busy = true; this.error = ''; this.invalidateRefresh();
     try {
       const result = await this.gatewayController.createClient({ client_id: String(data.get('client_id') ?? ''), display_name: String(data.get('display_name') ?? ''), profile: String(data.get('profile') ?? 'observer'), capabilities: [...this.selectedCapabilities], operator_services: data.getAll('operator_services').map(String) });
       this.issuedToken = result.client.token; form.reset(); this.selectedCapabilities = new Set(['ha.read.diagnostics']); this.clientProfile = 'observer'; this.permissionTab = 'capabilities'; this.applyBootstrap(result.bootstrap); this.bootState = 'ready';
@@ -206,7 +219,7 @@ export class GatewayApp extends LitElement {
 
   async revoke(clientId: string) {
     if (!window.confirm(this.t('revokeConfirm').replace('{client}', clientId))) return;
-    this.busy = true; this.refreshVersion++;
+    this.busy = true; this.invalidateRefresh();
     try { this.applyBootstrap(await this.gatewayController.revokeClient(clientId)); }
     catch (error) { this.error = this.errorMessage(error, 'errorRevokeClient'); }
     finally { this.busy = false; }
@@ -214,7 +227,7 @@ export class GatewayApp extends LitElement {
 
   async rotate(clientId: string) {
     if (!window.confirm(this.t('rotateConfirm').replace('{client}', clientId))) return;
-    this.busy = true; this.error = ''; this.refreshVersion++;
+    this.busy = true; this.error = ''; this.invalidateRefresh();
     try { const result = await this.gatewayController.rotateClient(clientId); this.issuedToken = result.client.token; this.applyBootstrap(result.bootstrap); }
     catch (error) { this.error = this.errorMessage(error, 'errorRotateClient'); }
     finally { this.busy = false; }

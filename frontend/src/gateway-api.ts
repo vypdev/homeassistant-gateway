@@ -9,17 +9,18 @@ export type { CreateClientInput, GatewayBootstrap, PolicyEvaluationInput } from 
 export interface GatewayApi extends GatewayPort {}
 
 export const createGatewayApi = (request: Request = api): GatewayApi => ({
-  async loadBootstrap() {
+  async loadBootstrap(signal?: AbortSignal) {
+    const requestInit = signal ? { signal } : undefined;
     const [ready, clients, audit, development, developmentReports, uiContext, healthDetails, operatorStatus, operatorPolicy] = await Promise.all([
-      request<Ready>('/../ready'),
-      request<Client[]>('/clients'),
-      request<AuditEvent[]>('/audit'),
-      request<DevelopmentCatalog>('/development/catalog'),
-      request<DevelopmentReport[]>('/development/reports'),
-      request<UiContext>('/ui/context'),
-      request<HealthDetails>('/health/details'),
-      request<OperatorStatus>('/operator/status'),
-      request<OperatorServicePolicy>('/operator/service-policy'),
+      request<Ready>('/../ready', requestInit),
+      request<Client[]>('/clients', requestInit),
+      request<AuditEvent[]>('/audit', requestInit),
+      request<DevelopmentCatalog>('/development/catalog', requestInit),
+      request<DevelopmentReport[]>('/development/reports', requestInit),
+      request<UiContext>('/ui/context', requestInit),
+      request<HealthDetails>('/health/details', requestInit),
+      request<OperatorStatus>('/operator/status', requestInit),
+      request<OperatorServicePolicy>('/operator/service-policy', requestInit),
     ]);
     assertOperatorPolicy(operatorPolicy);
     const bootstrap = { ready, clients, audit, development, developmentReports, uiContext, healthDetails, operatorStatus, operatorPolicy };

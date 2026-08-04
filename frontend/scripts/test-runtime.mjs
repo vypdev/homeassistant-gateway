@@ -109,6 +109,12 @@ try {
   const bootstrap = await gatewayApi.loadBootstrap();
   assert.equal(bootstrap.operatorStatus.operator_enabled, true);
   assert.equal(calls.length, 9);
+  calls.length = 0;
+  const refreshAbortController = new AbortController();
+  await gatewayApi.loadBootstrap(refreshAbortController.signal);
+  assert.equal(calls.length, 9);
+  assert.ok(calls.every(({ init }) => init?.signal === refreshAbortController.signal));
+  refreshAbortController.abort();
   await gatewayApi.createClient({ client_id: 'id', display_name: 'name', profile: 'observer', capabilities: [], operator_services: [] });
   await gatewayApi.loadDiscovery('secret-token');
   await gatewayApi.loadAudit('deny reason');

@@ -10,7 +10,7 @@ export type ClientMutationResult = {
 };
 
 export interface GatewayController {
-  refresh(): Promise<GatewayBootstrap>;
+  refresh(signal?: AbortSignal): Promise<GatewayBootstrap>;
   createClient(input: CreateClientInput): Promise<ClientMutationResult>;
   revokeClient(clientId: string): Promise<GatewayBootstrap>;
   rotateClient(clientId: string): Promise<ClientMutationResult>;
@@ -21,7 +21,7 @@ export interface GatewayController {
 }
 
 export const createGatewayController = (gatewayPort: GatewayPort, operatorPolicy: OperatorPolicyService = createOperatorPolicyService((selected) => gatewayPort.saveOperatorPolicy(selected))): GatewayController => ({
-  refresh: () => gatewayPort.loadBootstrap(),
+  refresh: (signal) => gatewayPort.loadBootstrap(signal),
   async createClient(input) {
     const client = await gatewayPort.createClient(input);
     return { client, bootstrap: await gatewayPort.loadBootstrap() };

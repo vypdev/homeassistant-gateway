@@ -15,7 +15,7 @@ export type PolicyEvaluationInput = {
 };
 
 export interface GatewayPort {
-  loadBootstrap(): Promise<GatewayBootstrap>;
+  loadBootstrap(signal?: AbortSignal): Promise<GatewayBootstrap>;
   createClient(input: CreateClientInput): Promise<Client & { token: string }>;
   revokeClient(clientId: string): Promise<void>;
   rotateClient(clientId: string): Promise<Client & { token: string }>;
