@@ -9,7 +9,7 @@ const sourceDir = new URL('../src/', import.meta.url);
 const tempDir = await mkdtemp(join(tmpdir(), 'homeassistant-gateway-ui-'));
 
 try {
-  for (const name of ['locale', 'view-helpers', 'capability-policy']) {
+  for (const name of ['locale', 'view-helpers', 'capability-policy', 'operator-policy']) {
     const source = await readFile(new URL(`${name}.ts`, sourceDir), 'utf8');
     const output = ts.transpileModule(source, {
       compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
@@ -49,6 +49,15 @@ try {
   assert.deepEqual(policy.toggleCapability('observer', ['ha.read.states'], 'ha.write.services', true), ['ha.read.states']);
   assert.deepEqual(policy.toggleCapability('operator', ['ha.read.states'], 'ha.write.services', true), ['ha.read.states', 'ha.write.services']);
   assert.deepEqual(policy.toggleCapability('operator', ['ha.read.states', 'ha.write.services'], 'ha.write.services', false), ['ha.read.states']);
+
+  const operatorPolicy = await import(pathToFileURL(join(tempDir, 'operator-policy.mjs')));
+  assert.deepEqual(operatorPolicy.toggleOperatorServiceSelection(['light.turn_on'], 'switch.turn_on', true), ['light.turn_on', 'switch.turn_on']);
+  assert.deepEqual(operatorPolicy.toggleOperatorServiceSelection(['light.turn_on', 'switch.turn_on'], 'light.turn_on', false), ['switch.turn_on']);
+  assert.deepEqual(operatorPolicy.toggleOperatorServiceGroupSelection(['light.turn_on', 'switch.turn_on'], ['light.turn_on', 'fan.turn_on'], true), ['fan.turn_on', 'light.turn_on', 'switch.turn_on']);
+  assert.deepEqual(operatorPolicy.toggleOperatorServiceGroupSelection(['light.turn_on', 'switch.turn_on'], ['light.turn_on', 'fan.turn_on'], false), ['switch.turn_on']);
+  const samplePolicy = { services: [{ id: 'light.turn_on' }, { id: 'switch.turn_on' }], selected: ['switch.turn_on'] };
+  assert.deepEqual(operatorPolicy.selectedOperatorServices(samplePolicy), [{ id: 'switch.turn_on' }]);
+  assert.deepEqual(operatorPolicy.selectedOperatorServices(null), []);
 
   console.log('frontend runtime helpers: ok');
 } finally {

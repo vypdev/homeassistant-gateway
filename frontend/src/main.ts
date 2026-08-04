@@ -3,6 +3,7 @@ import { downloadDiagnostic as downloadDiagnosticFile, copyDiagnostic as copyDia
 import { api } from './api';
 import { CAPABILITY_DEFINITIONS } from './capabilities';
 import { capabilitiesAfterProfileChange, capabilitiesForProfile, toggleCapability as applyCapabilityToggle } from './capability-policy';
+import { selectedOperatorServices, toggleOperatorServiceGroupSelection, toggleOperatorServiceSelection } from './operator-policy';
 import { resolveLocale, resolveTheme, translate } from './locale';
 import { capabilityText as resolveCapabilityText, operationText as resolveOperationText, packText as resolvePackText, pageSubtitle, pageTitle, statusText as resolveStatusText } from './view-helpers';
 import { navigationView } from './navigation-view';
@@ -263,7 +264,7 @@ export class GatewayApp extends LitElement {
 
   developmentView() { return renderDevelopmentView({ catalog: this.development, progress: this.developmentProgress, results: this.developmentResults, reports: this.developmentReports, output: this.developmentOutput, entity: this.developmentEntity, startTime: this.developmentStartTime, busy: this.busy, t: this.t.bind(this), statusText: this.statusText.bind(this), packText: this.packText.bind(this), operationText: this.operationText.bind(this), setEntity: (value) => { this.developmentEntity = value; }, setStartTime: (value) => { this.developmentStartTime = value; }, runAll: () => void this.runAllDevelopment(), runPack: (name) => void this.runDevelopmentPack(name), runOperation: (name) => void this.runDevelopment(name), download: () => this.downloadDiagnostic(), copyProblemReports: () => void this.copyProblemReports(), copyDiagnostic: (result) => void this.copyDiagnostic(result), retry: (operation) => void this.retryDevelopment(operation), reasonText: (reason) => reason === 'empty_result' ? this.t('statusPartial') : reason }); }
 
-  clientsView() { return renderClientsView({ clients: this.clients, busy: this.busy, t: this.t.bind(this), refresh: () => void this.refresh(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), rotate: (clientId) => void this.rotate(clientId), capabilitySelector: () => this.capabilitySelector(), operatorEnabled: this.operatorEnabled, operatorServices: this.operatorPolicy?.services.filter((service) => this.operatorPolicy?.selected.includes(service.id)) ?? [], navigateToPolicy: () => this.setView('policy'), permissionTab: this.permissionTab, setPermissionTab: (tab) => { this.permissionTab = tab; }, profile: this.clientProfile, setProfile: (profile) => this.setClientProfile(profile) }); }
+  clientsView() { return renderClientsView({ clients: this.clients, busy: this.busy, t: this.t.bind(this), refresh: () => void this.refresh(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), rotate: (clientId) => void this.rotate(clientId), capabilitySelector: () => this.capabilitySelector(), operatorEnabled: this.operatorEnabled, operatorServices: selectedOperatorServices(this.operatorPolicy), navigateToPolicy: () => this.setView('policy'), permissionTab: this.permissionTab, setPermissionTab: (tab) => { this.permissionTab = tab; }, profile: this.clientProfile, setProfile: (profile) => this.setClientProfile(profile) }); }
 
   auditView() { return auditView({ audit: this.audit, t: this.t.bind(this), loadAudit: (decision) => void this.loadAudit(decision) }); }
 
@@ -279,18 +280,12 @@ export class GatewayApp extends LitElement {
   }
   toggleOperatorService(service: string, checked: boolean) {
     if (!this.operatorPolicy) return;
-    const selected = new Set(this.operatorPolicy.selected);
-    if (checked) selected.add(service); else selected.delete(service);
-    this.operatorPolicy = { ...this.operatorPolicy, selected: [...selected].sort() };
+    this.operatorPolicy = { ...this.operatorPolicy, selected: toggleOperatorServiceSelection(this.operatorPolicy.selected, service, checked) };
     this.queueOperatorPolicySave();
   }
   toggleOperatorServiceGroup(services: string[], checked: boolean) {
     if (!this.operatorPolicy) return;
-    const selected = new Set(this.operatorPolicy.selected);
-    for (const service of services) {
-      if (checked) selected.add(service); else selected.delete(service);
-    }
-    this.operatorPolicy = { ...this.operatorPolicy, selected: [...selected].sort() };
+    this.operatorPolicy = { ...this.operatorPolicy, selected: toggleOperatorServiceGroupSelection(this.operatorPolicy.selected, services, checked) };
     this.queueOperatorPolicySave();
   }
 
