@@ -1,0 +1,85 @@
+import { api } from './api';
+import type {
+  AuditEvent,
+  Client,
+  Discovery,
+  DevelopmentCatalog,
+  DevelopmentReport,
+  HealthDetails,
+  OperatorServicePolicy,
+  OperatorStatus,
+  Ready,
+  UiContext,
+} from './models';
+
+type Request = <T>(path: string, init?: RequestInit) => Promise<T>;
+
+export type GatewayBootstrap = {
+  ready: Ready;
+  clients: Client[];
+  audit: AuditEvent[];
+  development: DevelopmentCatalog;
+  developmentReports: DevelopmentReport[];
+  uiContext: UiContext;
+  healthDetails: HealthDetails;
+  operatorStatus: OperatorStatus;
+  operatorPolicy: OperatorServicePolicy;
+};
+
+export type CreateClientInput = {
+  client_id: string;
+  display_name: string;
+  profile: string;
+  capabilities: string[];
+  operator_services: string[];
+};
+
+export type PolicyEvaluationInput = {
+  client_id: string;
+  capability: string;
+  mutation: boolean;
+};
+
+export interface GatewayApi {
+  loadBootstrap(): Promise<GatewayBootstrap>;
+  createClient(input: CreateClientInput): Promise<Client & { token: string }>;
+  revokeClient(clientId: string): Promise<void>;
+  rotateClient(clientId: string): Promise<Client & { token: string }>;
+  loadDiscovery(token: string): Promise<Discovery>;
+  loadAudit(decision: string): Promise<AuditEvent[]>;
+  saveOperatorPolicy(selected: string[]): Promise<void>;
+  evaluatePolicy(input: PolicyEvaluationInput): Promise<{ decision: string; reason: string }>;
+}
+
+export const createGatewayApi = (request: Request = api): GatewayApi => ({
+  async loadBootstrap() {
+    const [ready, clients, audit, development, developmentReports, uiContext, healthDetails, operatorStatus, operatorPolicy] = await Promise.all([
+      request<Ready>('/../ready'),
+      request<Client[]>('/clients'),
+      request<AuditEvent[]>('/audit'),
+      request<DevelopmentCatalog>('/development/catalog'),
+      request<DevelopmentReport[]>('/development/reports'),
+      request<UiContext>('/ui/context'),
+      request<HealthDetails>('/health/details'),
+      request<OperatorStatus>('/operator/status'),
+      request<OperatorServicePolicy>('/operator/service-policy'),
+    ]);
+    return { ready, clients, audit, development, developmentReports, uiContext, healthDetails, operatorStatus, operatorPolicy };
+  },
+  createClient: (input) => request<Client & { token: string }>('/clients', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  }),
+  revokeClient: (clientId) => request<void>(`/clients/${encodeURIComponent(clientId)}/revoke`, { method: 'POST' }),
+  rotateClient: (clientId) => request<Client & { token: string }>(`/clients/${encodeURIComponent(clientId)}/rotate`, { method: 'POST' }),
+  loadDiscovery: (token) => request<Discovery>('/mcp/discovery', { headers: { Authorization: `Bearer ${token}` } }),
+  loadAudit: (decision) => request<AuditEvent[]>(`/audit?limit=100${decision ? `&decision=${encodeURIComponent(decision)}` : ''}`),
+  saveOperatorPolicy: (selected) => request<void>('/operator/service-policy', {
+    method: 'PUT',
+    body: JSON.stringify({ selected }),
+  }),
+  evaluatePolicy: (input) => request<{ decision: string; reason: string }>('/policy/evaluate', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  }),
+});

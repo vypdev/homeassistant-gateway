@@ -9,12 +9,14 @@ const sourceDir = new URL('../src/', import.meta.url);
 const tempDir = await mkdtemp(join(tmpdir(), 'homeassistant-gateway-ui-'));
 
 try {
-  for (const name of ['locale', 'view-helpers', 'capability-policy', 'operator-policy']) {
+  await writeFile(join(tempDir, 'api.mjs'), 'export const api = async () => { throw new Error("unexpected default api call"); };\n');
+  for (const name of ['locale', 'view-helpers', 'capability-policy', 'operator-policy', 'gateway-api']) {
     const source = await readFile(new URL(`${name}.ts`, sourceDir), 'utf8');
-    const output = ts.transpileModule(source, {
+    let output = ts.transpileModule(source, {
       compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
       fileName: `${name}.ts`,
     }).outputText;
+    if (name === 'gateway-api') output = output.replace("from './api'", "from './api.mjs'");
     await writeFile(join(tempDir, `${name}.mjs`), output);
   }
 
@@ -58,6 +60,37 @@ try {
   const samplePolicy = { services: [{ id: 'light.turn_on' }, { id: 'switch.turn_on' }], selected: ['switch.turn_on'] };
   assert.deepEqual(operatorPolicy.selectedOperatorServices(samplePolicy), [{ id: 'switch.turn_on' }]);
   assert.deepEqual(operatorPolicy.selectedOperatorServices(null), []);
+
+  const gatewayApiModule = await import(pathToFileURL(join(tempDir, 'gateway-api.mjs')));
+  const calls = [];
+  const fakeRequest = async (path, init) => {
+    calls.push({ path, init });
+    if (path === '/../ready') return { status: 'ready' };
+    if (path === '/clients') return init?.method === 'POST' ? { token: 'token' } : [];
+    if (path === '/audit') return [];
+    if (path === '/development/catalog') return { operations: [] };
+    if (path === '/development/reports') return [];
+    if (path === '/ui/context') return { locale: 'en', theme: 'auto' };
+    if (path === '/health/details') return { status: 'healthy', checks: [] };
+    if (path === '/operator/status') return { operator_enabled: true, execution: 'enabled', registered_mutation_tools: [], capabilities: [], reason: 'ready' };
+    if (path === '/operator/service-policy') return init?.method === 'PUT' ? undefined : { services: [], selected: [] };
+    if (path === '/mcp/discovery') return { tools: [] };
+    if (path === '/policy/evaluate') return { decision: 'allowed', reason: 'ok' };
+    return undefined;
+  };
+  const gatewayApi = gatewayApiModule.createGatewayApi(fakeRequest);
+  const bootstrap = await gatewayApi.loadBootstrap();
+  assert.equal(bootstrap.operatorStatus.operator_enabled, true);
+  assert.equal(calls.length, 9);
+  await gatewayApi.createClient({ client_id: 'id', display_name: 'name', profile: 'observer', capabilities: [], operator_services: [] });
+  await gatewayApi.loadDiscovery('secret-token');
+  await gatewayApi.loadAudit('deny reason');
+  await gatewayApi.saveOperatorPolicy(['light.turn_on']);
+  await gatewayApi.evaluatePolicy({ client_id: 'id', capability: 'ha.read.states', mutation: false });
+  assert.equal(calls.at(-4).init.headers.Authorization, 'Bearer secret-token');
+  assert.match(calls.at(-3).path, /decision=deny%20reason/);
+  assert.equal(JSON.parse(calls.at(-2).init.body).selected[0], 'light.turn_on');
+  assert.equal(JSON.parse(calls.at(-1).init.body).mutation, false);
 
   console.log('frontend runtime helpers: ok');
 } finally {

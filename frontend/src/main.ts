@@ -1,6 +1,6 @@
 import { LitElement, html } from 'lit';
 import { downloadDiagnostic as downloadDiagnosticFile, copyDiagnostic as copyDiagnosticFile, copyProblemReports as copyProblemReportsFile } from './diagnostics-service';
-import { api } from './api';
+import { createGatewayApi, type GatewayApi } from './gateway-api';
 import { CAPABILITY_DEFINITIONS } from './capabilities';
 import { capabilitiesAfterProfileChange, capabilitiesForProfile, toggleCapability as applyCapabilityToggle } from './capability-policy';
 import { selectedOperatorServices, toggleOperatorServiceGroupSelection, toggleOperatorServiceSelection } from './operator-policy';
@@ -88,8 +88,14 @@ export class GatewayApp extends LitElement {
   @state() operatorStatus: OperatorStatus = { operator_enabled: false, execution: 'disabled', registered_mutation_tools: [], capabilities: [], reason: 'loading' };
   @state() operatorPolicy: OperatorServicePolicy | null = null;
   private operatorPolicySaveQueue: Promise<void> = Promise.resolve();
+  private readonly gatewayApi: GatewayApi;
 
   static styles = APP_STYLES;
+
+  constructor(gatewayApi: GatewayApi = createGatewayApi()) {
+    super();
+    this.gatewayApi = gatewayApi;
+  }
 
   connectedCallback() { super.connectedCallback(); void this.refresh(); }
 
@@ -102,7 +108,20 @@ export class GatewayApp extends LitElement {
 
   async refresh() {
     this.busy = true; this.bootState = 'checking'; this.error = '';
-    try { [this.ready, this.clients, this.audit, this.development, this.developmentReports, this.uiContext, this.healthDetails, this.operatorStatus, this.operatorPolicy] = await Promise.all([api<Ready>('/../ready'), api<Client[]>('/clients'), api<AuditEvent[]>('/audit'), api<DevelopmentCatalog>('/development/catalog'), api<DevelopmentReport[]>('/development/reports'), api<UiContext>('/ui/context'), api<HealthDetails>('/health/details'), api<OperatorStatus>('/operator/status'), api<OperatorServicePolicy>('/operator/service-policy')]); this.operatorEnabled = this.operatorStatus.operator_enabled; this.bootState = 'ready'; }
+    try {
+      const snapshot = await this.gatewayApi.loadBootstrap();
+      this.ready = snapshot.ready;
+      this.clients = snapshot.clients;
+      this.audit = snapshot.audit;
+      this.development = snapshot.development;
+      this.developmentReports = snapshot.developmentReports;
+      this.uiContext = snapshot.uiContext;
+      this.healthDetails = snapshot.healthDetails;
+      this.operatorStatus = snapshot.operatorStatus;
+      this.operatorPolicy = snapshot.operatorPolicy;
+      this.operatorEnabled = this.operatorStatus.operator_enabled;
+      this.bootState = 'ready';
+    }
     catch (error) { this.error = error instanceof Error ? error.message : this.t('errorLoadState'); this.bootState = 'error'; }
     finally { this.busy = false; }
   }
@@ -115,7 +134,7 @@ export class GatewayApp extends LitElement {
     const data = new FormData(form);
     this.busy = true; this.error = '';
     try {
-      const result = await api<Client & { token: string }>('/clients', { method: 'POST', body: JSON.stringify({ client_id: data.get('client_id'), display_name: data.get('display_name'), profile: data.get('profile'), capabilities: [...this.selectedCapabilities], operator_services: data.getAll('operator_services') }) });
+      const result = await this.gatewayApi.createClient({ client_id: String(data.get('client_id') ?? ''), display_name: String(data.get('display_name') ?? ''), profile: String(data.get('profile') ?? 'observer'), capabilities: [...this.selectedCapabilities], operator_services: data.getAll('operator_services').map(String) });
       this.issuedToken = result.token; form.reset(); this.selectedCapabilities = new Set(['ha.read.diagnostics']); this.clientProfile = 'observer'; this.permissionTab = 'capabilities'; await this.refresh();
     } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorIssueClient'); }
     finally { this.busy = false; }
@@ -158,7 +177,7 @@ export class GatewayApp extends LitElement {
   async revoke(clientId: string) {
     if (!window.confirm(this.t('revokeConfirm').replace('{client}', clientId))) return;
     this.busy = true;
-    try { await api<void>(`/clients/${encodeURIComponent(clientId)}/revoke`, { method: 'POST' }); await this.refresh(); }
+    try { await this.gatewayApi.revokeClient(clientId); await this.refresh(); }
     catch (error) { this.error = error instanceof Error ? error.message : this.t('errorRevokeClient'); }
     finally { this.busy = false; }
   }
@@ -166,7 +185,7 @@ export class GatewayApp extends LitElement {
   async rotate(clientId: string) {
     if (!window.confirm(this.t('rotateConfirm').replace('{client}', clientId))) return;
     this.busy = true; this.error = '';
-    try { const result = await api<Client & { token: string }>(`/clients/${encodeURIComponent(clientId)}/rotate`, { method: 'POST' }); this.issuedToken = result.token; await this.refresh(); }
+    try { const result = await this.gatewayApi.rotateClient(clientId); this.issuedToken = result.token; await this.refresh(); }
     catch (error) { this.error = error instanceof Error ? error.message : this.t('errorRotateClient'); }
     finally { this.busy = false; }
   }
@@ -174,7 +193,7 @@ export class GatewayApp extends LitElement {
   async loadDiscovery(event: Event) {
     event.preventDefault(); const form = event.target as HTMLFormElement; const token = String(new FormData(form).get('token') ?? '');
     this.busy = true; this.error = '';
-    try { this.discovery = await api<Discovery>('/mcp/discovery', { headers: { Authorization: `Bearer ${token}` } }); }
+    try { this.discovery = await this.gatewayApi.loadDiscovery(token); }
     catch (error) { this.error = error instanceof Error ? error.message : this.t('errorDiscovery'); }
     finally { this.busy = false; }
   }
@@ -268,12 +287,12 @@ export class GatewayApp extends LitElement {
 
   auditView() { return auditView({ audit: this.audit, t: this.t.bind(this), loadAudit: (decision) => void this.loadAudit(decision) }); }
 
-  async loadAudit(decision: string) { this.busy = true; try { this.audit = await api<AuditEvent[]>(`/audit?limit=100${decision ? `&decision=${encodeURIComponent(decision)}` : ''}`); } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorAudit'); } finally { this.busy = false; } }
+  async loadAudit(decision: string) { this.busy = true; try { this.audit = await this.gatewayApi.loadAudit(decision); } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorAudit'); } finally { this.busy = false; } }
   private queueOperatorPolicySave() {
     this.operatorPolicySaveQueue = this.operatorPolicySaveQueue.then(async () => {
       if (!this.operatorPolicy) return;
       this.busy = true; this.error = '';
-      try { await api('/operator/service-policy', { method: 'PUT', body: JSON.stringify({ selected: this.operatorPolicy.selected }) }); }
+      try { await this.gatewayApi.saveOperatorPolicy(this.operatorPolicy.selected); }
       catch (error) { this.error = error instanceof Error && error.message === 'operator_service_policy_invalid' ? this.t('operatorServicesPolicyInvalid') : error instanceof Error ? error.message : this.t('operatorServicesPolicyInvalid'); }
       finally { this.busy = false; }
     });
@@ -290,7 +309,7 @@ export class GatewayApp extends LitElement {
   }
 
   policyView() { return renderPolicyView({ clients: this.clients, busy: this.busy, t: this.t.bind(this), evaluatePolicy: this.evaluatePolicy.bind(this), operatorPolicy: this.operatorPolicy, toggleOperatorService: this.toggleOperatorService.bind(this), toggleOperatorServiceGroup: this.toggleOperatorServiceGroup.bind(this) }); }
-  async evaluatePolicy(event: Event) { event.preventDefault(); const data = new FormData(event.target as HTMLFormElement); this.busy = true; try { const result = await api<{ decision: string; reason: string }>('/policy/evaluate', { method: 'POST', body: JSON.stringify({ client_id: data.get('client_id'), capability: data.get('capability'), mutation: data.has('mutation') }) }); window.alert(`${result.decision}: ${result.reason}`); } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorPolicy'); } finally { this.busy = false; } }
+  async evaluatePolicy(event: Event) { event.preventDefault(); const data = new FormData(event.target as HTMLFormElement); this.busy = true; try { const result = await this.gatewayApi.evaluatePolicy({ client_id: String(data.get('client_id') ?? ''), capability: String(data.get('capability') ?? ''), mutation: data.has('mutation') }); window.alert(`${result.decision}: ${result.reason}`); } catch (error) { this.error = error instanceof Error ? error.message : this.t('errorPolicy'); } finally { this.busy = false; } }
   mcpView() { return renderMcpView({ ready: this.ready, discovery: this.discovery, busy: this.busy, t: this.t.bind(this), loadDiscovery: this.loadDiscovery.bind(this) }); }
   tokenModal() { return html`<div class="modal-backdrop" role="dialog" aria-modal="true"><div class="modal"><div class="eyebrow">${this.t('oneTimeCredential')}</div><h2>${this.t('tokenOnce')}</h2><p>${this.t('tokenOnlyOnce')}</p><div class="token mono">${this.issuedToken}</div><div class="form-actions"><button class="secondary" @click=${() => navigator.clipboard?.writeText(this.issuedToken)}>${this.t('copyToken')}</button><button class="primary" @click=${() => { this.issuedToken = ''; }}>${this.t('savedIt')}</button></div></div></div>`; }
 }
