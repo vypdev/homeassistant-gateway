@@ -6,13 +6,14 @@ const pureModules = new Set([
   'capability-policy.ts',
   'operator-policy.ts',
   'gateway-controller.ts',
+  'gateway-contracts.ts',
+  'gateway-port.ts',
   'gateway-errors.ts',
-  'operation-state.ts',
-  'operation-runner.ts',
 ]);
 const forbidden = [
   { pattern: /from\s+['"]lit['"]/, label: 'Lit' },
   { pattern: /from\s+['"]\.\/api['"]/, label: 'HTTP adapter' },
+  { pattern: /from\s+['"]\.\/gateway-api['"]/, label: 'infrastructure adapter' },
   { pattern: /\b(window|document|navigator|localStorage)\b/, label: 'browser global' },
 ];
 

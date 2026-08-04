@@ -10,7 +10,7 @@ test('boot error exposes a retry action and recovers when readiness returns', as
       await route.fulfill({ status: 503, contentType: 'application/json', body: JSON.stringify({ status: 'unavailable' }) });
       return;
     }
-    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ready', version: 'test' }) });
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ status: 'ready', storage: 'ready', mcp: 'ready', home_assistant: 'ready', version: 'test' }) });
   });
 
   await page.goto('/');

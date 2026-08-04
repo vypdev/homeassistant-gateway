@@ -1,47 +1,12 @@
 import { api } from './api';
 import { assertGatewayBootstrap, assertIssuedClient, assertOperatorPolicy, assertPolicyEvaluation } from './gateway-contracts';
-import type {
-  GatewayBootstrap,
-  Client,
-  AuditEvent,
-  UiContext,
-  Discovery,
-  DevelopmentCatalog,
-  DevelopmentReport,
-  HealthDetails,
-  OperatorServicePolicy,
-  OperatorStatus,
-  Ready,
-} from './models';
-
-export type { GatewayBootstrap } from './models';
+import type { CreateClientInput, GatewayPort, PolicyEvaluationInput } from './gateway-port';
+import type { AuditEvent, Client, DevelopmentCatalog, DevelopmentReport, Discovery, GatewayBootstrap, HealthDetails, OperatorServicePolicy, OperatorStatus, Ready, UiContext } from './models';
 
 type Request = <T>(path: string, init?: RequestInit) => Promise<T>;
 
-export type CreateClientInput = {
-  client_id: string;
-  display_name: string;
-  profile: string;
-  capabilities: string[];
-  operator_services: string[];
-};
-
-export type PolicyEvaluationInput = {
-  client_id: string;
-  capability: string;
-  mutation: boolean;
-};
-
-export interface GatewayApi {
-  loadBootstrap(): Promise<GatewayBootstrap>;
-  createClient(input: CreateClientInput): Promise<Client & { token: string }>;
-  revokeClient(clientId: string): Promise<void>;
-  rotateClient(clientId: string): Promise<Client & { token: string }>;
-  loadDiscovery(token: string): Promise<Discovery>;
-  loadAudit(decision: string): Promise<AuditEvent[]>;
-  saveOperatorPolicy(selected: string[]): Promise<void>;
-  evaluatePolicy(input: PolicyEvaluationInput): Promise<{ decision: string; reason: string }>;
-}
+export type { CreateClientInput, GatewayBootstrap, PolicyEvaluationInput } from './gateway-port';
+export interface GatewayApi extends GatewayPort {}
 
 export const createGatewayApi = (request: Request = api): GatewayApi => ({
   async loadBootstrap() {

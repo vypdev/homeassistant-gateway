@@ -9,7 +9,7 @@ async function mockGatewayApi(page: import('@playwright/test').Page, theme: 'lig
       return;
     }
     const payload: Record<string, unknown> = {
-      '/ready': { status: 'ready', version: 'test' },
+      '/ready': { status: 'ready', storage: 'ready', mcp: 'ready', home_assistant: 'ready', version: 'test' },
       '/api/clients': [],
       '/api/audit': [],
       '/api/development/catalog': { operations: [], packs: [] },

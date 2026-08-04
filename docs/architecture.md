@@ -8,6 +8,10 @@ presentation → application ports/use cases → infrastructure adapters
 ```
 
 - `frontend/src/api.ts`: browser HTTP boundary for Ingress-relative API requests.
+- `frontend/src/gateway-port.ts`: application-facing gateway port and transport-independent input contracts.
+- `frontend/src/gateway-api.ts`: HTTP adapter implementing the gateway port and validating transport responses.
+- `frontend/src/gateway-controller.ts`: application orchestration for lifecycle mutations and serialized policy persistence.
+- `frontend/src/gateway-contracts.ts`: runtime guards for transport payloads; it depends only on shared models and typed errors.
 - `frontend/src/models.ts`: shared UI/domain response types.
 - `frontend/src/development-service.ts`: bounded development-job queueing and polling.
 - `frontend/src/development-controller.ts`: typed orchestration boundary for queue → poll → report refresh.

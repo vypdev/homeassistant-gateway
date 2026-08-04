@@ -4,7 +4,7 @@ import { installGatewayMock } from './fixtures/gateway-api';
 import { VIEWPORTS } from './viewports';
 
 const auditState = {
-  '/ready': { status: 'ready', version: 'test' },
+  '/ready': { status: 'ready', storage: 'ready', mcp: 'ready', home_assistant: 'ready', version: 'test' },
   '/api/clients': [],
   '/api/audit': [
     { event_id: 'event-1', occurred_at: '2026-08-04T09:00:00Z', request_id: 'request-allowed', remote_user_id: 'user-1', action: 'read', target: '/api/ready', decision: 'allowed', outcome: 'ok', status_code: 200 },

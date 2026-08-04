@@ -3,7 +3,7 @@ import type { Page, Request } from '@playwright/test';
 export type GatewayMockOverrides = Partial<Record<string, unknown>>;
 
 export const READY_STATE: Record<string, unknown> = {
-  '/ready': { status: 'ready', version: 'test' },
+  '/ready': { status: 'ready', storage: 'ready', mcp: 'ready', home_assistant: 'ready', version: 'test' },
   '/api/clients': [],
   '/api/audit': [],
   '/api/development/catalog': { enabled: true, upstream: 'ready', operations: [], packs: [], mutations: { status: 'blocked', reason: 'disabled', approval_required: true } },
