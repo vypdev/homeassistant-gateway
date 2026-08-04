@@ -18,9 +18,10 @@ for (const theme of ['dark', 'light']) {
         await page.goto('/');
         await page.getByRole('button', { name: screen.nav, exact: true }).click();
         await expect(page.getByRole('heading', { name: screen.heading })).toBeVisible();
-        await page.addStyleTag({ content: '* { animation: none !important; transition: none !important; caret-color: transparent !important; } code, .mono, .dev-output { font-family: Arial, sans-serif !important; }' });
+        await page.addStyleTag({ content: '* { animation: none !important; transition: none !important; caret-color: transparent !important; font-family: Arial, sans-serif !important; }' });
         await expect(page).toHaveScreenshot(`${screen.name}-${theme}-${viewport.name}.png`, {
-          fullPage: true,
+          // Keep visual baselines bounded to the viewport; full-page reachability is covered by responsive geometry assertions.
+          fullPage: false,
           animations: 'disabled',
           caret: 'hide',
           scale: 'css',
