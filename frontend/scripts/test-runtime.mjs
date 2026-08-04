@@ -10,7 +10,7 @@ const tempDir = await mkdtemp(join(tmpdir(), 'homeassistant-gateway-ui-'));
 
 try {
   await writeFile(join(tempDir, 'api.mjs'), 'export const api = async () => { throw new Error("unexpected default api call"); };\n');
-  for (const name of ['locale', 'view-helpers', 'capability-policy', 'operator-policy', 'gateway-api']) {
+  for (const name of ['locale', 'view-helpers', 'capability-policy', 'operator-policy', 'gateway-api', 'gateway-controller']) {
     const source = await readFile(new URL(`${name}.ts`, sourceDir), 'utf8');
     let output = ts.transpileModule(source, {
       compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
@@ -91,6 +91,29 @@ try {
   assert.match(calls.at(-3).path, /decision=deny%20reason/);
   assert.equal(JSON.parse(calls.at(-2).init.body).selected[0], 'light.turn_on');
   assert.equal(JSON.parse(calls.at(-1).init.body).mutation, false);
+
+  const controllerModule = await import(pathToFileURL(join(tempDir, 'gateway-controller.mjs')));
+  const controllerCalls = [];
+  const controllerBootstrap = { ready: { status: 'ready' }, clients: [], audit: [], development: { operations: [] }, developmentReports: [], uiContext: { locale: 'en', theme: 'auto' }, healthDetails: { status: 'healthy', checks: [] }, operatorStatus: { operator_enabled: true, execution: 'enabled', registered_mutation_tools: [], capabilities: [], reason: 'ready' }, operatorPolicy: { services: [], selected: [] } };
+  const fakeGatewayApi = {
+    loadBootstrap: async () => { controllerCalls.push('loadBootstrap'); return controllerBootstrap; },
+    createClient: async () => { controllerCalls.push('createClient'); return { token: 'token' }; },
+    revokeClient: async () => { controllerCalls.push('revokeClient'); },
+    rotateClient: async () => { controllerCalls.push('rotateClient'); return { token: 'rotated' }; },
+    loadDiscovery: async () => { controllerCalls.push('loadDiscovery'); return { tools: [] }; },
+    loadAudit: async () => { controllerCalls.push('loadAudit'); return []; },
+    saveOperatorPolicy: async () => { controllerCalls.push('saveOperatorPolicy'); },
+    evaluatePolicy: async () => { controllerCalls.push('evaluatePolicy'); return { decision: 'allowed', reason: 'ok' }; },
+  };
+  const controller = controllerModule.createGatewayController(fakeGatewayApi);
+  await controller.createClient({ client_id: 'id', display_name: 'name', profile: 'observer', capabilities: [], operator_services: [] });
+  await controller.revokeClient('id');
+  await controller.rotateClient('id');
+  await controller.loadDiscovery('token');
+  await controller.loadAudit('');
+  await controller.saveOperatorPolicy([]);
+  await controller.evaluatePolicy({ client_id: 'id', capability: 'ha.read.states', mutation: false });
+  assert.deepEqual(controllerCalls, ['createClient', 'loadBootstrap', 'revokeClient', 'loadBootstrap', 'rotateClient', 'loadBootstrap', 'loadDiscovery', 'loadAudit', 'saveOperatorPolicy', 'evaluatePolicy']);
 
   console.log('frontend runtime helpers: ok');
 } finally {
