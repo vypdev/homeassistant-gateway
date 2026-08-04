@@ -4,7 +4,6 @@ import type { Client, OperatorService, OperatorServicePolicy } from './models';
 type Translator = (key: string) => string;
 type EvaluatePolicy = (event: Event) => void;
 type ToggleService = (service: string, checked: boolean) => void;
-type SaveServices = () => void;
 
 export type PolicyViewContext = {
   clients: Client[];
@@ -12,9 +11,7 @@ export type PolicyViewContext = {
   t: Translator;
   evaluatePolicy: EvaluatePolicy;
   operatorPolicy: OperatorServicePolicy | null;
-  operatorPolicyDirty: boolean;
   toggleOperatorService: ToggleService;
-  saveOperatorPolicy: SaveServices;
 };
 
 export function policyView(ctx: PolicyViewContext): TemplateResult {
@@ -59,7 +56,6 @@ export function policyView(ctx: PolicyViewContext): TemplateResult {
           <h2 id="operator-services-title">${ctx.t('operatorServicesTitle')}</h2>
           <p>${ctx.t('operatorServicesSubtitle')}</p>
         </div>
-        <button class="primary" type="button" @click=${ctx.saveOperatorPolicy} ?disabled=${ctx.busy || !ctx.operatorPolicyDirty}>${ctx.t('operatorServicesSave')}</button>
       </div>
 
       ${policy ? html`

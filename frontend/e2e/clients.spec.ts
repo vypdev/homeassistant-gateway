@@ -63,6 +63,19 @@ test.describe('clients permission flows', () => {
     await expect(page.locator('input[name="operator_services"]').first()).toBeEnabled();
   });
 
+  test('operator profile offers a generic select-all capabilities action', async ({ page }) => {
+    await installGatewayMock(page, POPULATED_STATE);
+    await openClients(page);
+    await page.getByRole('combobox', { name: 'Profile' }).selectOption('operator');
+    await page.getByRole('tab', { name: 'Capabilities' }).click();
+
+    const selectAll = page.getByRole('button', { name: 'Select all', exact: true });
+    await expect(selectAll).toBeVisible();
+    await selectAll.click();
+    const enabledCapabilities = page.locator('.capability-option input:not(:disabled)');
+    await expect(page.locator('.capability-option input:not(:disabled):checked')).toHaveCount(await enabledCapabilities.count());
+  });
+
   test('globally enabled services are the only services shown to clients', async ({ page }) => {
     await installGatewayMock(page, POPULATED_STATE);
     await openClients(page);

@@ -27,17 +27,15 @@ test.describe('global operator services policy', () => {
     await assertResponsivePage(page);
   });
 
-  test('changing a service makes save available and submits only the selected IDs', async ({ page }) => {
+  test('changing a service persists immediately and submits only the selected IDs', async ({ page }) => {
     const { requests } = await installGatewayMock(page, policyState);
     await page.goto('/');
     await page.getByRole('button', { name: 'Policy', exact: true }).click();
 
-    const save = page.getByRole('button', { name: 'Save' });
-    await expect(save).toBeDisabled();
+    await expect(page.getByRole('button', { name: /save global ceiling/i })).toHaveCount(0);
     await page.locator('.operator-service-option input').nth(1).check();
-    await expect(save).toBeEnabled();
-    await save.click();
 
+    await expect.poll(() => requests.filter((request) => request.method() === 'PUT' && request.url().endsWith('/api/operator/service-policy')).length).toBe(1);
     const policyRequest = requests.find((request) => request.method() === 'PUT' && request.url().endsWith('/api/operator/service-policy'));
     expect(policyRequest).toBeTruthy();
     expect(JSON.parse(policyRequest!.postData() ?? '{}')).toEqual({ selected: ['light.turn_on', 'switch.turn_off'] });
