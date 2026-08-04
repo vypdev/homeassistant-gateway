@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.21
+
+- Replace internal scrolling with natural page scrolling across the responsive Clients, Audit and Development Console layouts.
+- Add strict Playwright coverage for viewport containment, clipping, hidden content and internal scroll regressions across mobile, tablet and desktop sizes.
+- Add viewport-bounded visual regression baselines that remain stable across CI Chromium rasterization while preserving strict responsive geometry assertions.
+- Keep the frontend production build and browser smoke gates running for both development and production preview servers.
+
 ## 0.5.20
 
 - Split client permissions into complete Capabilities and Operator Services tabs.
