@@ -119,6 +119,14 @@ try {
   assert.equal(JSON.parse(calls.at(-2).init.body).selected[0], 'light.turn_on');
   assert.equal(JSON.parse(calls.at(-1).init.body).mutation, false);
 
+  const contractsModule = await import(pathToFileURL(join(tempDir, 'gateway-contracts.mjs')));
+  assert.doesNotThrow(() => contractsModule.assertGatewayBootstrap(bootstrap));
+  assert.throws(() => contractsModule.assertGatewayBootstrap({ ...bootstrap, ready: { status: 'ready' } }), /Invalid gateway bootstrap response/);
+  assert.throws(() => contractsModule.assertGatewayBootstrap({ ...bootstrap, clients: [{ client_id: 'broken' }] }), /Invalid gateway bootstrap response/);
+  assert.throws(() => contractsModule.assertOperatorPolicy({ services: [{ id: 'broken' }], selected: [] }), /Invalid operator policy response/);
+  assert.throws(() => contractsModule.assertIssuedClient({ client_id: 'id' }), /Invalid issued client response/);
+  assert.throws(() => contractsModule.assertPolicyEvaluation({ decision: 'allowed' }), /Invalid policy evaluation response/);
+
   const controllerModule = await import(pathToFileURL(join(tempDir, 'gateway-controller.mjs')));
   const controllerCalls = [];
   const controllerBootstrap = { ready: { status: 'ready' }, clients: [], audit: [], development: { operations: [] }, developmentReports: [], uiContext: { locale: 'en', theme: 'auto' }, healthDetails: { status: 'healthy', checks: [] }, operatorStatus: { operator_enabled: true, execution: 'enabled', registered_mutation_tools: [], capabilities: [], reason: 'ready' }, operatorPolicy: { services: [], selected: [] } };
