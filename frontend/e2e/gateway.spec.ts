@@ -58,6 +58,19 @@ test('keeps the ambient shell motion reduced when requested', async ({ page }) =
   expect(animationNames).toMatch(/none/);
 });
 
+test('keeps topology status chips separated from their labels', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: /system topology|topología del sistema/i })).toBeVisible();
+
+  const gaps = await page.locator('.topology-grid .inline-chip').evaluateAll((chips) => chips.map((chip) => {
+    const label = chip.parentElement?.querySelector('strong');
+    if (!label) return -1;
+    return chip.getBoundingClientRect().left - label.getBoundingClientRect().right;
+  }));
+  expect(gaps.length).toBe(5);
+  expect(gaps.every((gap) => gap >= 7.5), JSON.stringify(gaps)).toBe(true);
+});
+
 test('keeps the Clients view contained and links to the global service policy', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');

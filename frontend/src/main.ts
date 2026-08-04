@@ -271,6 +271,9 @@ export class GatewayApp extends LitElement {
     td { color: #d7e8f7; }
     code, .mono { color: #9bdbff; font-family: ui-monospace, monospace; font-size: 12px; }
     .tag { display: inline-flex; align-items: center; min-height: 24px; color: #b8e8ff; background: #173b55; border: 1px solid #315b75; border-radius: var(--ha-radius-pill); padding: 3px 9px; margin: 2px 3px 2px 0; font-size: 12px; line-height: 1.2; }
+    .topology-node { display: inline-flex; align-items: center; justify-content: center; gap: 8px; row-gap: 6px; max-width: 100%; flex-wrap: wrap; }
+    .topology-node > strong { overflow-wrap: anywhere; }
+    .inline-chip { margin: 0 !important; }
     .ok { color: #67e2a0; } .warn { color: #ffd27d; } .bad { color: #ff8e9e; }
     .result-row .ok, .result-row .warn, .result-row .bad { margin-left: 6px; }
     .form { display: grid; gap: 12px; }
