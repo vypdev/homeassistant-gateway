@@ -161,8 +161,8 @@ export class GatewayApp extends LitElement {
     .shell.light aside, .shell.light .card { background: #ffffffee; border-color: #d3deea; box-shadow: 0 18px 50px #38516b14; }
     .shell.light p, .shell.light .muted, .shell.light .brand small, .shell.light .card-label, .shell.light .side-foot, .shell.light nav button { color: #607286; }
     .shell.light .status-pill { color: #237b54; background: #e7f7ee; border-color: #9bd1b1; }
-    .shell.light button.primary { color: #ffffff; background: var(--ha-primary); border-color: var(--ha-primary-active); }
-    .shell.light button.primary:hover:not(:disabled) { color: #ffffff; background: var(--ha-primary-hover); border-color: var(--ha-primary-active); }
+    .shell.light button.primary { color: #12344d; background: var(--ha-primary); border-color: var(--ha-primary-active); }
+    .shell.light button.primary:hover:not(:disabled) { color: #12344d; background: var(--ha-primary-hover); border-color: var(--ha-primary-active); }
     .shell.light button.secondary { color: var(--ha-text); background: var(--ha-surface-raised); border-color: var(--ha-border); }
     .shell.light button.secondary:hover:not(:disabled) { color: var(--ha-text); background: var(--ha-surface-muted); border-color: var(--ha-primary); }
     .shell.light button.danger { color: #ffffff; background: #8a3d54; border-color: #713044; }
@@ -173,7 +173,8 @@ export class GatewayApp extends LitElement {
     .shell.light .ok { color: #2d9864; }
     .shell.light .warn { color: #a66f16; }
     .shell.light .bad { color: #b34b58; }
-    .shell.light nav button.active { box-shadow: inset 2px 0 #168bd0; }
+    .shell.light nav button:hover { color: #3c4043; background: #f1f3f4; }
+    .shell.light nav button.active { color: #03a9f4; background: #e3f2fd; box-shadow: none; }
     .shell.light th, .shell.light td { border-color: #dbe5ee; } .shell.light td { color: #29445d; }
     .shell.light input, .shell.light select, .shell.light textarea { color: #243447; background: #f8fbfe; border-color: #b9cad9; }
     .shell.light .dev-output { color: #31516b; background: #f5f9fc; border-color: #d3deea; }
@@ -211,10 +212,11 @@ export class GatewayApp extends LitElement {
     .brand-mark { width: 34px; height: 34px; border: 1px solid #4bc9ff66; border-radius: 11px; display: block; object-fit: cover; box-shadow: 0 0 22px #16a9ef55; }
     .brand strong { display: block; letter-spacing: -.02em; }
     .brand small, .muted { color: #8ea5bd; }
-    nav { display: grid; gap: 5px; }
-    nav button { border: 0; color: #8ea5bd; background: transparent; text-align: left; border-radius: 10px; padding: 11px 12px; cursor: pointer; font: inherit; }
-    nav button:hover, nav button.active { color: #e7f0fb; background: #16466b88; }
-    nav button.active { box-shadow: inset 2px 0 #4bc9ff; }
+    nav { display: grid; gap: 4px; }
+    nav button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; border: 0; color: #8ea5bd; background: transparent; text-align: left; border-radius: 8px; padding: 10px 14px; cursor: pointer; font: inherit; }
+    nav button:hover { color: #d7e8f7; background: #f1f3f41a; }
+    nav button.active { color: #03a9f4; background: #03a9f41f; }
+    .navigation-icon { flex: 0 0 24px; width: 24px; height: 24px; fill: currentColor; }
     .side-foot { margin-top: auto; padding: 12px; border-top: 1px solid #23415e; color: #8ea5bd; font-size: 12px; }
     main { min-width: 0; padding: 10px 0 42px; }
     .topline { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 28px; }
@@ -236,14 +238,14 @@ export class GatewayApp extends LitElement {
     .toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 14px; }
     .evidence-toolbar { display: grid; justify-items: end; gap: 10px; min-width: 0; max-width: 100%; }
     .evidence-metrics, .evidence-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 10px; max-width: 100%; }
-    button.primary, button.secondary, button.danger { min-height: 40px; border: 1px solid transparent; border-radius: var(--ha-radius-pill); padding: 8px 16px; color: #ffffff; background: var(--ha-primary); cursor: pointer; font: 500 14px/1.2 inherit; letter-spacing: .01em; box-shadow: 0 2px 5px #00000026; transition: background-color .15s ease, box-shadow .15s ease, transform .15s ease; }
+    button.primary, button.secondary, button.danger { min-height: 40px; border: 1px solid transparent; border-radius: var(--ha-radius-pill); padding: 8px 16px; color: #12344d; background: var(--ha-primary); cursor: pointer; font: 500 14px/1.2 inherit; letter-spacing: .01em; box-shadow: 0 2px 5px #00000026; transition: background-color .15s ease, box-shadow .15s ease, transform .15s ease; }
     .button-leading-icon { display: inline-flex; align-items: center; justify-content: center; width: 1.1em; margin-inline-end: 8px; color: currentColor; font-size: 1.35em; font-weight: 400; line-height: 0; vertical-align: -1px; }
     button.primary:hover:not(:disabled) { background: var(--ha-primary-hover); box-shadow: 0 3px 8px #00000033; }
     button.primary:active:not(:disabled) { background: var(--ha-primary-active); box-shadow: none; transform: translateY(1px); }
     button.secondary { color: var(--ha-text); background: var(--ha-surface-raised); border-color: var(--ha-border); box-shadow: none; }
     button.secondary:hover:not(:disabled) { color: var(--ha-text); background: var(--ha-surface-muted); border-color: var(--ha-primary); transform: none; }
     button.secondary:active:not(:disabled) { background: var(--ha-border); }
-    button.danger { background: #b23a4d; }
+    button.danger { color: #ffffff; background: #b23a4d; }
     button.danger:hover:not(:disabled) { background: #9d3042; }
     button.danger:active:not(:disabled) { background: #842738; }
     button:focus-visible, nav button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--ha-primary); outline-offset: 2px; }
@@ -365,7 +367,7 @@ export class GatewayApp extends LitElement {
     @media (max-width: 1100px) { .split, .dev-grid { grid-template-columns: 1fr; } }
     @media (max-width: 1000px) { .cards { grid-template-columns: repeat(2, 1fr); } .topology-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .split, .dev-grid { grid-template-columns: 1fr; } }
     @media (max-width: 1600px) { .desktop-only { display: none; } .responsive-records { display: grid; gap: 10px; } }
-    @media (max-width: 720px) { .layout { width: min(100% - 24px, 600px); display: block; padding-top: 12px; } aside { height: auto; position: static; margin-bottom: 18px; } nav { grid-template-columns: repeat(4, 1fr); } nav button { text-align: center; padding: 9px 4px; font-size: 12px; } .side-foot { display: none; } .cards, .topology-grid, .split, .dev-grid, .pack-grid { grid-template-columns: 1fr; } .topline { display: block; } .topline > div { min-width: 0; } .status-pill { margin-top: 16px; } .toolbar, .capability-toolbar, .permission-tabs, .operator-service-selection-toolbar { flex-wrap: wrap; align-items: flex-start; } .evidence-toolbar { width: 100%; justify-items: start; } .evidence-metrics, .evidence-actions { justify-content: flex-start; } .capability-actions { width: 100%; justify-content: flex-start; } .capability-actions button { flex: 1 1 140px; } .toolbar > div, .toolbar button { min-width: 0; } .toolbar button, .form-actions button { max-width: 100%; } .form-actions { flex-wrap: wrap; } .operator-policy-header { flex-wrap: wrap; } .operator-policy-header > * { max-width: 100%; } .operator-policy-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .result-row { flex-direction: column; } .result-row > * { max-width: 100%; } .pack-grid button { min-width: 0; } .operator-service-selection-actions { width: 100%; justify-content: flex-start; } .operator-service-selection-actions button { flex: 1 1 140px; } .card { min-width: 0; padding: 16px; } h1 { overflow-wrap: anywhere; } }
+    @media (max-width: 720px) { .layout { width: min(100% - 24px, 600px); display: block; padding-top: 12px; } aside { height: auto; position: static; margin-bottom: 18px; } nav { grid-template-columns: repeat(4, 1fr); } nav button { justify-content: center; flex-direction: column; gap: 4px; text-align: center; padding: 8px 4px; min-height: 58px; font-size: 11px; } nav button span { overflow-wrap: anywhere; } .navigation-icon { flex-basis: 22px; width: 22px; height: 22px; } .side-foot { display: none; } .cards, .topology-grid, .split, .dev-grid, .pack-grid { grid-template-columns: 1fr; } .topline { display: block; } .topline > div { min-width: 0; } .status-pill { margin-top: 16px; } .toolbar, .capability-toolbar, .permission-tabs, .operator-service-selection-toolbar { flex-wrap: wrap; align-items: flex-start; } .evidence-toolbar { width: 100%; justify-items: start; } .evidence-metrics, .evidence-actions { justify-content: flex-start; } .capability-actions { width: 100%; justify-content: flex-start; } .capability-actions button { flex: 1 1 140px; } .toolbar > div, .toolbar button { min-width: 0; } .toolbar button, .form-actions button { max-width: 100%; } .form-actions { flex-wrap: wrap; } .operator-policy-header { flex-wrap: wrap; } .operator-policy-header > * { max-width: 100%; } .operator-policy-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .result-row { flex-direction: column; } .result-row > * { max-width: 100%; } .pack-grid button { min-width: 0; } .operator-service-selection-actions { width: 100%; justify-content: flex-start; } .operator-service-selection-actions button { flex: 1 1 140px; } .card { min-width: 0; padding: 16px; } h1 { overflow-wrap: anywhere; } }
     @media (prefers-reduced-motion: reduce) { .shell::before, .dot-field::before, .dot-field__zone, .boot-orbit, .boot-core, .boot-progress::before { animation: none; } *, *::before, *::after { transition-duration: .01ms !important; } }
     @media (prefers-contrast: more) { .card, aside, input, select, textarea, .result-row { border-color: currentColor; } .muted, p, label, th { color: currentColor; } .tag, button.secondary { border-color: currentColor; } }
   `;

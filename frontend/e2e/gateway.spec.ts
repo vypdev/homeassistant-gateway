@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-async function mockGatewayApi(page: import('@playwright/test').Page) {
+async function mockGatewayApi(page: import('@playwright/test').Page, theme: 'light' | 'dark' = 'dark') {
   await page.route('**/*', async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname;
@@ -14,7 +14,7 @@ async function mockGatewayApi(page: import('@playwright/test').Page) {
       '/api/audit': [],
       '/api/development/catalog': { operations: [], packs: [] },
       '/api/development/reports': [],
-      '/api/ui/context': { locale: 'en', theme: 'dark' },
+      '/api/ui/context': { locale: 'en', theme },
       '/api/health/details': { status: 'ok', checks: [] },
       '/api/operator/status': { operator_enabled: true, execution: 'disabled', registered_mutation_tools: [], capabilities: [], reason: '' },
       '/api/operator/service-policy': { services: [{ id: 'light.turn_on', domain: 'light', service: 'turn_on', name: 'Turn on', description: 'Turn on a light.', fields: {} }], selected: [] },
@@ -40,6 +40,24 @@ test('renders the Ingress shell and navigates with keyboard focus', async ({ pag
   await expect(development).toBeFocused();
   await development.press('Enter');
   await expect(page.getByRole('heading', { name: /development console|consola de desarrollo/i })).toBeVisible();
+});
+
+test('matches the Home Assistant navigation states and uses MDI leading icons', async ({ page }) => {
+  await page.unroute('**/*');
+  await mockGatewayApi(page, 'light');
+  await page.goto('/');
+
+  const navigation = page.getByRole('navigation');
+  const buttons = navigation.getByRole('button');
+  await expect(buttons).toHaveCount(6);
+  await expect(navigation.locator('svg.navigation-icon')).toHaveCount(6);
+  await expect(buttons.first()).toHaveCSS('border-radius', '8px');
+  await expect(buttons.first()).toHaveCSS('background-color', 'rgb(227, 242, 253)');
+  await expect(buttons.first()).toHaveCSS('color', 'rgb(3, 169, 244)');
+  await expect(buttons.first().locator('svg')).toHaveCSS('fill', 'rgb(3, 169, 244)');
+
+  await buttons.nth(1).hover();
+  await expect(buttons.nth(1)).toHaveCSS('background-color', 'rgb(241, 243, 244)');
 });
 
 test('keeps the ambient shell motion reduced when requested', async ({ page }) => {
