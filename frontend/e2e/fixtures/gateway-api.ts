@@ -30,6 +30,17 @@ export const POPULATED_STATE: Record<string, unknown> = {
   },
 };
 
+export const MULTI_OPERATOR_SERVICES_STATE: Record<string, unknown> = {
+  ...POPULATED_STATE,
+  '/api/operator/service-policy': {
+    services: [
+      { id: 'light.turn_on', domain: 'light', service: 'turn_on', name: 'Turn on', description: 'Turn on a light.', fields: {} },
+      { id: 'switch.turn_off', domain: 'switch', service: 'turn_off', name: 'Turn off', description: 'Turn off a switch.', fields: {} },
+    ],
+    selected: ['light.turn_on', 'switch.turn_off'],
+  },
+};
+
 export async function installGatewayMock(page: Page, overrides: GatewayMockOverrides = {}): Promise<{ requests: Request[] }> {
   const requests: Request[] = [];
   await page.route('**/*', async (route) => {

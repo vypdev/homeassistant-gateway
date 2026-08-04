@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { assertResponsivePage, expectVisibleContentWithinViewport } from './assertions/layout-assertions';
-import { installGatewayMock, POPULATED_STATE } from './fixtures/gateway-api';
+import { installGatewayMock, MULTI_OPERATOR_SERVICES_STATE, POPULATED_STATE, READY_STATE } from './fixtures/gateway-api';
 import { VIEWPORTS } from './viewports';
 
 async function openClients(page: import('@playwright/test').Page) {
@@ -71,5 +71,53 @@ test.describe('clients permission flows', () => {
     await expect(page.getByText('Turn on', { exact: true })).toBeVisible();
     await expect(page.getByText('Turn off', { exact: true })).toHaveCount(0);
     await expect(page.locator('input[name="operator_services"]')).toHaveCount(1);
+  });
+
+  test('operator services remain actionable when globally enabled services exist', async ({ page }) => {
+    await installGatewayMock(page, MULTI_OPERATOR_SERVICES_STATE);
+    await openClients(page);
+    await page.getByRole('combobox', { name: 'Profile' }).selectOption('operator');
+    await page.getByRole('tab', { name: 'Operator Services' }).click();
+
+    const options = page.locator('.operator-service-option');
+    await expect(options).toHaveCount(2);
+    await expect(page.getByRole('button', { name: 'Select all', exact: true })).toBeVisible();
+  });
+
+  test('operator service selection supports all, clear and individual changes', async ({ page }) => {
+    await installGatewayMock(page, MULTI_OPERATOR_SERVICES_STATE);
+    await openClients(page);
+    await page.getByRole('combobox', { name: 'Profile' }).selectOption('operator');
+    await page.getByRole('tab', { name: 'Operator Services' }).click();
+
+    const options = page.locator('.operator-service-option');
+    await expect(options).toHaveCount(2);
+    await expect(page.getByRole('button', { name: 'Select all', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Clear selection', exact: true })).toBeVisible();
+    await expectVisibleContentWithinViewport(page, '.operator-service-option');
+
+    const first = await options.nth(0).boundingBox();
+    const second = await options.nth(1).boundingBox();
+    expect(first).not.toBeNull();
+    expect(second).not.toBeNull();
+    expect(second!.y).toBeGreaterThan(first!.y + first!.height - 1);
+
+    await page.getByRole('button', { name: 'Select all', exact: true }).click();
+    await expect(page.locator('input[name="operator_services"]:checked')).toHaveCount(2);
+    await page.getByRole('button', { name: 'Clear selection', exact: true }).click();
+    await expect(page.locator('input[name="operator_services"]:checked')).toHaveCount(0);
+    await page.locator('input[name="operator_services"]').nth(0).check();
+    await expect(page.locator('input[name="operator_services"]:checked')).toHaveCount(1);
+    await assertResponsivePage(page);
+  });
+  test('operator services explain how to enable availability when the global list is empty', async ({ page }) => {
+    await installGatewayMock(page, READY_STATE);
+    await openClients(page);
+    await page.getByRole('combobox', { name: 'Profile' }).selectOption('operator');
+    await page.getByRole('tab', { name: 'Operator Services' }).click();
+
+    await expect(page.getByRole('note')).toContainText('No Operator services are enabled globally.');
+    await expect(page.getByRole('button', { name: /open operator services policy/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Select all', exact: true })).toHaveCount(0);
   });
 });

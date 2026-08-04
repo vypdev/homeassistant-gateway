@@ -3,6 +3,14 @@ import type { Client, OperatorService, Profile } from './models';
 
 type Translator = (key: string) => string;
 
+function setOperatorServiceSelection(event: Event, checked: boolean) {
+  event.preventDefault();
+  const form = (event.currentTarget as HTMLElement).closest('form');
+  form?.querySelectorAll<HTMLInputElement>('input[name="operator_services"]').forEach((input) => {
+    input.checked = checked;
+  });
+}
+
 export type ClientsViewContext = {
   clients: Client[];
   busy: boolean;
@@ -77,13 +85,20 @@ export function clientsView(ctx: ClientsViewContext): TemplateResult {
             ${ctx.capabilitySelector()}
           </section>` : html`<section id="operator-services-panel" class="permission-panel" role="tabpanel" aria-labelledby="operator-services-tab">
             <p class="permission-panel-description">${ctx.t('permissionsOperatorServicesDescription')}</p>
-            <fieldset class="form capability-option operator">
+            <fieldset class="form capability-option operator operator-service-fieldset">
               <legend>${ctx.t('operatorServiceGrants')}</legend>
               <small class="muted">${ctx.t('operatorServiceGrantDescription')}</small>
-              ${ctx.operatorServices.length ? ctx.operatorServices.map((service) => html`<label class="check-row">
+              ${ctx.operatorServices.length ? html`<div class="operator-service-selection-toolbar">
+                <span class="muted">${ctx.t('operatorServicesSelectionHint')}</span>
+                <span class="operator-service-selection-actions">
+                  <button type="button" class="secondary" @click=${(event: Event) => setOperatorServiceSelection(event, true)}>${ctx.t('operatorServicesSelectAll')}</button>
+                  <button type="button" class="secondary" @click=${(event: Event) => setOperatorServiceSelection(event, false)}>${ctx.t('operatorServicesClearAll')}</button>
+                </span>
+              </div>
+              <div class="operator-service-list">${ctx.operatorServices.map((service) => html`<label class="check-row operator-service-option">
                 <input type="checkbox" name="operator_services" value=${service.id} ?disabled=${!ctx.operatorEnabled} />
                 <span><strong>${service.name}</strong> · <span class="mono">${service.id}</span><br><small>${service.description}</small></span>
-              </label>`) : html`<div class="operator-services-empty" role="note"><span>${ctx.t('operatorServicesNoneAvailable')}</span><button class="link-button" type="button" @click=${ctx.navigateToPolicy}>${ctx.t('operatorServicesOpenPolicy')}</button></div>`}
+              </label>`)}</div>` : html`<div class="operator-services-empty" role="note"><span>${ctx.t('operatorServicesNoneAvailable')}</span><button class="link-button" type="button" @click=${ctx.navigateToPolicy}>${ctx.t('operatorServicesOpenPolicy')}</button></div>`}
             </fieldset>
           </section>`}
           <div class="form-actions"><button class="primary" ?disabled=${ctx.busy}>${ctx.t('issueClient')}</button></div>

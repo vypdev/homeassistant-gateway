@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { installGatewayMock, POPULATED_STATE } from './fixtures/gateway-api';
+import { installGatewayMock, MULTI_OPERATOR_SERVICES_STATE, POPULATED_STATE } from './fixtures/gateway-api';
 
 const cases = [
   { name: 'overview', nav: 'Overview', heading: /secure gateway control plane/i },
@@ -29,5 +29,28 @@ for (const theme of ['dark', 'light']) {
         });
       });
     }
+  }
+}
+
+for (const theme of ['dark', 'light']) {
+  for (const viewport of [{ name: 'phone', width: 390, height: 844 }, { name: 'desktop', width: 1440, height: 900 }]) {
+    test(`visual clients operator services ${theme} ${viewport.name}`, async ({ page, browserName }) => {
+      test.skip(browserName !== 'chromium', 'Visual baselines are canonicalized on Chromium.');
+      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      await installGatewayMock(page, { ...MULTI_OPERATOR_SERVICES_STATE, '/api/ui/context': { locale: 'en', theme } });
+      await page.goto('/');
+      await page.getByRole('button', { name: 'Clients', exact: true }).click();
+      await expect(page.getByRole('heading', { name: /clients & tokens/i })).toBeVisible();
+      await page.getByRole('combobox', { name: 'Profile' }).selectOption('operator');
+      await page.getByRole('tab', { name: 'Operator Services' }).click();
+      await page.addStyleTag({ content: '* { animation: none !important; transition: none !important; caret-color: transparent !important; font-family: Arial, sans-serif !important; }' });
+      await expect(page).toHaveScreenshot(`clients-operator-services-${theme}-${viewport.name}.png`, {
+        fullPage: false,
+        animations: 'disabled',
+        caret: 'hide',
+        scale: 'css',
+        maxDiffPixelRatio: 0.05,
+      });
+    });
   }
 }
