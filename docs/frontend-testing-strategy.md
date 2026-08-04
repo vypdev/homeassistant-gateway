@@ -5,13 +5,15 @@ The frontend acceptance suite is implemented with Playwright and is intentionall
 ## Test layers
 
 1. **Runtime contracts** (`pnpm run test:runtime`) validate pure frontend behavior and localization helpers.
-2. **UX contracts** (`pnpm run test:ux`) validate structural presentation requirements that should remain true without a browser.
-3. **Responsive acceptance** (`e2e/responsive.spec.ts`) checks all six application screens at ten explicit viewport sizes.
-4. **Flow acceptance** covers clients, permission tabs, global Operator Services policy, Audit filtering, and Development Console execution evidence.
-5. **Accessibility** (`e2e/accessibility.spec.ts`) runs Axe on every primary view and validates keyboard focus, tabs, form names and state.
-6. **Visual regression** (`e2e/visual.spec.ts`) uses deterministic Chromium baselines for dark/light themes at phone and desktop sizes.
-7. **Production-bundle smoke** runs the same browser suite against `vite preview`, not only the development server.
-8. **Artifact/live verification** remains separate: passing Playwright proves the UI and HTTP contract, not Home Assistant Supervisor installation.
+2. **Application/controller evidence** validates GatewayController orchestration, mutation ordering, serialized policy persistence, failure propagation and cancellation without Lit, DOM or HTTP.
+3. **HTTP adapter evidence** validates GatewayApi request paths, payloads, auth headers, bootstrap request fan-out, runtime response assertions and AbortSignal propagation with an injected request fake.
+4. **UX contracts** (`pnpm run test:ux`) validate structural presentation requirements that should remain true without a browser.
+5. **Responsive acceptance** (`e2e/responsive.spec.ts`) checks all six application screens at ten explicit viewport sizes.
+6. **Flow acceptance** covers clients, permission tabs, global Operator Services policy, Audit filtering, and Development Console execution evidence.
+7. **Accessibility** (`e2e/accessibility.spec.ts`) runs Axe on every primary view and validates keyboard focus, tabs, form names and state.
+8. **Visual regression** (`e2e/visual.spec.ts`) uses deterministic Chromium baselines for dark/light themes at phone and desktop sizes.
+9. **Production-bundle smoke** runs the same browser suite against `vite preview`, not only the development server.
+10. **Artifact/live verification** remains separate: passing Playwright proves the UI and HTTP contract, not Home Assistant Supervisor installation.
 
 ## Responsive invariants
 
@@ -43,6 +45,10 @@ Tests use deterministic API fixtures in `e2e/fixtures/gateway-api.ts`. Fixtures 
 - track requests so tests can assert method, path and sanitized payload;
 - never contain real Home Assistant tokens, entities or private data;
 - remain aligned with backend response contracts.
+
+## Coverage boundary
+
+The frontend does not currently publish a line-coverage percentage. The runtime gate transpiles production TypeScript helpers into a temporary directory and removes that directory after execution; collecting V8 coverage there without a stable source-map/instrumentation pipeline would produce a misleading metric. Contract tests therefore remain the authoritative evidence for pure policies, controller orchestration, adapter requests and malformed responses, while Playwright remains the evidence for browser behavior. A future coverage gate must first preserve source maps, establish a baseline, exclude generated/browser-only code explicitly, and ratchet critical modules rather than imposing an arbitrary global threshold.
 
 ## Failure evidence
 

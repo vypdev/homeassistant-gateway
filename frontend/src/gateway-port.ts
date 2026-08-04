@@ -1,4 +1,4 @@
-import type { AuditEvent, Client, Discovery, GatewayBootstrap, OperatorServicePolicy } from './models';
+import type { AuditEvent, Client, Discovery, GatewayBootstrap, OperatorServicePolicy, PolicyDecision } from './models';
 
 export type CreateClientInput = {
   client_id: string;
@@ -22,7 +22,7 @@ export interface GatewayPort {
   loadDiscovery(token: string): Promise<Discovery>;
   loadAudit(decision: string): Promise<AuditEvent[]>;
   saveOperatorPolicy(selected: string[]): Promise<void>;
-  evaluatePolicy(input: PolicyEvaluationInput): Promise<{ decision: string; reason: string }>;
+  evaluatePolicy(input: PolicyEvaluationInput): Promise<{ decision: PolicyDecision; reason: string }>;
 }
 
 export type { GatewayBootstrap, OperatorServicePolicy };

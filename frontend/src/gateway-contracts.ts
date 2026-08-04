@@ -1,9 +1,10 @@
 import { GatewayError } from './gateway-errors';
-import type { AuditEvent, Client, GatewayBootstrap, HealthCheck, HealthDetails, OperatorService, OperatorServicePolicy, OperatorStatus, Ready } from './models';
+import type { AuditEvent, Client, GatewayBootstrap, HealthCheck, HealthDetails, OperatorService, OperatorServicePolicy, OperatorStatus, PolicyDecision, Ready } from './models';
 
 const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object';
 const hasStrings = (value: Record<string, unknown>, keys: string[]): boolean => keys.every((key) => typeof value[key] === 'string');
 const isStringArray = (value: unknown): value is string[] => Array.isArray(value) && value.every((item) => typeof item === 'string');
+const POLICY_DECISIONS = new Set(['allowed', 'denied', 'approval_required']);
 
 const isReady = (value: unknown): value is Ready => isRecord(value) && hasStrings(value, ['status', 'storage', 'mcp', 'home_assistant']);
 const isClient = (value: unknown): value is Client => {
@@ -67,6 +68,6 @@ export function assertIssuedClient(value: unknown): asserts value is Client & { 
   if (!isRecord(value) || typeof value.token !== 'string' || value.token.length === 0 || typeof value.client_id !== 'string') invalid('Invalid issued client response');
 }
 
-export function assertPolicyEvaluation(value: unknown): asserts value is { decision: string; reason: string } {
-  if (!isRecord(value) || typeof value.decision !== 'string' || typeof value.reason !== 'string') invalid('Invalid policy evaluation response');
+export function assertPolicyEvaluation(value: unknown): asserts value is { decision: PolicyDecision; reason: string } {
+  if (!isRecord(value) || typeof value.decision !== 'string' || !POLICY_DECISIONS.has(value.decision) || typeof value.reason !== 'string') invalid('Invalid policy evaluation response');
 }

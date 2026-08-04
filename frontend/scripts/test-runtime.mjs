@@ -131,7 +131,11 @@ try {
   assert.throws(() => contractsModule.assertGatewayBootstrap({ ...bootstrap, clients: [{ client_id: 'broken' }] }), /Invalid gateway bootstrap response/);
   assert.throws(() => contractsModule.assertOperatorPolicy({ services: [{ id: 'broken' }], selected: [] }), /Invalid operator policy response/);
   assert.throws(() => contractsModule.assertIssuedClient({ client_id: 'id' }), /Invalid issued client response/);
+  assert.doesNotThrow(() => contractsModule.assertPolicyEvaluation({ decision: 'allowed', reason: 'ok' }));
+  assert.doesNotThrow(() => contractsModule.assertPolicyEvaluation({ decision: 'denied', reason: 'blocked' }));
+  assert.doesNotThrow(() => contractsModule.assertPolicyEvaluation({ decision: 'approval_required', reason: 'approval' }));
   assert.throws(() => contractsModule.assertPolicyEvaluation({ decision: 'allowed' }), /Invalid policy evaluation response/);
+  assert.throws(() => contractsModule.assertPolicyEvaluation({ decision: 'unknown', reason: 'unexpected' }), /Invalid policy evaluation response/);
 
   const controllerModule = await import(pathToFileURL(join(tempDir, 'gateway-controller.mjs')));
   const controllerCalls = [];
@@ -155,6 +159,21 @@ try {
   await controller.saveOperatorPolicy([]);
   await controller.evaluatePolicy({ client_id: 'id', capability: 'ha.read.states', mutation: false });
   assert.deepEqual(controllerCalls, ['createClient', 'loadBootstrap', 'revokeClient', 'loadBootstrap', 'rotateClient', 'loadBootstrap', 'loadDiscovery', 'loadAudit', 'saveOperatorPolicy', 'evaluatePolicy']);
+
+  let observedSignal;
+  fakeGatewayApi.loadBootstrap = async (signal) => new Promise((resolve, reject) => {
+    observedSignal = signal;
+    signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true });
+  });
+  const abortController = new AbortController();
+  const pendingRefresh = controller.refresh(abortController.signal);
+  assert.equal(observedSignal, abortController.signal);
+  abortController.abort();
+  await assert.rejects(pendingRefresh, /aborted/);
+
+  fakeGatewayApi.loadBootstrap = async () => controllerBootstrap;
+  fakeGatewayApi.createClient = async () => { throw new Error('create failed'); };
+  await assert.rejects(() => controller.createClient({ client_id: 'id', display_name: 'name', profile: 'observer', capabilities: [], operator_services: [] }), /create failed/);
 
   console.log('frontend runtime helpers: ok');
 } finally {

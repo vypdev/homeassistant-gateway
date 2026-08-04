@@ -1,6 +1,5 @@
-import type { Client } from './models';
+import type { Client, GatewayBootstrap, PolicyDecision } from './models';
 import type { CreateClientInput, GatewayPort, PolicyEvaluationInput } from './gateway-port';
-import type { GatewayBootstrap } from './models';
 import type { AuditEvent, Discovery } from './models';
 import { createOperatorPolicyService, type OperatorPolicyService } from './operator-policy-service';
 
@@ -17,7 +16,7 @@ export interface GatewayController {
   loadDiscovery(token: string): Promise<Discovery>;
   loadAudit(decision: string): Promise<AuditEvent[]>;
   saveOperatorPolicy(selected: string[]): Promise<void>;
-  evaluatePolicy(input: PolicyEvaluationInput): Promise<{ decision: string; reason: string }>;
+  evaluatePolicy(input: PolicyEvaluationInput): Promise<{ decision: PolicyDecision; reason: string }>;
 }
 
 export const createGatewayController = (gatewayPort: GatewayPort, operatorPolicy: OperatorPolicyService = createOperatorPolicyService((selected) => gatewayPort.saveOperatorPolicy(selected))): GatewayController => ({
