@@ -20,22 +20,22 @@ export interface GatewayController {
   evaluatePolicy(input: PolicyEvaluationInput): Promise<{ decision: string; reason: string }>;
 }
 
-export const createGatewayController = (gatewayApi: GatewayPort, operatorPolicy: OperatorPolicyService = createOperatorPolicyService((selected) => gatewayApi.saveOperatorPolicy(selected))): GatewayController => ({
-  refresh: () => gatewayApi.loadBootstrap(),
+export const createGatewayController = (gatewayPort: GatewayPort, operatorPolicy: OperatorPolicyService = createOperatorPolicyService((selected) => gatewayPort.saveOperatorPolicy(selected))): GatewayController => ({
+  refresh: () => gatewayPort.loadBootstrap(),
   async createClient(input) {
-    const client = await gatewayApi.createClient(input);
-    return { client, bootstrap: await gatewayApi.loadBootstrap() };
+    const client = await gatewayPort.createClient(input);
+    return { client, bootstrap: await gatewayPort.loadBootstrap() };
   },
   async revokeClient(clientId) {
-    await gatewayApi.revokeClient(clientId);
-    return gatewayApi.loadBootstrap();
+    await gatewayPort.revokeClient(clientId);
+    return gatewayPort.loadBootstrap();
   },
   async rotateClient(clientId) {
-    const client = await gatewayApi.rotateClient(clientId);
-    return { client, bootstrap: await gatewayApi.loadBootstrap() };
+    const client = await gatewayPort.rotateClient(clientId);
+    return { client, bootstrap: await gatewayPort.loadBootstrap() };
   },
-  loadDiscovery: (token) => gatewayApi.loadDiscovery(token),
-  loadAudit: (decision) => gatewayApi.loadAudit(decision),
+  loadDiscovery: (token) => gatewayPort.loadDiscovery(token),
+  loadAudit: (decision) => gatewayPort.loadAudit(decision),
   saveOperatorPolicy: (selected) => operatorPolicy.save(selected),
-  evaluatePolicy: (input) => gatewayApi.evaluatePolicy(input),
+  evaluatePolicy: (input) => gatewayPort.evaluatePolicy(input),
 });
