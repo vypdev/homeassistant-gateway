@@ -60,6 +60,47 @@ test('older mutation is canceled when a newer mutation starts', async ({ page })
   await secondMutation;
   await expect(page.getByRole('alert')).toHaveCount(0);
 });
+test('stale mutation bootstrap is ignored even when the transport delivers it late', async ({ page }) => {
+  await installGatewayMock(page);
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Secure gateway control plane.' })).toBeVisible();
+  const finalClientId = await page.evaluate(async () => {
+    const app = document.querySelector('gateway-app') as unknown as Record<string, unknown> & {
+      revoke: (id: string) => Promise<void>;
+      clients: Array<Record<string, unknown>>;
+    };
+    window.confirm = () => true;
+    let firstResolve: ((value: unknown) => void) | undefined;
+    let secondResolve: ((value: unknown) => void) | undefined;
+    const snapshot = (clientId: string) => ({
+      ready: app.ready,
+      clients: [{ client_id: clientId, display_name: clientId, profile: 'observer', capabilities: [], operator_services: [] }],
+      audit: app.audit,
+      development: app.development,
+      developmentReports: app.developmentReports,
+      uiContext: app.uiContext,
+      healthDetails: app.healthDetails,
+      operatorStatus: app.operatorStatus,
+      operatorPolicy: app.operatorPolicy,
+    });
+    app.gatewayController = {
+      revokeClient: (clientId: string) => new Promise((resolve) => {
+        if (clientId === 'first') firstResolve = resolve;
+        else secondResolve = resolve;
+      }),
+    };
+    const first = app.revoke('first');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const second = app.revoke('second');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    secondResolve?.(snapshot('second'));
+    await second;
+    firstResolve?.(snapshot('first'));
+    await first;
+    return app.clients[0].client_id;
+  });
+  expect(finalClientId).toBe('second');
+});
 test('boot error exposes a retry action and recovers when readiness returns', async ({ page }) => {
   await installGatewayMock(page);
   let readinessAttempts = 0;
