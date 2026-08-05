@@ -9,7 +9,6 @@ import { selectedOperatorServices, toggleOperatorServiceGroupSelection, toggleOp
 import { resolveLocale, resolveTheme, translate } from './locale';
 import { capabilityText as resolveCapabilityText, operationText as resolveOperationText, packText as resolvePackText, pageSubtitle, pageTitle, statusText as resolveStatusText } from './view-helpers';
 import { navigationView } from './navigation-view';
-import { neuralBackground } from './shell-view';
 import { overviewView, healthView, topologyView } from './overview-view';
 import { auditView } from './audit-view';
 import { clientsView as renderClientsView } from './clients-view';
@@ -361,7 +360,7 @@ export class GatewayApp extends LitElement {
 
   loadingView() {
     const failed = this.bootState === 'error';
-    return html`<div class="shell ${this.effectiveTheme}">${neuralBackground()}<main class="boot-stage" aria-busy=${failed ? 'false' : 'true'}><section class="boot-card" aria-live="polite"><div class="boot-orbit" aria-hidden="true"><div class="boot-core"></div></div><h1>${failed ? this.t('errorLoadState') : this.t('checkingGateway')}</h1><p>${this.t('healthDescription')}</p>${failed ? html`<div class="alert" role="alert" style="margin-top:20px">${this.error}</div><button class="secondary boot-retry" @click=${() => void this.refresh()}>${this.t('refresh')}</button>` : html`<div class="boot-status"><span class="dot"></span>${this.t('checkingGateway')}</div><div class="boot-progress" role="progressbar" aria-label=${this.t('checkingGateway')}></div>`}</section></main></div>`;
+    return html`<div class="shell ${this.effectiveTheme}"><main class="boot-stage" aria-busy=${failed ? 'false' : 'true'}><section class="boot-card" aria-live="polite"><div class="boot-orbit" aria-hidden="true"><div class="boot-core"></div></div><h1>${failed ? this.t('errorLoadState') : this.t('checkingGateway')}</h1><p>${this.t('healthDescription')}</p>${failed ? html`<div class="alert" role="alert" style="margin-top:20px">${this.error}</div><button class="secondary boot-retry" @click=${() => void this.refresh()}>${this.t('refresh')}</button>` : html`<div class="boot-status"><span class="dot"></span>${this.t('checkingGateway')}</div><div class="boot-progress" role="progressbar" aria-label=${this.t('checkingGateway')}></div>`}</section></main></div>`;
   }
 
   private get anyBusy() { return this.busy || this.clientsBusy || this.auditBusy || this.discoveryBusy || this.policyBusy || this.developmentBusy; }
@@ -369,7 +368,7 @@ export class GatewayApp extends LitElement {
   render() {
     if (this.bootState !== 'ready') return this.loadingView();
     const active = this.view;
-    return html`<div class="shell ${this.effectiveTheme}">${neuralBackground()}<div class="layout">
+    return html`<div class="shell ${this.effectiveTheme}"><div class="layout">
       <aside>
         <div class="brand"><img class="brand-mark" src="/icon.png" alt="" width="34" height="34" /><div><strong>${this.t('gateway')}</strong><small> ${this.t('controlPlane')}</small></div></div>
         ${navigationView(this.view, this.t.bind(this), (view) => this.setView(view))}

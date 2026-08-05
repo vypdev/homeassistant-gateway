@@ -68,7 +68,7 @@ test('matches the Home Assistant navigation states and uses MDI leading icons', 
   await expect(buttons.nth(1)).toHaveCSS('background-color', 'rgb(241, 243, 244)');
 });
 
-test('keeps the ambient shell motion reduced when requested', async ({ page }) => {
+test('keeps the static shell and local motion reduced when requested', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /secure gateway control plane/i })).toBeVisible();
@@ -179,7 +179,7 @@ test('does not wait for the global bootstrap after creating a client', async ({ 
   await page.locator('input[name="display_name"]').fill('Created client');
   await page.getByRole('button', { name: 'Issue client', exact: true }).click();
   await expect(page.getByText('issued-token', { exact: true })).toBeVisible({ timeout: 1000 });
-  await expect(page.getByTestId('client-record').getByText('created-client', { exact: true })).toBeVisible({ timeout: 1000 });
+  await expect(page.locator('.mono:visible, code:visible').filter({ hasText: /^created-client$/ })).toBeVisible({ timeout: 1000 });
   expect(healthRequests).toBe(healthRequestsBeforeMutation);
 });
 test('supports a narrow viewport without horizontal overflow', async ({ page }) => {

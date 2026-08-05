@@ -25,7 +25,7 @@ test('audit filtering remains named, sanitized and contained', async ({ page }) 
   await page.getByRole('button', { name: 'Audit', exact: true }).click();
 
   await expect(page.getByRole('combobox', { name: 'Decision' })).toBeVisible();
-  const visibleAudit = page.viewportSize()!.width <= 1600
+  const visibleAudit = page.viewportSize()!.width <= 900
     ? page.getByTestId('audit-responsive-records')
     : page.locator('.desktop-only');
   await expect(visibleAudit.getByText('request-allowed', { exact: true })).toBeVisible();
@@ -44,7 +44,7 @@ test('audit dense content remains reachable without page overflow across the ful
       await page.getByRole('button', { name: 'Audit', exact: true }).click();
       await assertResponsivePage(page);
       await expectVisibleContentWithinViewport(page, '.card');
-      if (viewport.width <= 1600) {
+      if (viewport.width <= 900) {
         await expect(page.getByTestId('audit-responsive-records')).toBeVisible();
         await expect(page.locator('.desktop-only')).toBeHidden();
         await expect(page.getByTestId('audit-record')).toHaveCount(2);

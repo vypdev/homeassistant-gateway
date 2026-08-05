@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.31
+
+- Align the frontend shell with the documented Home Assistant visual line: remove decorative dot-field/gradient/glassmorphism effects, use solid surfaces, moderate card elevation, medium-radius controls, and semantic spacing tokens.
+- Change responsive client and audit presentations to switch at the content breakpoint of 900px instead of 1600px.
+- Refresh deterministic visual baselines and UX contracts for light/dark, reduced motion, responsive geometry, and static-shell behavior.
+
 ## 0.5.30
 
 - Prevent client mutations from waiting for the full gateway bootstrap before updating the UI.

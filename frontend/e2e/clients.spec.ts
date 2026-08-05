@@ -33,7 +33,7 @@ test.describe('clients permission flows', () => {
         await openClients(page);
         await assertResponsivePage(page);
         await expectVisibleContentWithinViewport(page, '.card');
-        if (viewport.width <= 1600) {
+        if (viewport.width <= 900) {
           await expect(page.getByTestId('clients-responsive-records')).toBeVisible();
           await expect(page.locator('.desktop-only')).toBeHidden();
           await expect(page.getByTestId('client-record')).toHaveCount(2);

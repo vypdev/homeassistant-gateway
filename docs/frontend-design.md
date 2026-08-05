@@ -24,28 +24,11 @@ The UI should look native-adjacent, not like a detached SaaS dashboard:
 - compact cards and tables;
 - clear profile/capability boundaries.
 
-The “wow” comes from a quiet ambient layer, live connection beacons, crisp transitions, and meaningful state changes. It must never reduce readability or feel like a game UI.
+The visual priority is a quiet, operational surface: static canvas, solid surfaces, moderate borders, restrained elevation, and meaningful state changes. Decorative effects must not compete with identity, readiness, policy, audit, or mutation feedback.
 
 ## Ambient layer
 
-Use CSS-only effects:
-
-- slow radial-gradient drift behind the main canvas;
-- a low-opacity connection pulse when the MCP is healthy;
-- short route/card transitions;
-- no canvas particle system or permanent high-frequency animation.
-
-```css
-.gateway-shell::before {
-  animation: gateway-ambient 32s ease-in-out infinite alternate;
-  background: radial-gradient(circle at 20% 0%, rgb(3 169 244 / 0.14), transparent 42%);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .gateway-shell::before { animation: none; }
-  *, *::before, *::after { transition-duration: 0.01ms !important; }
-}
-```
+The shell intentionally has no ambient gradient, dot field, glassmorphism, or permanent decorative animation. Motion is limited to short state transitions and the local bootstrap progress indicator. `prefers-reduced-motion: reduce` disables those effects.
 
 ## Information architecture
 

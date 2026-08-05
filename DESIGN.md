@@ -514,7 +514,7 @@ A client mutation must show client-local progress. A policy save must show polic
 
 ## 10. Motion and ambient background
 
-The Gateway currently includes a restrained dot-field and slow gradient movement. This is a Gateway decision, not a Home Assistant requirement.
+The Gateway deliberately uses a restrained, mostly static shell. Earlier versions included a dot-field and slow gradient movement; those effects were removed because they were not part of Home Assistant's native visual language and competed with operational data. This is a Gateway decision, not a Home Assistant requirement.
 
 Rules:
 
@@ -603,6 +603,13 @@ Before accepting a change, answer:
 - A live Home Assistant installation is required to verify effective theme inheritance, Ingress rendering, browser-specific behavior, and any runtime component API. Those claims must remain marked as requiring verification until tested against the target installation.
 
 ## 14. Change log
+
+### 1.1 — 2026-08-05
+
+- Removed decorative dot-field, gradient drift, and glassmorphism from the implemented shell.
+- Changed general controls from pill geometry to the official medium-radius-compatible control geometry.
+- Reduced default card elevation and aligned card padding, shell spacing, and responsive table behavior with the documented Home Assistant line.
+- Added regression contracts for the static shell and the new spacing/radius rules.
 
 ### 1.0 — 2026-08-05
 
