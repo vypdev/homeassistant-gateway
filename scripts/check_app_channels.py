@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 
 import yaml
+from PIL import Image
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -55,6 +56,13 @@ def main() -> int:
         icon = directory / "icon.png"
         if not icon.read_bytes().startswith(b"\x89PNG\r\n\x1a\n"):
             errors.append(f"{icon} is not a PNG")
+        try:
+            with Image.open(icon) as image:
+                alpha = image.getchannel("A") if "A" in image.getbands() else None
+                if image.mode != "RGBA" or alpha is None or any(alpha.getpixel(point) != 0 for point in ((0, 0), (255, 0), (0, 255), (255, 255))):
+                    errors.append(f"{icon} must have transparent rounded corners")
+        except (OSError, ValueError) as error:
+            errors.append(f"{icon} cannot be inspected: {error}")
         if not (directory / "run.sh").exists():
             errors.append(f"{directory}/run.sh is missing")
 
