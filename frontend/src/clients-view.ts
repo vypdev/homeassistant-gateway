@@ -1,4 +1,5 @@
 import { html, type TemplateResult } from 'lit';
+import { gatewayButton, gatewayEmptyState, gatewaySelect, gatewayTextField } from './ui-primitives';
 import type { Client, OperatorService, Profile } from './models';
 
 type Translator = (key: string) => string;
@@ -37,7 +38,7 @@ export function clientsView(ctx: ClientsViewContext): TemplateResult {
       <div class="card">
         <div class="toolbar">
           <div><h2>${ctx.t('registeredClients')}</h2><p>${ctx.t('tokensNotListed')}</p></div>
-          <button class="secondary" @click=${ctx.refresh} ?disabled=${ctx.busy}>${ctx.t('refresh')}</button>
+          ${gatewayButton({ label: ctx.t('refresh'), variant: 'secondary', disabled: ctx.busy, onClick: ctx.refresh })}
         </div>
         ${ctx.clients.length ? html`
           <div class="table-wrap desktop-only"><table class="clients-table"><thead><tr>
@@ -51,10 +52,7 @@ export function clientsView(ctx: ClientsViewContext): TemplateResult {
                 ${client.profile === 'operator' ? html`<br><small class="muted">${ctx.t('operatorServiceGrants')}: ${client.operator_services.filter((service) => globallyEnabled.has(service)).length ? client.operator_services.filter((service) => globallyEnabled.has(service)).join(', ') : ctx.t('operatorServicesNoneAvailable')}</small>` : ''}
               </td>
               <td class=${client.status === 'active' ? 'ok' : 'bad'}>${client.status}</td>
-              <td>${client.status === 'active' ? html`
-                <button class="danger" @click=${() => ctx.revoke(client.client_id)} ?disabled=${ctx.busy}>${ctx.t('revoke')}</button>
-                <button class="secondary" @click=${() => ctx.rotate(client.client_id)} ?disabled=${ctx.busy}>${ctx.t('rotate')}</button>` : html`
-                <button class="danger" @click=${() => ctx.deleteClient(client.client_id)} ?disabled=${ctx.busy}>${ctx.t('deleteClient')}</button>`}</td>
+              <td>${client.status === 'active' ? html`${gatewayButton({ label: ctx.t('revoke'), variant: 'danger', disabled: ctx.busy, onClick: () => ctx.revoke(client.client_id) })}${gatewayButton({ label: ctx.t('rotate'), variant: 'secondary', disabled: ctx.busy, onClick: () => ctx.rotate(client.client_id) })}` : gatewayButton({ label: ctx.t('deleteClient'), variant: 'danger', disabled: ctx.busy, onClick: () => ctx.deleteClient(client.client_id) })}</td>
             </tr>`)}
           </tbody></table></div>
           <div class="responsive-records" data-testid="clients-responsive-records">
@@ -64,19 +62,16 @@ export function clientsView(ctx: ClientsViewContext): TemplateResult {
               <div class="responsive-field"><span>${ctx.t('profile')}</span><span class="tag">${client.profile}</span></div>
               <div class="responsive-field responsive-field-stack"><span>${ctx.t('capabilities')}</span><div class="responsive-values">${client.capabilities.map((capability) => html`<span class="tag">${capability}</span>`)}</div></div>
               ${client.profile === 'operator' ? html`<div class="responsive-field responsive-field-stack"><span>${ctx.t('operatorServiceGrants')}</span><code class="responsive-wrap">${client.operator_services.filter((service) => globallyEnabled.has(service)).join(', ') || ctx.t('operatorServicesNoneAvailable')}</code></div>` : ''}
-              ${client.status === 'active' ? html`<div class="responsive-actions"><button class="danger" @click=${() => ctx.revoke(client.client_id)} ?disabled=${ctx.busy}>${ctx.t('revoke')}</button><button class="secondary" @click=${() => ctx.rotate(client.client_id)} ?disabled=${ctx.busy}>${ctx.t('rotate')}</button></div>` : html`<div class="responsive-actions"><button class="danger" @click=${() => ctx.deleteClient(client.client_id)} ?disabled=${ctx.busy}>${ctx.t('deleteClient')}</button></div>`}
+              ${client.status === 'active' ? html`<div class="responsive-actions">${gatewayButton({ label: ctx.t('revoke'), variant: 'danger', disabled: ctx.busy, onClick: () => ctx.revoke(client.client_id) })}${gatewayButton({ label: ctx.t('rotate'), variant: 'secondary', disabled: ctx.busy, onClick: () => ctx.rotate(client.client_id) })}</div>` : html`<div class="responsive-actions">${gatewayButton({ label: ctx.t('deleteClient'), variant: 'danger', disabled: ctx.busy, onClick: () => ctx.deleteClient(client.client_id) })}</div>`}
             </article>`)}
-          </div>` : html`<div class="empty">${ctx.t('noClientsIssued')}</div>`}
+          </div>` : gatewayEmptyState(ctx.t('noClientsIssued'))}
       </div>
       <div class="card">
-        <h2>${ctx.t('issueObserverClient')}</h2><p style="margin-bottom:16px">${ctx.t('tokenShownOnce')}</p>
+        <h2>${ctx.t('issueObserverClient')}</h2><p class="client-form-description">${ctx.t('tokenShownOnce')}</p>
         <form class="form" @submit=${ctx.createClient}>
-          <label>${ctx.t('clientId')}<input name="client_id" required maxlength="128" placeholder="nido-observer" /></label>
-          <label>${ctx.t('displayName')}<input name="display_name" required maxlength="256" placeholder="Nido house monitor" /></label>
-          <label>${ctx.t('profile')}<select name="profile" @change=${(event: Event) => ctx.setProfile((event.target as HTMLSelectElement).value as Profile)}>
-            <option value="observer">${ctx.t('readOnly')}</option>
-            <option value="operator" ?disabled=${!ctx.operatorEnabled}>operator${ctx.operatorEnabled ? '' : ` · ${ctx.t('operatorDisabledOption')}`}</option>
-          </select></label>
+          ${gatewayTextField({ label: ctx.t('clientId'), name: 'client_id', maxLength: 128, required: true, placeholder: 'nido-observer' })}
+          ${gatewayTextField({ label: ctx.t('displayName'), name: 'display_name', maxLength: 256, required: true, placeholder: 'Nido house monitor' })}
+          ${gatewaySelect({ label: ctx.t('profile'), name: 'profile', onInput: (event) => ctx.setProfile((event.target as HTMLSelectElement).value as Profile), options: html`<option value="observer">${ctx.t('readOnly')}</option><option value="operator" ?disabled=${!ctx.operatorEnabled}>operator${ctx.operatorEnabled ? '' : ` · ${ctx.t('operatorDisabledOption')}`}</option>` })}
           <div class="permission-tabs" role="tablist" aria-label=${ctx.t('permissionsCapabilitiesTab')}>
             <button id="capabilities-tab" type="button" class="permission-tab" role="tab" aria-controls="capabilities-panel" aria-selected=${ctx.permissionTab === 'capabilities'} @click=${() => ctx.setPermissionTab('capabilities')}>${ctx.t('permissionsCapabilitiesTab')}</button>
             <button id="operator-services-tab" type="button" class="permission-tab" role="tab" aria-controls="operator-services-panel" aria-selected=${ctx.permissionTab === 'operator-services'} @click=${() => ctx.setPermissionTab('operator-services')}>${ctx.t('permissionsOperatorServicesTab')}</button>
@@ -103,7 +98,7 @@ export function clientsView(ctx: ClientsViewContext): TemplateResult {
               </label>`)}</div>` : html`<div class="operator-services-empty" role="note"><span>${ctx.t('operatorServicesNoneAvailable')}</span><button class="link-button" type="button" @click=${ctx.navigateToPolicy}>${ctx.t('operatorServicesOpenPolicy')}</button></div>`}
             </fieldset>
           </section>`}
-          <div class="form-actions"><button class="primary" ?disabled=${ctx.busy}><span class="button-leading-icon" aria-hidden="true">+</span>${ctx.t('issueClient')}</button></div>
+          <div class="form-actions">${gatewayButton({ label: ctx.t('issueClient'), variant: 'primary', type: 'submit', disabled: ctx.busy, leadingIcon: '+' })}</div>
         </form>
       </div>
     </div>`;

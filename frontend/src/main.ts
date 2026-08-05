@@ -18,6 +18,7 @@ import { mcpView as renderMcpView } from './mcp-view';
 import { loadDevelopmentReports, executeDevelopmentJob } from './development-controller';
 import { property, state } from 'lit/decorators.js';
 import { APP_STYLES } from './app-styles';
+import { gatewayAlert, gatewayButton, gatewayDialog } from './ui-primitives';
 import { TRANSLATIONS } from './i18n-base';
 import { DEVELOPMENT_TRANSLATIONS } from './i18n-development';
 import { DEVELOPMENT_EXTRA_TRANSLATIONS } from './i18n-development-extra';
@@ -360,7 +361,7 @@ export class GatewayApp extends LitElement {
 
   loadingView() {
     const failed = this.bootState === 'error';
-    return html`<div class="shell ${this.effectiveTheme}"><main class="boot-stage" aria-busy=${failed ? 'false' : 'true'}><section class="boot-card" aria-live="polite"><div class="boot-orbit" aria-hidden="true"><div class="boot-core"></div></div><h1>${failed ? this.t('errorLoadState') : this.t('checkingGateway')}</h1><p>${this.t('healthDescription')}</p>${failed ? html`<div class="alert" role="alert" style="margin-top:20px">${this.error}</div><button class="secondary boot-retry" @click=${() => void this.refresh()}>${this.t('refresh')}</button>` : html`<div class="boot-status"><span class="dot"></span>${this.t('checkingGateway')}</div><div class="boot-progress" role="progressbar" aria-label=${this.t('checkingGateway')}></div>`}</section></main></div>`;
+    return html`<div class="shell ${this.effectiveTheme}"><main class="boot-stage" aria-busy=${failed ? 'false' : 'true'}><section class="boot-card" aria-live="polite"><div class="boot-orbit" aria-hidden="true"><div class="boot-core"></div></div><h1>${failed ? this.t('errorLoadState') : this.t('checkingGateway')}</h1><p>${this.t('healthDescription')}</p>${failed ? html`${gatewayAlert(this.error)}${gatewayButton({ label: this.t('refresh'), variant: 'secondary', className: 'boot-retry', onClick: () => void this.refresh() })}` : html`<div class="boot-status"><span class="dot"></span>${this.t('checkingGateway')}</div><div class="boot-progress" role="progressbar" aria-label=${this.t('checkingGateway')}></div>`}</section></main></div>`;
   }
 
   private get anyBusy() { return this.busy || this.clientsBusy || this.auditBusy || this.discoveryBusy || this.policyBusy || this.developmentBusy; }
@@ -369,13 +370,13 @@ export class GatewayApp extends LitElement {
     if (this.bootState !== 'ready') return this.loadingView();
     const active = this.view;
     return html`<div class="shell ${this.effectiveTheme}"><div class="layout">
-      <aside>
-        <div class="brand"><img class="brand-mark" src="/icon.png" alt="" width="34" height="34" /><div><strong>${this.t('gateway')}</strong><small> ${this.t('controlPlane')}</small></div></div>
+      <header class="app-header">
+        <div class="brand"><img class="brand-mark" src="/icon.png" alt="" width="34" height="34" /><div><strong>${this.t('gateway')}</strong><small>${this.t('controlPlane')}</small></div></div>
         ${navigationView(this.view, this.t.bind(this), (view) => this.setView(view))}
-        <div class="side-foot"><div class="ok">● ${this.t('observerFirst')}</div><div>${this.t('operatorDisabled')}</div></div>
-      </aside>
+        <div class="header-tools"><label class="muted">${this.t('language')}<select aria-label=${this.t('language')} @change=${(event: Event) => this.setLocale((event.target as HTMLSelectElement).value)}><option value="">Home Assistant (${this.uiContext.locale})</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt">Português</option><option value="it">Italiano</option><option value="zh">中文</option><option value="ja">日本語</option><option value="ru">Русский</option><option value="hi">हिन्दी</option><option value="ar">العربية</option></select></label><div class="status-pill ${this.ready?.status === 'ready' ? '' : 'warn'}"><span class="dot"></span>${this.ready?.status === 'ready' ? this.t('gatewayReady') : this.t('checkingGateway')}</div></div>
+      </header>
       <main aria-busy=${this.anyBusy ? 'true' : 'false'}>
-        <div class="topline"><div><div class="eyebrow">Home Assistant App · MCP Gateway</div><h1>${this.pageTitle()}</h1><p>${this.subtitle()}</p></div><div style="display:grid;gap:10px;justify-items:end"><label class="muted">${this.t('language')}<select aria-label=${this.t('language')} @change=${(event: Event) => this.setLocale((event.target as HTMLSelectElement).value)}><option value="">Home Assistant (${this.uiContext.locale})</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt">Português</option><option value="it">Italiano</option><option value="zh">中文</option><option value="ja">日本語</option><option value="ru">Русский</option><option value="hi">हिन्दी</option><option value="ar">العربية</option></select></label><div class="status-pill ${this.ready?.status === 'ready' ? '' : 'warn'}"><span class="dot"></span>${this.ready?.status === 'ready' ? this.t('gatewayReady') : this.t('checkingGateway')}</div></div></div>
+        <div class="topline"><div><div class="eyebrow">Home Assistant App · MCP Gateway</div><h1>${this.pageTitle()}</h1><p>${this.subtitle()}</p></div></div>
         ${this.error ? html`<div class="alert" role="alert">${this.error}</div>` : ''}
         ${active === 'overview' ? html`${this.overview()}${this.healthPanel()}${this.topologyPanel()}` : active === 'development' ? this.developmentView() : active === 'clients' ? this.clientsView() : active === 'policy' ? this.policyView() : active === 'mcp' ? this.mcpView() : this.auditView()}
       </main>
@@ -428,7 +429,13 @@ export class GatewayApp extends LitElement {
   policyView() { return renderPolicyView({ clients: this.clients, busy: this.policyBusy, t: this.t.bind(this), evaluatePolicy: this.evaluatePolicy.bind(this), operatorPolicy: this.operatorPolicy, toggleOperatorService: this.toggleOperatorService.bind(this), toggleOperatorServiceGroup: this.toggleOperatorServiceGroup.bind(this) }); }
   async evaluatePolicy(event: Event) { event.preventDefault(); const data = new FormData(event.target as HTMLFormElement); this.policyBusy = true; try { const result = await this.gatewayController.evaluatePolicy({ client_id: String(data.get('client_id') ?? ''), capability: String(data.get('capability') ?? ''), mutation: data.has('mutation') }); window.alert(`${result.decision}: ${result.reason}`); } catch (error) { this.error = this.errorMessage(error, 'errorPolicy'); } finally { this.policyBusy = false; } }
   mcpView() { return renderMcpView({ ready: this.ready, discovery: this.discovery, busy: this.discoveryBusy, t: this.t.bind(this), loadDiscovery: this.loadDiscovery.bind(this) }); }
-  tokenModal() { return html`<div class="modal-backdrop" role="dialog" aria-modal="true"><div class="modal"><div class="eyebrow">${this.t('oneTimeCredential')}</div><h2>${this.t('tokenOnce')}</h2><p>${this.t('tokenOnlyOnce')}</p><div class="token mono">${this.issuedToken}</div><div class="form-actions"><button class="secondary" @click=${() => navigator.clipboard?.writeText(this.issuedToken)}>${this.t('copyToken')}</button><button class="primary" @click=${() => { this.issuedToken = ''; }}>${this.t('savedIt')}</button></div></div></div>`; }
+  tokenModal() {
+    return gatewayDialog(
+      this.t('tokenOnce'),
+      html`<p>${this.t('tokenOnlyOnce')}</p><div class="token mono">${this.issuedToken}</div>`,
+      html`${gatewayButton({ label: this.t('copyToken'), variant: 'secondary', onClick: () => void navigator.clipboard?.writeText(this.issuedToken) })}${gatewayButton({ label: this.t('savedIt'), variant: 'primary', onClick: () => { this.issuedToken = ''; } })}`,
+    );
+  }
 }
 
 customElements.define('gateway-app', GatewayApp);

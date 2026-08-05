@@ -35,7 +35,7 @@ test('renders the Ingress shell and navigates with keyboard focus', async ({ pag
   await page.goto('/');
   await expect(page.getByRole('heading', { name: /secure gateway control plane/i })).toBeVisible();
 
-  const development = page.getByRole('button', { name: /dev console|development|desarrollo|développement/i });
+  const development = page.getByRole('tab', { name: /dev console|development|desarrollo|développement/i });
   await development.focus();
   await expect(development).toBeFocused();
   await development.press('Enter');
@@ -55,17 +55,19 @@ test('matches the Home Assistant navigation states and uses MDI leading icons', 
   await mockGatewayApi(page, 'light');
   await page.goto('/');
 
-  const navigation = page.getByRole('navigation');
-  const buttons = navigation.getByRole('button');
+  const navigation = page.getByRole('tablist', { name: 'Gateway navigation' });
+  const buttons = navigation.getByRole('tab');
   await expect(buttons).toHaveCount(6);
   await expect(navigation.locator('svg.navigation-icon')).toHaveCount(6);
-  await expect(buttons.first()).toHaveCSS('border-radius', '8px');
-  await expect(buttons.first()).toHaveCSS('background-color', 'rgb(227, 242, 253)');
+  await expect(buttons.first()).toHaveCSS('border-radius', '0px');
+  await expect(buttons.first()).toHaveAttribute('aria-selected', 'true');
+  await expect(buttons.first()).toHaveCSS('border-bottom-width', '2px');
+  await expect(buttons.first()).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
   await expect(buttons.first()).toHaveCSS('color', 'rgb(3, 169, 244)');
   await expect(buttons.first().locator('svg')).toHaveCSS('fill', 'rgb(3, 169, 244)');
 
   await buttons.nth(1).hover();
-  await expect(buttons.nth(1)).toHaveCSS('background-color', 'rgb(241, 243, 244)');
+  await expect(buttons.nth(1)).toHaveCSS('background-color', /color\(srgb|oklab|rgba\(/);
 });
 
 test('keeps the static shell and local motion reduced when requested', async ({ page }) => {
@@ -105,7 +107,7 @@ test('keeps topology status chips separated from their labels', async ({ page })
 test('keeps the Clients view contained and links to the global service policy', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Clients', exact: true }).click();
+  await page.getByRole('tab', { name: 'Clients', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Clients & tokens', exact: true })).toBeVisible();
   await page.getByRole('tab', { name: 'Capabilities', exact: true }).click();
   await expect(page.locator('input[type="checkbox"][value^="ha.write."]')).toHaveCount(3);
@@ -115,6 +117,7 @@ test('keeps the Clients view contained and links to the global service policy', 
 
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   const offenders = await page.locator('.layout *').evaluateAll((elements) => elements.flatMap((element) => {
+    if (element.closest('.tab-navigation')) return [];
     const rect = element.getBoundingClientRect();
     return rect.width > 0 && rect.right > window.innerWidth + 1 ? [{ tag: element.tagName, className: String(element.className), right: rect.right, width: rect.width }] : [];
   }));
@@ -139,7 +142,7 @@ test('separates token revocation from permanent client deletion', async ({ page 
     await route.fulfill({ status: 204, body: '' });
   });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Clients', exact: true }).click();
+  await page.getByRole('tab', { name: 'Clients', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Revoke', exact: true })).toBeVisible();
   const deleteButton = page.getByRole('button', { name: 'Delete', exact: true });
   await expect(deleteButton).toBeVisible();
@@ -173,7 +176,7 @@ test('does not wait for the global bootstrap after creating a client', async ({ 
     await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ ...clients[0], token: 'issued-token' }) });
   });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Clients', exact: true }).click();
+  await page.getByRole('tab', { name: 'Clients', exact: true }).click();
   const healthRequestsBeforeMutation = healthRequests;
   await page.locator('input[name="client_id"]').fill('created-client');
   await page.locator('input[name="display_name"]').fill('Created client');

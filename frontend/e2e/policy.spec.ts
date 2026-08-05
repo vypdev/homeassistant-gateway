@@ -18,7 +18,7 @@ test.describe('global operator services policy', () => {
   test('summarizes the global ceiling and service grant counts', async ({ page }) => {
     await installGatewayMock(page, policyState);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Policy', exact: true }).click();
+    await page.getByRole('tab', { name: 'Policy', exact: true }).click();
 
     await expect(page.getByRole('heading', { name: /operator services/i })).toBeVisible();
     await expect(page.getByRole('note')).toContainText(/does not grant/i);
@@ -31,7 +31,7 @@ test.describe('global operator services policy', () => {
   test('supports select-all and clear-all actions scoped to each domain group', async ({ page }) => {
     const { requests } = await installGatewayMock(page, policyState);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Policy', exact: true }).click();
+    await page.getByRole('tab', { name: 'Policy', exact: true }).click();
 
     const lightGroup = page.locator('.operator-service-group').filter({ has: page.getByRole('heading', { name: 'light', exact: true }) });
     const switchGroup = page.locator('.operator-service-group').filter({ has: page.getByRole('heading', { name: 'switch', exact: true }) });
@@ -53,7 +53,7 @@ test.describe('global operator services policy', () => {
   test('changing a service persists immediately and submits only the selected IDs', async ({ page }) => {
     const { requests } = await installGatewayMock(page, policyState);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Policy', exact: true }).click();
+    await page.getByRole('tab', { name: 'Policy', exact: true }).click();
 
     await expect(page.getByRole('button', { name: /save global ceiling/i })).toHaveCount(0);
     await page.locator('.operator-service-option input').nth(2).check();

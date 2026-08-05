@@ -1,4 +1,5 @@
 import { html, type TemplateResult } from 'lit';
+import { gatewayButton, gatewayEmptyState, gatewaySelect, gatewayTextField } from './ui-primitives';
 import type { Client, OperatorService, OperatorServicePolicy } from './models';
 
 type Translator = (key: string) => string;
@@ -44,10 +45,10 @@ export function policyView(ctx: PolicyViewContext): TemplateResult {
       <div class="card">
         <h2>${ctx.t('evaluateRequest')}</h2>
         <form class="form" @submit=${ctx.evaluatePolicy}>
-          <label>${ctx.t('client')}<select name="client_id">${ctx.clients.map((client) => html`<option value=${client.client_id}>${client.display_name} · ${client.client_id}</option>`)}</select></label>
-          <label>${ctx.t('capability')}<input name="capability" value="ha.read.diagnostics" required /></label>
+          ${gatewaySelect({ label: ctx.t('client'), name: 'client_id', options: html`${ctx.clients.map((client) => html`<option value=${client.client_id}>${client.display_name} · ${client.client_id}</option>`)}` })}
+          ${gatewayTextField({ label: ctx.t('capability'), name: 'capability', value: 'ha.read.diagnostics', required: true })}
           <label><span><input name="mutation" type="checkbox" class="inline-checkbox" /> ${ctx.t('mutationRequest')}</span></label>
-          <div class="form-actions"><button class="primary" ?disabled=${ctx.busy}><span class="button-leading-icon" aria-hidden="true">✓</span>${ctx.t('evaluate')}</button></div>
+          <div class="form-actions">${gatewayButton({ label: ctx.t('evaluate'), variant: 'primary', type: 'submit', disabled: ctx.busy, leadingIcon: '✓' })}</div>
         </form>
       </div>
     </div>
@@ -82,7 +83,7 @@ export function policyView(ctx: PolicyViewContext): TemplateResult {
                 <h3 id=${`operator-domain-${domain}`}>${domain}</h3>
                 ${(() => {
                   const groupSelected = services.some((service) => selected.has(service.id));
-                  return html`<button type="button" class="secondary operator-service-group-action" @click=${() => ctx.toggleOperatorServiceGroup(services.map((service) => service.id), !groupSelected)}>${ctx.t(groupSelected ? 'operatorServicesClearAll' : 'operatorServicesSelectAll')}</button>`;
+                  return gatewayButton({ label: ctx.t(groupSelected ? 'operatorServicesClearAll' : 'operatorServicesSelectAll'), variant: 'secondary', className: 'operator-service-group-action', onClick: () => ctx.toggleOperatorServiceGroup(services.map((service) => service.id), !groupSelected) });
                 })()}
               </div>
               <div class="operator-service-list">
@@ -96,7 +97,7 @@ export function policyView(ctx: PolicyViewContext): TemplateResult {
             </section>
           `)}
         </div>
-      ` : html`<div class="empty">${ctx.t('operatorServicesUnavailable')}</div>`}
+      ` : gatewayEmptyState(ctx.t('operatorServicesUnavailable'))}
     </section>
   `;
 }

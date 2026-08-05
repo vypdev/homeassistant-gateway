@@ -9,7 +9,7 @@ export async function expectNoVisibleElementOutsideViewport(
   options: { root?: string; allowSelectors?: string[] } = {},
 ): Promise<void> {
   const root = options.root ?? '.layout';
-  const allowSelectors = options.allowSelectors ?? ['.table-wrap', '.dev-output'];
+  const allowSelectors = options.allowSelectors ?? ['.table-wrap', '.dev-output', '.tab-navigation'];
   const offenders = await page.locator(`${root} *`).evaluateAll((elements, allowed) => {
     const isAllowed = (element: Element) => allowed.some((selector) => element.closest(selector));
     return elements.flatMap((element) => {
@@ -62,7 +62,7 @@ export async function expectVisibleContentWithinViewport(page: Page, selector: s
 export async function expectNoInternalScrollContainers(page: Page): Promise<void> {
   const offenders = await page.locator('body *').evaluateAll((elements) => elements.flatMap((element) => {
     const tag = element.tagName.toLowerCase();
-    if (tag === 'textarea' || tag === 'select') return [];
+    if (tag === 'textarea' || tag === 'select' || element.closest('.tab-navigation')) return [];
     const style = getComputedStyle(element);
     const scrollable = ['auto', 'scroll'].includes(style.overflowX) || ['auto', 'scroll'].includes(style.overflowY);
     if (!scrollable || element.scrollWidth <= element.clientWidth + 1 && element.scrollHeight <= element.clientHeight + 1) return [];

@@ -21,9 +21,9 @@ for (const [viewportName, viewport] of Object.entries(VIEWPORTS)) {
 
     for (const screen of screens) {
       await test.step(`${screen.nav} is visible and responsive`, async () => {
-        await page.getByRole('button', { name: screen.nav, exact: true }).click();
+        await page.getByRole('tab', { name: screen.nav, exact: true }).click();
         await expectVisibleHeading(page, screen.heading);
-        await expect(page.getByRole('button', { name: screen.nav, exact: true })).toHaveClass(/active/);
+        await expect(page.getByRole('tab', { name: screen.nav, exact: true })).toHaveAttribute('aria-selected', 'true');
         await assertResponsivePage(page);
         await expectNoVisibleElementOutsideViewport(page);
       });

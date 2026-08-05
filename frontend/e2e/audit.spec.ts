@@ -22,7 +22,7 @@ const auditState = {
 test('audit filtering remains named, sanitized and contained', async ({ page }) => {
   const { requests } = await installGatewayMock(page, auditState);
   await page.goto('/');
-  await page.getByRole('button', { name: 'Audit', exact: true }).click();
+  await page.getByRole('tab', { name: 'Audit', exact: true }).click();
 
   await expect(page.getByRole('combobox', { name: 'Decision' })).toBeVisible();
   const visibleAudit = page.viewportSize()!.width <= 900
@@ -41,7 +41,7 @@ test('audit dense content remains reachable without page overflow across the ful
     await test.step(name, async () => {
       await page.setViewportSize(viewport);
       await page.goto('/');
-      await page.getByRole('button', { name: 'Audit', exact: true }).click();
+      await page.getByRole('tab', { name: 'Audit', exact: true }).click();
       await assertResponsivePage(page);
       await expectVisibleContentWithinViewport(page, '.card');
       if (viewport.width <= 900) {

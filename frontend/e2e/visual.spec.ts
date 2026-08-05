@@ -16,7 +16,7 @@ for (const theme of ['dark', 'light']) {
         await page.setViewportSize({ width: viewport.width, height: viewport.height });
         await installGatewayMock(page, { ...POPULATED_STATE, '/api/ui/context': { locale: 'en', theme } });
         await page.goto('/');
-        await page.getByRole('button', { name: screen.nav, exact: true }).click();
+        await page.getByRole('tab', { name: screen.nav, exact: true }).click();
         await expect(page.getByRole('heading', { name: screen.heading })).toBeVisible();
         await page.addStyleTag({ content: '* { animation: none !important; transition: none !important; caret-color: transparent !important; font-family: Arial, sans-serif !important; }' });
         await expect(page).toHaveScreenshot(`${screen.name}-${theme}-${viewport.name}.png`, {
@@ -39,7 +39,7 @@ for (const theme of ['dark', 'light']) {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });
       await installGatewayMock(page, { ...MULTI_OPERATOR_SERVICES_STATE, '/api/ui/context': { locale: 'en', theme } });
       await page.goto('/');
-      await page.getByRole('button', { name: 'Clients', exact: true }).click();
+      await page.getByRole('tab', { name: 'Clients', exact: true }).click();
       await expect(page.getByRole('heading', { name: /clients & tokens/i })).toBeVisible();
       await page.getByRole('combobox', { name: 'Profile' }).selectOption('operator');
       await page.getByRole('tab', { name: 'Operator Services' }).click();

@@ -11,7 +11,7 @@ test.describe('accessibility and keyboard contract', () => {
 
     for (const screen of screens) {
       await test.step(`${screen} accessibility`, async () => {
-        await page.getByRole('button', { name: screen, exact: true }).click();
+        await page.getByRole('tab', { name: screen, exact: true }).click();
         const results = await new AxeBuilder({ page }).analyze();
         expect(results.violations, JSON.stringify(results.violations, null, 2)).toEqual([]);
       });
@@ -22,14 +22,14 @@ test.describe('accessibility and keyboard contract', () => {
     await installGatewayMock(page);
     await page.goto('/');
 
-    const navigation = page.getByRole('navigation', { name: 'Gateway navigation' });
+    const navigation = page.getByRole('tablist', { name: 'Gateway navigation' });
     await expect(navigation).toBeVisible();
-    await page.keyboard.press('Tab');
-    const focusedControl = page.locator('button:focus, input:focus, select:focus, textarea:focus').first();
-    await expect(focusedControl).toBeVisible();
-    await expect(focusedControl).toHaveCSS('outline-style', 'solid');
+    const firstNavigationTab = navigation.getByRole('tab').first();
+    await firstNavigationTab.focus();
+    await expect(firstNavigationTab).toBeVisible();
+    await expect(firstNavigationTab).toHaveCSS('outline-style', 'solid');
 
-    await page.getByRole('button', { name: 'Clients', exact: true }).click();
+    await page.getByRole('tab', { name: 'Clients', exact: true }).click();
     const operatorTab = page.getByRole('tab', { name: 'Operator Services' });
     await operatorTab.focus();
     await expect(operatorTab).toHaveAttribute('aria-selected', 'false');
@@ -41,7 +41,7 @@ test.describe('accessibility and keyboard contract', () => {
   test('form controls have accessible names and disabled state is exposed', async ({ page }) => {
     await installGatewayMock(page);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Clients', exact: true }).click();
+    await page.getByRole('tab', { name: 'Clients', exact: true }).click();
 
     await expect(page.getByRole('textbox', { name: 'Client ID' })).toBeVisible();
     await expect(page.getByRole('textbox', { name: 'Display name' })).toBeVisible();

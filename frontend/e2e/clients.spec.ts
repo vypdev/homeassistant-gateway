@@ -5,7 +5,7 @@ import { VIEWPORTS } from './viewports';
 
 async function openClients(page: import('@playwright/test').Page) {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Clients', exact: true }).click();
+  await page.getByRole('tab', { name: 'Clients', exact: true }).click();
   await expect(page.getByRole('heading', { name: /clients & tokens/i })).toBeVisible();
 }
 

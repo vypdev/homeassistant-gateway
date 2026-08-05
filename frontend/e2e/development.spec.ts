@@ -34,7 +34,7 @@ test.describe('development console flows', () => {
     await installGatewayMock(page, developmentState);
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto('/');
-    await page.getByRole('button', { name: 'Dev Console', exact: true }).click();
+    await page.getByRole('tab', { name: 'Dev Console', exact: true }).click();
 
     await expect(page.getByRole('button', { name: 'Run all' })).toBeEnabled();
     await expect(page.getByRole('button', { name: 'Run all' }).locator('.button-leading-icon')).toHaveAttribute('aria-hidden', 'true');
@@ -51,7 +51,7 @@ test.describe('development console flows', () => {
   test('running an operation displays completed evidence and traceability', async ({ page }) => {
     await installGatewayMock(page, developmentState);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Dev Console', exact: true }).click();
+    await page.getByRole('tab', { name: 'Dev Console', exact: true }).click();
     await page.getByRole('button', { name: 'Run', exact: true }).click();
 
     await expect(page.getByText('Gateway diagnostics', { exact: true }).last()).toBeVisible();
