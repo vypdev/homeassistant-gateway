@@ -18,6 +18,7 @@ export interface GatewayPort {
   loadBootstrap(signal?: AbortSignal): Promise<GatewayBootstrap>;
   createClient(input: CreateClientInput, signal?: AbortSignal): Promise<Client & { token: string }>;
   revokeClient(clientId: string, signal?: AbortSignal): Promise<void>;
+  deleteClient(clientId: string, signal?: AbortSignal): Promise<void>;
   rotateClient(clientId: string, signal?: AbortSignal): Promise<Client & { token: string }>;
   loadDiscovery(token: string): Promise<Discovery>;
   loadAudit(decision: string): Promise<AuditEvent[]>;

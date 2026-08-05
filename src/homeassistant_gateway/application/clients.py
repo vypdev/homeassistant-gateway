@@ -16,6 +16,8 @@ class ClientRepository(Protocol):
 
     def save(self, client: Client) -> None: ...
 
+    def delete(self, client_id: str) -> None: ...
+
 
 class TokenIssuer(Protocol):
     def issue(self) -> tuple[str, str]:
@@ -118,6 +120,21 @@ class RotateClient:
         client.token_digest = digest
         self._repository.save(client)
         return IssuedClient(client=client, token=token)
+
+
+class DeleteClient:
+    """Permanently remove a client after its bearer token was revoked."""
+
+    def __init__(self, repository: ClientRepository) -> None:
+        self._repository = repository
+
+    def execute(self, client_id: str) -> None:
+        client = self._repository.get(client_id)
+        if client is None:
+            raise ValueError("client_not_found")
+        if client.status is not ClientStatus.REVOKED:
+            raise ValueError("client_must_be_revoked")
+        self._repository.delete(client_id)
 
 
 class ListClients:

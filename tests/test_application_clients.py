@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 import pytest
 
 from homeassistant_gateway.application.clients import (
+    DeleteClient,
     IssueClient,
     ListClients,
     RevokeClient,
@@ -35,6 +36,9 @@ class InMemoryClientRepository:
 
     def save(self, client: Client) -> None:
         self.items[client.client_id] = client
+
+    def delete(self, client_id: str) -> None:
+        self.items.pop(client_id, None)
 
 
 def test_issue_client_returns_token_once_and_persists_only_digest() -> None:
@@ -102,6 +106,27 @@ def test_revoke_client_is_idempotent_and_listing_hides_token_digest() -> None:
     listed = ListClients(repository).execute()
     assert listed[0].status is ClientStatus.REVOKED
     assert not hasattr(listed[0], "token")
+
+
+def test_delete_client_removes_revoked_client_only() -> None:
+    repository = InMemoryClientRepository()
+    issue = IssueClient(repository, FakeTokenIssuer(), lambda: datetime.now(UTC), False)
+    issue.execute("client", "Client", Profile.OBSERVER, frozenset({"ha.read.states"}))
+    revoke = RevokeClient(repository, lambda: datetime.now(UTC))
+    revoke.execute("client")
+
+    DeleteClient(repository).execute("client")
+
+    assert repository.get("client") is None
+
+
+def test_delete_client_rejects_active_client_until_token_is_revoked() -> None:
+    repository = InMemoryClientRepository()
+    issue = IssueClient(repository, FakeTokenIssuer(), lambda: datetime.now(UTC), False)
+    issue.execute("client", "Client", Profile.OBSERVER, frozenset({"ha.read.states"}))
+
+    with pytest.raises(ValueError, match="client_must_be_revoked"):
+        DeleteClient(repository).execute("client")
 
 
 def test_operator_grants_are_explicit_and_can_be_updated() -> None:

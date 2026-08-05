@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.29
+
+- Keep revoked client tokens permanently unauthorized through the explicit revoke lifecycle.
+- Add permanent client deletion after revocation, with a destructive confirmation and `DELETE /api/clients/{client_id}`.
+- Add backend, SQLite, frontend, i18n, and Playwright coverage for revoke-versus-delete behavior.
+
 ## 0.5.28
 
 - Update stale bootstrap regression expectations to assert the localized `Ready` status instead of the internal `ready` code.

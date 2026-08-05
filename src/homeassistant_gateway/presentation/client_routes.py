@@ -9,6 +9,7 @@ from fastapi.responses import Response
 from homeassistant_gateway.application.authentication import AuthenticateClient
 from homeassistant_gateway.application.authorization import AuthorizeRequest
 from homeassistant_gateway.application.clients import (
+    DeleteClient,
     IssueClient,
     ListClients,
     RevokeClient,
@@ -35,6 +36,7 @@ class ClientRouteDependencies:
     issue_client: IssueClient
     list_clients: ListClients
     revoke_client: RevokeClient
+    delete_client: DeleteClient
     rotate_client: RotateClient
     authenticate_client: AuthenticateClient
     authorize_request: AuthorizeRequest
@@ -130,6 +132,19 @@ def register_client_routes(app: FastAPI, dependencies: ClientRouteDependencies) 
     @app.post("/api/clients/{client_id}/revoke", status_code=status.HTTP_204_NO_CONTENT)
     def revoke_client_resource(client_id: str) -> Response:
         dependencies.revoke_client.execute(client_id)
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    @app.delete("/api/clients/{client_id}", status_code=status.HTTP_204_NO_CONTENT)
+    def delete_client_resource(client_id: str) -> Response:
+        try:
+            dependencies.delete_client.execute(client_id)
+        except ValueError as error:
+            reason = str(error)
+            if reason == "client_not_found":
+                raise HTTPException(status_code=404, detail=reason) from error
+            if reason == "client_must_be_revoked":
+                raise HTTPException(status_code=409, detail=reason) from error
+            raise
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
     @app.post("/api/clients/{client_id}/rotate", response_model=IssuedClientResponse, status_code=status.HTTP_201_CREATED)

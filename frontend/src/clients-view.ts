@@ -18,6 +18,7 @@ export type ClientsViewContext = {
   refresh: () => void;
   createClient: (event: Event) => void;
   revoke: (clientId: string) => void;
+  deleteClient: (clientId: string) => void;
   rotate: (clientId: string) => void;
   capabilitySelector: () => TemplateResult;
   operatorEnabled: boolean;
@@ -52,7 +53,8 @@ export function clientsView(ctx: ClientsViewContext): TemplateResult {
               <td class=${client.status === 'active' ? 'ok' : 'bad'}>${client.status}</td>
               <td>${client.status === 'active' ? html`
                 <button class="danger" @click=${() => ctx.revoke(client.client_id)} ?disabled=${ctx.busy}>${ctx.t('revoke')}</button>
-                <button class="secondary" @click=${() => ctx.rotate(client.client_id)} ?disabled=${ctx.busy}>${ctx.t('rotate')}</button>` : ''}</td>
+                <button class="secondary" @click=${() => ctx.rotate(client.client_id)} ?disabled=${ctx.busy}>${ctx.t('rotate')}</button>` : html`
+                <button class="danger" @click=${() => ctx.deleteClient(client.client_id)} ?disabled=${ctx.busy}>${ctx.t('deleteClient')}</button>`}</td>
             </tr>`)}
           </tbody></table></div>
           <div class="responsive-records" data-testid="clients-responsive-records">
@@ -62,7 +64,7 @@ export function clientsView(ctx: ClientsViewContext): TemplateResult {
               <div class="responsive-field"><span>${ctx.t('profile')}</span><span class="tag">${client.profile}</span></div>
               <div class="responsive-field responsive-field-stack"><span>${ctx.t('capabilities')}</span><div class="responsive-values">${client.capabilities.map((capability) => html`<span class="tag">${capability}</span>`)}</div></div>
               ${client.profile === 'operator' ? html`<div class="responsive-field responsive-field-stack"><span>${ctx.t('operatorServiceGrants')}</span><code class="responsive-wrap">${client.operator_services.filter((service) => globallyEnabled.has(service)).join(', ') || ctx.t('operatorServicesNoneAvailable')}</code></div>` : ''}
-              ${client.status === 'active' ? html`<div class="responsive-actions"><button class="danger" @click=${() => ctx.revoke(client.client_id)} ?disabled=${ctx.busy}>${ctx.t('revoke')}</button><button class="secondary" @click=${() => ctx.rotate(client.client_id)} ?disabled=${ctx.busy}>${ctx.t('rotate')}</button></div>` : ''}
+              ${client.status === 'active' ? html`<div class="responsive-actions"><button class="danger" @click=${() => ctx.revoke(client.client_id)} ?disabled=${ctx.busy}>${ctx.t('revoke')}</button><button class="secondary" @click=${() => ctx.rotate(client.client_id)} ?disabled=${ctx.busy}>${ctx.t('rotate')}</button></div>` : html`<div class="responsive-actions"><button class="danger" @click=${() => ctx.deleteClient(client.client_id)} ?disabled=${ctx.busy}>${ctx.t('deleteClient')}</button></div>`}
             </article>`)}
           </div>` : html`<div class="empty">${ctx.t('noClientsIssued')}</div>`}
       </div>

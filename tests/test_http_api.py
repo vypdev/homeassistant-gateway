@@ -9,6 +9,7 @@ from homeassistant_gateway.application.audit import AuditEvent
 from homeassistant_gateway.application.authentication import AuthenticateClient
 from homeassistant_gateway.application.authorization import AuthorizeRequest
 from homeassistant_gateway.application.clients import (
+    DeleteClient,
     IssueClient,
     ListClients,
     RevokeClient,
@@ -42,6 +43,9 @@ class InMemoryClientRepository:
 
     def save(self, client):
         self.items[client.client_id] = client
+
+    def delete(self, client_id):
+        self.items.pop(client_id, None)
 
 
 class AuditRecorder:
@@ -104,6 +108,7 @@ def make_app(audit_sink=None, home_assistant=None, development_console_enabled=T
         issue_client=IssueClient(repository, tokens, clock, operator_enabled=operator_enabled),
         list_clients=ListClients(repository),
         revoke_client=RevokeClient(repository, clock),
+        delete_client=DeleteClient(repository),
         rotate_client=RotateClient(repository, tokens),
         authenticate_client=AuthenticateClient(repository, tokens),
         authorize_request=AuthorizeRequest(repository, operator_enabled=operator_enabled),
@@ -499,7 +504,7 @@ def test_client_creation_returns_plaintext_token_once_without_digest() -> None:
     assert "token_digest" not in listed.json()[0]
 
 
-def test_duplicate_client_is_conflict_and_revoke_is_idempotent() -> None:
+def test_duplicate_client_is_conflict_revoke_is_idempotent_and_delete_is_explicit() -> None:
     app = make_app()
     payload = {
         "client_id": "observer",
@@ -510,9 +515,12 @@ def test_duplicate_client_is_conflict_and_revoke_is_idempotent() -> None:
     assert request(app, "POST", "/api/clients", headers=ingress_headers(), json=payload).status_code == 201
     assert request(app, "POST", "/api/clients", headers=ingress_headers(), json=payload).status_code == 409
 
+    assert request(app, "DELETE", "/api/clients/observer", headers=ingress_headers()).status_code == 409
     assert request(app, "POST", "/api/clients/observer/revoke", headers=ingress_headers()).status_code == 204
     assert request(app, "POST", "/api/clients/observer/revoke", headers=ingress_headers()).status_code == 204
-    assert request(app, "GET", "/api/clients", headers=ingress_headers()).json()[0]["status"] == "revoked"
+    assert request(app, "DELETE", "/api/clients/observer", headers=ingress_headers()).status_code == 204
+    assert request(app, "GET", "/api/clients", headers=ingress_headers()).json() == []
+    assert request(app, "DELETE", "/api/clients/observer", headers=ingress_headers()).status_code == 404
 
 
 class InMemoryOperatorPolicy:

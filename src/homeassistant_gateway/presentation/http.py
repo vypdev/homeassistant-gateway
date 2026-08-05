@@ -16,6 +16,7 @@ from homeassistant_gateway.application.audit import (
 from homeassistant_gateway.application.authentication import AuthenticateClient
 from homeassistant_gateway.application.authorization import AuthorizeRequest
 from homeassistant_gateway.application.clients import (
+    DeleteClient,
     IssueClient,
     ListClients,
     RevokeClient,
@@ -55,6 +56,7 @@ def create_app(
     issue_client: IssueClient,
     list_clients: ListClients,
     revoke_client: RevokeClient,
+    delete_client: DeleteClient,
     rotate_client: RotateClient,
     authenticate_client: AuthenticateClient,
     authorize_request: AuthorizeRequest,
@@ -132,6 +134,7 @@ def create_app(
             issue_client=issue_client,
             list_clients=list_clients,
             revoke_client=revoke_client,
+            delete_client=delete_client,
             rotate_client=rotate_client,
             authenticate_client=authenticate_client,
             authorize_request=authorize_request,

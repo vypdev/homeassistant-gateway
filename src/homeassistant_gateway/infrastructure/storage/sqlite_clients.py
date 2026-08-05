@@ -87,6 +87,10 @@ class SQLiteClientRepository:
                 ),
             )
 
+    def delete(self, client_id: str) -> None:
+        with self._connect() as connection:
+            connection.execute("DELETE FROM clients WHERE client_id = ?", (client_id,))
+
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self._database)
         connection.row_factory = sqlite3.Row

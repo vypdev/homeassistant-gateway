@@ -30,6 +30,20 @@ def test_sqlite_repository_persists_client_across_instances(tmp_path) -> None:
     assert reopened.list() == [client]
 
 
+def test_sqlite_repository_deletes_client_permanently(tmp_path) -> None:
+    database = tmp_path / "gateway.sqlite3"
+    repository = SQLiteClientRepository(database)
+    client = make_client()
+    client.status = ClientStatus.REVOKED
+    repository.save(client)
+
+    repository.delete(client.client_id)
+
+    reopened = SQLiteClientRepository(database)
+    assert reopened.get(client.client_id) is None
+    assert reopened.list() == []
+
+
 def test_sqlite_repository_updates_revocation_without_plaintext_token(tmp_path) -> None:
     database = tmp_path / "gateway.sqlite3"
     repository = SQLiteClientRepository(database)

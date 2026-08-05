@@ -101,6 +101,8 @@ const fragment0: Record<string, Record<string, string>> = {
     tokensNotListed: "Tokens werden nicht aufgelistet",
     topologyDescription: "Verbindungen und Abhängigkeiten der Systemkomponenten",
     upstreamHealth: "Upstream-Zustand",
+    deleteConfirm: "Client {client} endgültig löschen? Dies kann nicht rückgängig gemacht werden.",
+    errorDeleteClient: "Client konnte nicht gelöscht werden",
     viewAudit: "Audit anzeigen",
   },
 
@@ -205,6 +207,8 @@ const fragment0: Record<string, Record<string, string>> = {
     tokensNotListed: "Os tokens não são listados",
     topologyDescription: "Conexões e dependências entre os componentes do sistema",
     upstreamHealth: "Estado do upstream",
+    deleteConfirm: "Eliminar definitivamente o cliente {client}? Esta ação não pode ser desfeita.",
+    errorDeleteClient: "Não foi possível eliminar o cliente",
     viewAudit: "Ver auditoria",
   },
 
@@ -309,6 +313,8 @@ const fragment0: Record<string, Record<string, string>> = {
     tokensNotListed: "I token non vengono elencati",
     topologyDescription: "Connessioni e dipendenze tra i componenti del sistema",
     upstreamHealth: "Stato dell'upstream",
+    deleteConfirm: "Eliminare definitivamente il client {client}? L’azione non può essere annullata.",
+    errorDeleteClient: "Impossibile eliminare il client",
     viewAudit: "Visualizza audit",
   },
 
@@ -413,6 +419,8 @@ const fragment0: Record<string, Record<string, string>> = {
     tokensNotListed: "Les jetons ne sont pas répertoriés",
     topologyDescription: "Connexions et dépendances entre les composants du système",
     upstreamHealth: "État de l’upstream",
+    deleteConfirm: "Supprimer définitivement le client révoqué {client} ? Cette action est irréversible.",
+    errorDeleteClient: "Impossible de supprimer le client",
     viewAudit: "Afficher l’audit",
   },
 };
@@ -519,6 +527,8 @@ const fragment1: Record<string, Record<string, string>> = {
     tokensNotListed: 'Los tokens nunca aparecen en esta lista.',
     topologyDescription: 'Estado actual de las dependencias según las comprobaciones de salud.',
     upstreamHealth: 'Salud del servicio upstream',
+    deleteConfirm: '¿Eliminar definitivamente el cliente revocado {client}? Esta acción no se puede deshacer.',
+    errorDeleteClient: 'No se ha podido eliminar el cliente',
     viewAudit: 'Ver auditoría',
   },
 
@@ -623,6 +633,8 @@ const fragment1: Record<string, Record<string, string>> = {
     tokensNotListed: '令牌不会出现在此列表中。',
     topologyDescription: '根据当前健康检查得出的实时依赖状态。',
     upstreamHealth: '上游健康状态',
+    deleteConfirm: '永久删除已撤销的客户端 {client}？此操作无法撤销。',
+    errorDeleteClient: '无法删除客户端',
     viewAudit: '查看审计',
   },
 
@@ -727,6 +739,8 @@ const fragment1: Record<string, Record<string, string>> = {
     tokensNotListed: 'トークンはこの一覧に表示されません。',
     topologyDescription: '現在のヘルスチェックに基づくライブ依存関係状態。',
     upstreamHealth: '上流サービスのヘルス',
+    deleteConfirm: '失効したクライアント {client} を完全に削除しますか？元に戻せません。',
+    errorDeleteClient: 'クライアントを削除できません',
     viewAudit: '監査を表示',
   },
 
@@ -831,6 +845,8 @@ const fragment1: Record<string, Record<string, string>> = {
     tokensNotListed: 'Токены никогда не отображаются в этом списке.',
     topologyDescription: 'Текущее состояние зависимостей по результатам проверок работоспособности.',
     upstreamHealth: 'Состояние вышестоящего сервиса',
+    deleteConfirm: 'Удалить клиента {client} навсегда? Отменить это нельзя.',
+    errorDeleteClient: 'Не удалось удалить клиента',
     viewAudit: 'Просмотреть аудит',
   },
 };
@@ -936,6 +952,8 @@ const fragment2: Record<string, string> = {
   tokensNotListed: 'टोकन इस सूची में कभी दिखाई नहीं देते।',
   topologyDescription: 'वर्तमान health checks से dependency posture।',
   upstreamHealth: 'Upstream health',
+  deleteConfirm: 'Permanently delete revoked client {client}? This cannot be undone.',
+  errorDeleteClient: 'Unable to delete client',
   viewAudit: 'ऑडिट देखें',
 };
 
@@ -1040,6 +1058,8 @@ const fragment3: Record<string, string> = {
   tokensNotListed: 'لا تظهر الرموز في هذه القائمة مطلقاً.',
   topologyDescription: 'حالة التبعيات المباشرة استناداً إلى فحوصات الصحة الحالية.',
   upstreamHealth: 'صحة upstream',
+  deleteConfirm: 'حذف العميل الملغى {client} نهائياً؟ لا يمكن التراجع عن ذلك.',
+  errorDeleteClient: 'تعذر حذف العميل',
   viewAudit: 'عرض التدقيق',
 };
 

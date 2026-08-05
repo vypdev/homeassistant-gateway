@@ -37,6 +37,7 @@ export const createGatewayApi = (request: Request = api): GatewayApi => ({
     return result;
   },
   revokeClient: (clientId, signal) => request<void>(`/clients/${encodeURIComponent(clientId)}/revoke`, { method: 'POST', signal }),
+  deleteClient: (clientId, signal) => request<void>(`/clients/${encodeURIComponent(clientId)}`, { method: 'DELETE', signal }),
   async rotateClient(clientId, signal) {
     const result = await request<Client & { token: string }>(`/clients/${encodeURIComponent(clientId)}/rotate`, { method: 'POST', signal });
     assertIssuedClient(result);

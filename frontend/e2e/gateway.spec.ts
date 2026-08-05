@@ -120,6 +120,38 @@ test('keeps the Clients view contained and links to the global service policy', 
   }));
   expect(offenders).toEqual([]);
 });
+test('separates token revocation from permanent client deletion', async ({ page }) => {
+  await page.unroute('**/*');
+  await mockGatewayApi(page);
+  await page.route('**/api/clients', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([
+        { client_id: 'active-client', display_name: 'Active client', profile: 'observer', capabilities: ['ha.read.states'], operator_services: [], created_at: '2026-08-05T00:00:00Z', status: 'active', revoked_at: null },
+        { client_id: 'revoked-client', display_name: 'Revoked client', profile: 'observer', capabilities: ['ha.read.states'], operator_services: [], created_at: '2026-08-05T00:00:00Z', status: 'revoked', revoked_at: '2026-08-05T00:01:00Z' },
+      ]) });
+      return;
+    }
+    await route.fulfill({ status: 204, body: '' });
+  });
+  let deleteMethod = '';
+  await page.route('**/api/clients/revoked-client', async (route) => {
+    deleteMethod = route.request().method();
+    await route.fulfill({ status: 204, body: '' });
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Clients', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Revoke', exact: true })).toBeVisible();
+  const deleteButton = page.getByRole('button', { name: 'Delete', exact: true });
+  await expect(deleteButton).toBeVisible();
+  page.once('dialog', (dialog) => dialog.dismiss());
+  await deleteButton.click();
+  expect(deleteMethod).toBe('');
+  page.once('dialog', (dialog) => dialog.accept());
+  await deleteButton.click();
+  await expect.poll(() => deleteMethod).toBe('DELETE');
+});
+
+
 test('supports a narrow viewport without horizontal overflow', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');

@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from homeassistant_gateway.application.authentication import AuthenticateClient
 from homeassistant_gateway.application.authorization import AuthorizeRequest
 from homeassistant_gateway.application.clients import (
+    DeleteClient,
     IssueClient,
     ListClients,
     RevokeClient,
@@ -143,6 +144,7 @@ def build_app(settings: AppSettings) -> FastAPI:
         ),
         list_clients=ListClients(repository),
         revoke_client=RevokeClient(repository, clock),
+        delete_client=DeleteClient(repository),
         rotate_client=RotateClient(repository, token_issuer),
         authenticate_client=authenticate_client,
         authorize_request=authorize_request,
