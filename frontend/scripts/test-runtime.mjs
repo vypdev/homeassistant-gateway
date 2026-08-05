@@ -10,12 +10,13 @@ const tempDir = await mkdtemp(join(tmpdir(), 'homeassistant-gateway-ui-'));
 
 try {
   await writeFile(join(tempDir, 'api.mjs'), 'export const api = async () => { throw new Error("unexpected default api call"); };\n');
-  for (const name of ['locale', 'view-helpers', 'capability-policy', 'operator-policy', 'gateway-errors', 'operator-policy-service', 'gateway-contracts', 'gateway-api', 'gateway-controller']) {
+  for (const name of ['api', 'locale', 'view-helpers', 'capability-policy', 'operator-policy', 'gateway-errors', 'operator-policy-service', 'gateway-contracts', 'gateway-api', 'gateway-controller']) {
     const source = await readFile(new URL(`${name}.ts`, sourceDir), 'utf8');
     let output = ts.transpileModule(source, {
       compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
       fileName: `${name}.ts`,
     }).outputText;
+    if (name === 'api') output = output.replace("from './gateway-errors'", "from './gateway-errors.mjs'");
     if (name === 'gateway-api') {
       output = output.replace("from './api'", "from './api.mjs'");
       output = output.replace("from './gateway-contracts'", "from './gateway-contracts.mjs'");
@@ -71,6 +72,17 @@ try {
   assert.equal(errors.gatewayErrorFromResponse(401, {}).code, 'unauthorized');
   assert.equal(errors.gatewayErrorFromResponse(500, {}).code, 'server_error');
   assert.equal(errors.gatewayErrorFromUnknown(new Error('offline')).code, 'network_error');
+  assert.equal(errors.isAbortError({ name: 'AbortError' }), true);
+  assert.equal(errors.isAbortError(new Error('offline')), false);
+
+  const apiModule = await import(pathToFileURL(join(tempDir, 'api.mjs')));
+  globalThis.document = { baseURI: 'http://gateway.test/' };
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response('{invalid', { status: 200 });
+  await assert.rejects(() => apiModule.api('/malformed'), (error) => error.code === 'invalid_response');
+  globalThis.fetch = async () => { const error = new Error('aborted'); error.name = 'AbortError'; throw error; };
+  await assert.rejects(() => apiModule.api('/aborted'), (error) => error.name === 'AbortError');
+  globalThis.fetch = originalFetch;
 
   const policyServiceModule = await import(pathToFileURL(join(tempDir, 'operator-policy-service.mjs')));
   const policyCalls = [];
@@ -100,7 +112,7 @@ try {
     if (path === '/ui/context') return { locale: 'en', theme: 'auto' };
     if (path === '/health/details') return { status: 'healthy', checks: [] };
     if (path === '/operator/status') return { operator_enabled: true, execution: 'enabled', registered_mutation_tools: [], capabilities: [], reason: 'ready' };
-    if (path === '/operator/service-policy') return init?.method === 'PUT' ? undefined : { services: [], selected: [] };
+    if (path === '/operator/service-policy') return init?.method === 'PUT' ? { selected: JSON.parse(init.body).selected } : { services: [], selected: [] };
     if (path === '/mcp/discovery') return { tools: [] };
     if (path === '/policy/evaluate') return { decision: 'allowed', reason: 'ok' };
     return undefined;
@@ -119,6 +131,7 @@ try {
   await gatewayApi.loadDiscovery('secret-token');
   await gatewayApi.loadAudit('deny reason');
   await gatewayApi.saveOperatorPolicy(['light.turn_on']);
+  await assert.rejects(() => gatewayApiModule.createGatewayApi(async (path, init) => path === '/operator/service-policy' && init?.method === 'PUT' ? {} : fakeRequest(path, init)).saveOperatorPolicy(['light.turn_on']), /Invalid operator policy save response/);
   await gatewayApi.evaluatePolicy({ client_id: 'id', capability: 'ha.read.states', mutation: false });
   assert.equal(calls.at(-4).init.headers.Authorization, 'Bearer secret-token');
   assert.match(calls.at(-3).path, /decision=deny%20reason/);
@@ -130,6 +143,9 @@ try {
   assert.throws(() => contractsModule.assertGatewayBootstrap({ ...bootstrap, ready: { status: 'ready' } }), /Invalid gateway bootstrap response/);
   assert.throws(() => contractsModule.assertGatewayBootstrap({ ...bootstrap, clients: [{ client_id: 'broken' }] }), /Invalid gateway bootstrap response/);
   assert.throws(() => contractsModule.assertOperatorPolicy({ services: [{ id: 'broken' }], selected: [] }), /Invalid operator policy response/);
+  assert.doesNotThrow(() => contractsModule.assertOperatorPolicySaveResponse({ selected: ['light.turn_on'] }));
+  assert.throws(() => contractsModule.assertOperatorPolicySaveResponse({ selected: [42] }), /Invalid operator policy save response/);
+  assert.throws(() => contractsModule.assertOperatorPolicySaveResponse({}), /Invalid operator policy save response/);
   assert.throws(() => contractsModule.assertIssuedClient({ client_id: 'id' }), /Invalid issued client response/);
   assert.doesNotThrow(() => contractsModule.assertPolicyEvaluation({ decision: 'allowed', reason: 'ok' }));
   assert.doesNotThrow(() => contractsModule.assertPolicyEvaluation({ decision: 'denied', reason: 'blocked' }));
@@ -147,7 +163,7 @@ try {
     rotateClient: async () => { controllerCalls.push('rotateClient'); return { token: 'rotated' }; },
     loadDiscovery: async () => { controllerCalls.push('loadDiscovery'); return { tools: [] }; },
     loadAudit: async () => { controllerCalls.push('loadAudit'); return []; },
-    saveOperatorPolicy: async () => { controllerCalls.push('saveOperatorPolicy'); },
+    saveOperatorPolicy: async () => { controllerCalls.push('saveOperatorPolicy'); return { selected: [] }; },
     evaluatePolicy: async () => { controllerCalls.push('evaluatePolicy'); return { decision: 'allowed', reason: 'ok' }; },
   };
   const controller = controllerModule.createGatewayController(fakeGatewayApi);
@@ -161,6 +177,14 @@ try {
   assert.deepEqual(controllerCalls, ['createClient', 'loadBootstrap', 'revokeClient', 'loadBootstrap', 'rotateClient', 'loadBootstrap', 'loadDiscovery', 'loadAudit', 'saveOperatorPolicy', 'evaluatePolicy']);
 
   let observedSignal;
+  const mutationSignalController = new AbortController();
+  const observedMutationSignals = [];
+  fakeGatewayApi.createClient = async (_input, signal) => { observedMutationSignals.push(signal); return { token: 'token' }; };
+  fakeGatewayApi.loadBootstrap = async (signal) => { observedMutationSignals.push(signal); return controllerBootstrap; };
+  await controller.createClient({ client_id: 'id', display_name: 'name', profile: 'observer', capabilities: [], operator_services: [] }, mutationSignalController.signal);
+  assert.deepEqual(observedMutationSignals, [mutationSignalController.signal, mutationSignalController.signal]);
+
+  observedSignal = undefined;
   fakeGatewayApi.loadBootstrap = async (signal) => new Promise((resolve, reject) => {
     observedSignal = signal;
     signal?.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true });

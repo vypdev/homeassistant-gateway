@@ -1,5 +1,5 @@
 import { api } from './api';
-import { assertGatewayBootstrap, assertIssuedClient, assertOperatorPolicy, assertPolicyEvaluation } from './gateway-contracts';
+import { assertGatewayBootstrap, assertIssuedClient, assertOperatorPolicy, assertOperatorPolicySaveResponse, assertPolicyEvaluation } from './gateway-contracts';
 import type { CreateClientInput, GatewayPort, PolicyEvaluationInput } from './gateway-port';
 import type { AuditEvent, Client, DevelopmentCatalog, DevelopmentReport, Discovery, GatewayBootstrap, HealthDetails, OperatorServicePolicy, OperatorStatus, Ready, UiContext } from './models';
 
@@ -27,17 +27,18 @@ export const createGatewayApi = (request: Request = api): GatewayApi => ({
     assertGatewayBootstrap(bootstrap);
     return bootstrap;
   },
-  async createClient(input) {
+  async createClient(input, signal) {
     const result = await request<Client & { token: string }>('/clients', {
       method: 'POST',
       body: JSON.stringify(input),
+      signal,
     });
     assertIssuedClient(result);
     return result;
   },
-  revokeClient: (clientId) => request<void>(`/clients/${encodeURIComponent(clientId)}/revoke`, { method: 'POST' }),
-  async rotateClient(clientId) {
-    const result = await request<Client & { token: string }>(`/clients/${encodeURIComponent(clientId)}/rotate`, { method: 'POST' });
+  revokeClient: (clientId, signal) => request<void>(`/clients/${encodeURIComponent(clientId)}/revoke`, { method: 'POST', signal }),
+  async rotateClient(clientId, signal) {
+    const result = await request<Client & { token: string }>(`/clients/${encodeURIComponent(clientId)}/rotate`, { method: 'POST', signal });
     assertIssuedClient(result);
     return result;
   },
@@ -48,7 +49,8 @@ export const createGatewayApi = (request: Request = api): GatewayApi => ({
       method: 'PUT',
       body: JSON.stringify({ selected }),
     });
-    return result as void;
+    assertOperatorPolicySaveResponse(result);
+    return result;
   },
   async evaluatePolicy(input) {
     const result = await request<{ decision: string; reason: string }>('/policy/evaluate', {

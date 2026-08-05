@@ -93,6 +93,8 @@ export class GatewayApp extends LitElement {
   private refreshVersion = 0;
   private policySaveVersion = 0;
   private refreshController: AbortController | null = null;
+  private mutationController: AbortController | null = null;
+  private mutationVersion = 0;
 
   static styles = APP_STYLES;
 
@@ -169,18 +171,40 @@ export class GatewayApp extends LitElement {
     this.refreshController = null;
   }
 
+  private beginMutation() {
+    this.mutationController?.abort();
+    const controller = new AbortController();
+    this.mutationController = controller;
+    const version = ++this.mutationVersion;
+    this.invalidateRefresh();
+    return { controller, version };
+  }
+
+  private isCurrentMutation(version: number, controller: AbortController) {
+    return version === this.mutationVersion && this.mutationController === controller && !controller.signal.aborted;
+  }
+
+  private finishMutation(version: number, controller: AbortController) {
+    if (version !== this.mutationVersion || this.mutationController !== controller) return;
+    this.mutationController = null;
+    this.busy = false;
+  }
+
   setView(view: View) { this.view = view; this.error = ''; }
 
   async createClient(event: Event) {
     event.preventDefault();
     const form = event.target as HTMLFormElement;
     const data = new FormData(form);
-    this.busy = true; this.error = ''; this.invalidateRefresh();
+    const mutation = this.beginMutation();
+    this.busy = true; this.error = '';
     try {
-      const result = await this.gatewayController.createClient({ client_id: String(data.get('client_id') ?? ''), display_name: String(data.get('display_name') ?? ''), profile: String(data.get('profile') ?? 'observer'), capabilities: [...this.selectedCapabilities], operator_services: data.getAll('operator_services').map(String) });
+      const result = await this.gatewayController.createClient({ client_id: String(data.get('client_id') ?? ''), display_name: String(data.get('display_name') ?? ''), profile: String(data.get('profile') ?? 'observer'), capabilities: [...this.selectedCapabilities], operator_services: data.getAll('operator_services').map(String) }, mutation.controller.signal);
+      if (!this.isCurrentMutation(mutation.version, mutation.controller)) return;
       this.issuedToken = result.client.token; form.reset(); this.selectedCapabilities = new Set(['ha.read.diagnostics']); this.clientProfile = 'observer'; this.permissionTab = 'capabilities'; this.applyBootstrap(result.bootstrap); this.bootState = 'ready';
-    } catch (error) { this.error = this.errorMessage(error, 'errorIssueClient'); }
-    finally { this.busy = false; }
+    } catch (error) {
+      if (this.isCurrentMutation(mutation.version, mutation.controller)) this.error = this.errorMessage(error, 'errorIssueClient');
+    } finally { this.finishMutation(mutation.version, mutation.controller); }
   }
 
   setClientProfile(profile: Profile) {
@@ -219,18 +243,27 @@ export class GatewayApp extends LitElement {
 
   async revoke(clientId: string) {
     if (!window.confirm(this.t('revokeConfirm').replace('{client}', clientId))) return;
-    this.busy = true; this.invalidateRefresh();
-    try { this.applyBootstrap(await this.gatewayController.revokeClient(clientId)); }
-    catch (error) { this.error = this.errorMessage(error, 'errorRevokeClient'); }
-    finally { this.busy = false; }
+    const mutation = this.beginMutation();
+    this.busy = true; this.error = '';
+    try {
+      const bootstrap = await this.gatewayController.revokeClient(clientId, mutation.controller.signal);
+      if (this.isCurrentMutation(mutation.version, mutation.controller)) this.applyBootstrap(bootstrap);
+    } catch (error) {
+      if (this.isCurrentMutation(mutation.version, mutation.controller)) this.error = this.errorMessage(error, 'errorRevokeClient');
+    } finally { this.finishMutation(mutation.version, mutation.controller); }
   }
 
   async rotate(clientId: string) {
     if (!window.confirm(this.t('rotateConfirm').replace('{client}', clientId))) return;
-    this.busy = true; this.error = ''; this.invalidateRefresh();
-    try { const result = await this.gatewayController.rotateClient(clientId); this.issuedToken = result.client.token; this.applyBootstrap(result.bootstrap); }
-    catch (error) { this.error = this.errorMessage(error, 'errorRotateClient'); }
-    finally { this.busy = false; }
+    const mutation = this.beginMutation();
+    this.busy = true; this.error = '';
+    try {
+      const result = await this.gatewayController.rotateClient(clientId, mutation.controller.signal);
+      if (!this.isCurrentMutation(mutation.version, mutation.controller)) return;
+      this.issuedToken = result.client.token; this.applyBootstrap(result.bootstrap);
+    } catch (error) {
+      if (this.isCurrentMutation(mutation.version, mutation.controller)) this.error = this.errorMessage(error, 'errorRotateClient');
+    } finally { this.finishMutation(mutation.version, mutation.controller); }
   }
 
   async loadDiscovery(event: Event) {

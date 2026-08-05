@@ -51,6 +51,10 @@ export function gatewayErrorFromResponse(status: number, body: unknown): Gateway
   return new GatewayError(code, `Request failed (${status})`, status);
 }
 
+export function isAbortError(error: unknown): boolean {
+  return error !== null && typeof error === 'object' && 'name' in error && (error as { name?: unknown }).name === 'AbortError';
+}
+
 export function gatewayErrorFromUnknown(error: unknown): GatewayError {
   if (error instanceof GatewayError) return error;
   return new GatewayError('network_error', 'Gateway request failed', undefined, error);

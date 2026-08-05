@@ -1,5 +1,6 @@
 export type Profile = 'observer' | 'operator';
 export type PolicyDecision = 'allowed' | 'denied' | 'approval_required';
+export type OperatorPolicySaveResponse = { selected: string[] };
 export type Client = {
   client_id: string;
   display_name: string;

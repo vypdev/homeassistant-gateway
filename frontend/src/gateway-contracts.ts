@@ -1,5 +1,5 @@
 import { GatewayError } from './gateway-errors';
-import type { AuditEvent, Client, GatewayBootstrap, HealthCheck, HealthDetails, OperatorService, OperatorServicePolicy, OperatorStatus, PolicyDecision, Ready } from './models';
+import type { AuditEvent, Client, GatewayBootstrap, HealthCheck, HealthDetails, OperatorPolicySaveResponse, OperatorService, OperatorServicePolicy, OperatorStatus, PolicyDecision, Ready } from './models';
 
 const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object';
 const hasStrings = (value: Record<string, unknown>, keys: string[]): boolean => keys.every((key) => typeof value[key] === 'string');
@@ -62,6 +62,10 @@ export function assertGatewayBootstrap(value: unknown): asserts value is Gateway
 
 export function assertOperatorPolicy(value: unknown): asserts value is OperatorServicePolicy {
   if (!isOperatorPolicy(value)) invalid('Invalid operator policy response');
+}
+
+export function assertOperatorPolicySaveResponse(value: unknown): asserts value is OperatorPolicySaveResponse {
+  if (!isRecord(value) || !isStringArray(value.selected)) invalid('Invalid operator policy save response');
 }
 
 export function assertIssuedClient(value: unknown): asserts value is Client & { token: string } {

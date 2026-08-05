@@ -32,6 +32,34 @@ test('stale bootstrap refresh is canceled before it can overwrite a successful r
   await expect(page.getByRole('alert')).toHaveCount(0);
 });
 
+test('older mutation is canceled when a newer mutation starts', async ({ page }) => {
+  await installGatewayMock(page);
+  let revokeAttempts = 0;
+  let abortedFirstRevoke = 0;
+  let releaseFirstRevoke: (() => void) | undefined;
+  page.on('requestfailed', (request) => {
+    if (request.url().endsWith('/clients/first/revoke')) abortedFirstRevoke += 1;
+  });
+  await page.route('**/clients/*/revoke', async (route) => {
+    revokeAttempts += 1;
+    if (revokeAttempts === 1) {
+      await new Promise<void>((resolve) => { releaseFirstRevoke = resolve; });
+      await route.fulfill({ status: 204, body: '' });
+      return;
+    }
+    await route.fulfill({ status: 204, body: '' });
+  });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: 'Secure gateway control plane.' })).toBeVisible();
+  await page.evaluate(() => { window.confirm = () => true; void (document.querySelector('gateway-app') as unknown as { revoke: (id: string) => Promise<void> }).revoke('first'); });
+  await expect.poll(() => revokeAttempts).toBe(1);
+  const secondMutation = page.evaluate(() => (document.querySelector('gateway-app') as unknown as { revoke: (id: string) => Promise<void> }).revoke('second'));
+  await expect.poll(() => revokeAttempts).toBe(2);
+  await expect.poll(() => abortedFirstRevoke).toBe(1);
+  releaseFirstRevoke?.();
+  await secondMutation;
+  await expect(page.getByRole('alert')).toHaveCount(0);
+});
 test('boot error exposes a retry action and recovers when readiness returns', async ({ page }) => {
   await installGatewayMock(page);
   let readinessAttempts = 0;

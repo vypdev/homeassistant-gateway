@@ -10,28 +10,27 @@ export type ClientMutationResult = {
 
 export interface GatewayController {
   refresh(signal?: AbortSignal): Promise<GatewayBootstrap>;
-  createClient(input: CreateClientInput): Promise<ClientMutationResult>;
-  revokeClient(clientId: string): Promise<GatewayBootstrap>;
-  rotateClient(clientId: string): Promise<ClientMutationResult>;
+  createClient(input: CreateClientInput, signal?: AbortSignal): Promise<ClientMutationResult>;
+  revokeClient(clientId: string, signal?: AbortSignal): Promise<GatewayBootstrap>;
+  rotateClient(clientId: string, signal?: AbortSignal): Promise<ClientMutationResult>;
   loadDiscovery(token: string): Promise<Discovery>;
   loadAudit(decision: string): Promise<AuditEvent[]>;
   saveOperatorPolicy(selected: string[]): Promise<void>;
   evaluatePolicy(input: PolicyEvaluationInput): Promise<{ decision: PolicyDecision; reason: string }>;
 }
 
-export const createGatewayController = (gatewayPort: GatewayPort, operatorPolicy: OperatorPolicyService = createOperatorPolicyService((selected) => gatewayPort.saveOperatorPolicy(selected))): GatewayController => ({
+export const createGatewayController = (gatewayPort: GatewayPort, operatorPolicy: OperatorPolicyService = createOperatorPolicyService(async (selected) => { await gatewayPort.saveOperatorPolicy(selected); })): GatewayController => ({
   refresh: (signal) => gatewayPort.loadBootstrap(signal),
-  async createClient(input) {
-    const client = await gatewayPort.createClient(input);
-    return { client, bootstrap: await gatewayPort.loadBootstrap() };
+  createClient(input, signal) {
+    return gatewayPort.createClient(input, signal).then(async (client) => ({ client, bootstrap: await gatewayPort.loadBootstrap(signal) }));
   },
-  async revokeClient(clientId) {
-    await gatewayPort.revokeClient(clientId);
-    return gatewayPort.loadBootstrap();
+  async revokeClient(clientId, signal) {
+    await gatewayPort.revokeClient(clientId, signal);
+    return gatewayPort.loadBootstrap(signal);
   },
-  async rotateClient(clientId) {
-    const client = await gatewayPort.rotateClient(clientId);
-    return { client, bootstrap: await gatewayPort.loadBootstrap() };
+  async rotateClient(clientId, signal) {
+    const client = await gatewayPort.rotateClient(clientId, signal);
+    return { client, bootstrap: await gatewayPort.loadBootstrap(signal) };
   },
   loadDiscovery: (token) => gatewayPort.loadDiscovery(token),
   loadAudit: (decision) => gatewayPort.loadAudit(decision),

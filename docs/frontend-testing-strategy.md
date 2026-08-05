@@ -48,7 +48,7 @@ Tests use deterministic API fixtures in `e2e/fixtures/gateway-api.ts`. Fixtures 
 
 ## Coverage boundary
 
-The frontend does not currently publish a line-coverage percentage. The runtime gate transpiles production TypeScript helpers into a temporary directory and removes that directory after execution; collecting V8 coverage there without a stable source-map/instrumentation pipeline would produce a misleading metric. Contract tests therefore remain the authoritative evidence for pure policies, controller orchestration, adapter requests and malformed responses, while Playwright remains the evidence for browser behavior. A future coverage gate must first preserve source maps, establish a baseline, exclude generated/browser-only code explicitly, and ratchet critical modules rather than imposing an arbitrary global threshold.
+The runtime gate now also exercises the real frontend HTTP wrapper for malformed successful JSON and abort propagation, validates the operator-policy save DTO, and covers serialized-save recovery after failure. The browser gate covers both stale bootstrap refreshes and overlapping client mutations; the latter asserts that the first mutation request is physically canceled before the newer mutation may apply its bootstrap. Contract tests therefore remain the authoritative evidence for pure policies, controller orchestration, adapter requests and malformed responses, while Playwright remains the evidence for browser behavior. A future coverage gate must first preserve source maps, establish a baseline, exclude generated/browser-only code explicitly, and ratchet critical modules rather than imposing an arbitrary global threshold.
 
 ## Failure evidence
 
