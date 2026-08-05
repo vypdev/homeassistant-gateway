@@ -1,0 +1,34 @@
+name: Home Assistant Gateway Edge
+version: "0.5.31-dev.1"
+slug: homeassistant_gateway_edge
+description: Development build of the Home Assistant Gateway from the develop branch
+url: https://github.com/vypdev/homeassistant-gateway
+arch:
+  - amd64
+  - aarch64
+  - armv7
+startup: application
+boot: manual
+init: false
+ingress: true
+ingress_port: 8099
+ports:
+  8099/tcp: 18100
+ports_description:
+  8099/tcp: MCP Streamable HTTP (observer-only, development)
+panel_icon: mdi:shield-home
+panel_title: Gateway Edge
+homeassistant_api: true
+hassio_api: true
+map:
+  - data:rw
+options:
+  log_level: debug
+  operator_enabled: false
+  development_console_enabled: true
+  mcp_allowed_hosts: "localhost,127.0.0.1,[::1],homeassistant,homeassistant.local"
+schema:
+  log_level: list(trace|debug|info|warning|error|fatal)
+  operator_enabled: bool
+  development_console_enabled: bool
+  mcp_allowed_hosts: str

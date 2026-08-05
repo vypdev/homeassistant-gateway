@@ -23,6 +23,20 @@ jobs:
         run: python -m pip install --quiet --upgrade 'setuptools>=83.0.0' pip-audit && python -m pip_audit --skip-editable
       - name: Run live smoke harness (no live target in CI)
         run: python scripts/live_smoke.py
+  app-packaging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Install packaging validation dependency
+        run: python -m pip install --quiet 'PyYAML>=6.0,<7.0'
+      - name: Validate stable and Edge app contracts
+        run: python scripts/check_app_channels.py
+      - name: Build Edge app image from develop
+        run: docker build --file addon-edge/Dockerfile --tag homeassistant-gateway-edge:ci addon-edge
+
   frontend:
     runs-on: ubuntu-latest
     defaults:

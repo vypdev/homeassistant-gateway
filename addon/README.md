@@ -13,6 +13,8 @@ The App now provides:
 
 The Dockerfile pins the source with `GATEWAY_REF` at build time. Release builds must use an immutable Git ref rather than the mutable default `main`.
 
-The App does not publish a direct host port. `homeassistant_api` and `hassio_api` are enabled for the future structured Home Assistant adapters; Docker socket, SSH, raw shell, and unrestricted `/config` access remain intentionally absent.
+The App publishes MCP on host port `18099` and exposes the management UI/API through Supervisor Ingress. `homeassistant_api` and `hassio_api` are enabled for the future structured Home Assistant adapters; Docker socket, SSH, raw shell, and unrestricted `/config` access remain intentionally absent.
+
+A development variant is available in `addon-edge/`. It builds from the `develop` branch during Supervisor installation, uses port `18100`, and keeps its data and credentials isolated from Stable. See `docs/release-channels.md`.
 
 Operator capabilities remain disabled by default. Setting `operator_enabled` is not sufficient to make a mutation safe; operator tools are not implemented until validation, approval, idempotency, audit, and rollback contracts exist.
