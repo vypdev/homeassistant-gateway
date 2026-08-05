@@ -27,7 +27,7 @@ test('stale bootstrap refresh is canceled before it can overwrite a successful r
   await expect.poll(() => abortedReadyRequests).toBe(1);
   releaseFirstRequest?.();
   await retry;
-  await expect(page.locator('.card').filter({ hasText: 'Storage' }).locator('.metric')).toHaveText('ready');
+  await expect(page.locator('.card').filter({ hasText: 'Storage' }).locator('.metric')).toHaveText('Ready');
   await expect(page.locator('.card').filter({ hasText: 'Home Assistant' }).locator('.metric')).toHaveText('Ready');
   await expect(page.getByRole('alert')).toHaveCount(0);
 });

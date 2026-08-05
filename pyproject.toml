@@ -1,6 +1,6 @@
 [project]
 name = "homeassistant-gateway"
-version = "0.5.27"
+version = "0.5.28"
 description = "Home Assistant-native MCP gateway with observer/operator security profiles"
 readme = "README.md"
 requires-python = ">=3.11"

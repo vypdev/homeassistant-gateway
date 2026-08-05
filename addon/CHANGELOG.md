@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.5.28
+
+- Update stale bootstrap regression expectations to assert the localized `Ready` status instead of the internal `ready` code.
+
 ## 0.5.27
 
 - Translate the initial storage readiness status through the shared status catalog, showing `Listo` instead of the internal `ready` code in Spanish.
