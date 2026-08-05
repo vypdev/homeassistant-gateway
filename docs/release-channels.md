@@ -33,6 +33,21 @@ installed next to Stable because it has a different slug, data namespace and
 host port. Tokens and configuration are intentionally not shared between the
 channels.
 
+## Branch and workflow policy
+
+Development work is performed on `develop`. Every push to `develop` and every
+pull request targeting `develop` runs the full CI workflow, including backend,
+frontend, browser, packaging and Edge image checks.
+
+Stable `main` is release-only. A release is prepared by opening a pull request
+from `develop` to `main` with the version, changelog and release metadata
+updated. After that pull request is merged, the `Release App` workflow runs on
+`main`, publishes the stable multi-architecture image and creates the GitHub
+release. Stable `main` does not run the development CI workflow.
+
+The same policy applies if the default branch is named `master` instead of
+`main`.
+
 ## Updating Edge
 
 Edge tracks the current `develop` branch. After pushing a new development
