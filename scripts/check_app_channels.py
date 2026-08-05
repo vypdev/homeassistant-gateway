@@ -52,6 +52,13 @@ def main() -> int:
     for required_label in ('io.hass.version', 'io.hass.type="app"', 'io.hass.arch'):
         if required_label not in edge_dockerfile:
             errors.append(f"edge Dockerfile is missing label {required_label}")
+    if "COPY --from=ui-builder /frontend/storybook-static /app/catalog" not in edge_dockerfile:
+        errors.append("edge Dockerfile must embed the Storybook catalog at /app/catalog")
+    if "corepack pnpm run storybook:build" not in edge_dockerfile:
+        errors.append("edge Dockerfile must build the Storybook catalog")
+    http_source = (ROOT / "src/homeassistant_gateway/presentation/http.py").read_text(encoding="utf-8")
+    if 'app.mount("/catalog", StaticFiles(directory=UI_CATALOG_DIST, html=True), name="ui-catalog")' not in http_source:
+        errors.append("presentation HTTP adapter must expose the embedded catalog at /catalog")
     for directory in (STABLE, EDGE):
         icon = directory / "icon.png"
         if not icon.read_bytes().startswith(b"\x89PNG\r\n\x1a\n"):

@@ -49,7 +49,7 @@ from homeassistant_gateway.presentation.health_routes import (
     register_health_routes,
 )
 from homeassistant_gateway.presentation.http_middleware import request_identity_middleware
-from homeassistant_gateway.presentation.ui import UI_DIST
+from homeassistant_gateway.presentation.ui import UI_CATALOG_DIST, UI_DIST
 
 
 def create_app(
@@ -84,6 +84,8 @@ def create_app(
         app.router.on_shutdown.append(development_jobs.shutdown)
     if UI_DIST.is_dir():
         app.mount("/assets", StaticFiles(directory=UI_DIST / "assets"), name="assets")
+    if UI_CATALOG_DIST.is_dir():
+        app.mount("/catalog", StaticFiles(directory=UI_CATALOG_DIST, html=True), name="ui-catalog")
 
     def record_audit(request: Request, response: Response, decision: str, outcome: str) -> None:
         sink.record(

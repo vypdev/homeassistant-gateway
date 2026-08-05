@@ -1,11 +1,16 @@
 import { html, type TemplateResult } from 'lit';
+import { ifDefined } from 'lit/directives/if-defined.js';
 
-export type GatewayButtonVariant = 'primary' | 'secondary' | 'danger' | 'link';
+export type GatewayButtonVariant = 'brand' | 'neutral' | 'success' | 'warning' | 'danger' | 'primary' | 'secondary' | 'link';
+export type GatewayButtonAppearance = 'accent' | 'filled' | 'outlined' | 'plain';
+export type GatewayButtonSize = 's' | 'm' | 'l';
 export type GatewayStatus = 'ok' | 'warn' | 'bad' | '';
 
 export type GatewayButtonOptions = {
   label: string | TemplateResult;
   variant?: GatewayButtonVariant;
+  appearance?: GatewayButtonAppearance;
+  size?: GatewayButtonSize;
   type?: 'button' | 'submit' | 'reset';
   disabled?: boolean;
   loading?: boolean;
@@ -16,6 +21,7 @@ export type GatewayButtonOptions = {
 };
 
 type FieldBase = {
+  id?: string;
   label: string | TemplateResult;
   name?: string;
   value?: string;
@@ -32,6 +38,7 @@ export type GatewayTab = {
   icon?: string;
   selected?: boolean;
   disabled?: boolean;
+  panelId?: string;
   onSelect: () => void;
 };
 
@@ -40,15 +47,17 @@ export function gatewayIcon(path: string, className = 'gateway-icon', label?: st
 }
 
 export function gatewayButton(options: GatewayButtonOptions): TemplateResult {
-  const variant = options.variant ?? 'secondary';
-  const className = [(variant === 'link' ? 'link-button' : variant), options.className].filter(Boolean).join(' ');
+  const variant = options.variant ?? 'neutral';
+  const haVariant = variant === 'primary' ? 'brand' : variant === 'secondary' ? 'neutral' : variant === 'link' ? 'neutral' : variant;
+  const appearance = options.appearance ?? (variant === 'link' ? 'plain' : variant === 'secondary' ? 'outlined' : 'accent');
+  const className = ['ha-button', `ha-button-${haVariant}`, `ha-button-${appearance}`, options.size ? `ha-button-${options.size}` : '', variant === 'link' ? 'link-button' : variant, options.className].filter(Boolean).join(' ');
   const disabled = Boolean(options.disabled || options.loading);
   const icon = options.loading
     ? html`<span class="button-spinner" aria-hidden="true"></span>`
     : options.leadingIcon
       ? html`<span class="button-leading-icon" aria-hidden="true">${options.leadingIcon}</span>`
       : '';
-  return html`<button class=${className} type=${options.type ?? 'button'} ?disabled=${disabled} aria-busy=${options.loading ? 'true' : 'false'} aria-label=${options.ariaLabel} @click=${options.onClick}>${icon}${options.label}</button>`;
+  return html`<button class=${className} type=${options.type ?? 'button'} ?disabled=${disabled} aria-busy=${options.loading ? 'true' : 'false'} aria-label=${ifDefined(options.ariaLabel)} @click=${options.onClick}>${icon}${options.label}</button>`;
 }
 
 export function gatewayIconButton(path: string, label: string, onClick: (event: Event) => void, disabled = false): TemplateResult {
@@ -56,19 +65,41 @@ export function gatewayIconButton(path: string, label: string, onClick: (event: 
 }
 
 export function gatewayTabGroup(tabs: GatewayTab[], ariaLabel: string, className = ''): TemplateResult {
-  return html`<div class=${['ui-tab-group', className].filter(Boolean).join(' ')} role="tablist" aria-label=${ariaLabel}>${tabs.map((tab) => gatewayTab(tab))}</div>`;
+  const selectedIndex = Math.max(0, tabs.findIndex((tab) => tab.selected));
+  const handleKeydown = (event: KeyboardEvent, index: number) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const direction = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
+    const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + direction + tabs.length) % tabs.length;
+    const nextTab = tabs[nextIndex];
+    if (nextTab && !nextTab.disabled) nextTab.onSelect();
+  };
+  return html`<div class=${['ui-tab-group', className].filter(Boolean).join(' ')} role="tablist" aria-label=${ariaLabel}>${tabs.map((tab, index) => gatewayTab(tab, index === selectedIndex ? 0 : -1, (event) => handleKeydown(event, index)))}</div>`;
 }
 
-export function gatewayTab(tab: GatewayTab): TemplateResult {
-  return html`<button class="ui-tab" type="button" role="tab" aria-selected=${tab.selected ?? false} ?disabled=${tab.disabled} aria-label=${tab.label} title=${tab.label} @click=${tab.onSelect}>${tab.icon ? gatewayIcon(tab.icon, 'ui-tab-icon') : ''}<span>${tab.label}</span></button>`;
+export function gatewayTab(tab: GatewayTab, tabIndex = tab.selected ? 0 : -1, onKeydown?: (event: KeyboardEvent) => void): TemplateResult {
+  return html`<button id=${tab.id} class="ui-tab" type="button" role="tab" tabindex=${tabIndex} aria-selected=${tab.selected ?? false} aria-controls=${ifDefined(tab.panelId)} ?disabled=${tab.disabled} aria-label=${tab.label} title=${tab.label} @keydown=${onKeydown} @click=${tab.onSelect}>${tab.icon ? gatewayIcon(tab.icon, 'ui-tab-icon') : ''}<span>${tab.label}</span></button>`;
+}
+
+function fieldIds(options: FieldBase, suffix: string): string {
+  const base = options.id ?? options.name ?? 'gateway-field';
+  return `${base}-${suffix}`;
 }
 
 export function gatewayTextField(options: FieldBase & { type?: 'text' | 'password' | 'search'; error?: string; help?: string }): TemplateResult {
-  return html`<label class="gateway-field">${options.label}<input type=${options.type ?? 'text'} name=${options.name} .value=${options.value ?? ''} placeholder=${options.placeholder} maxlength=${options.maxLength} ?required=${options.required} ?disabled=${options.disabled} aria-invalid=${options.error ? 'true' : 'false'} @input=${options.onInput} />${options.help ? html`<small class="field-help">${options.help}</small>` : ''}${options.error ? html`<small class="field-error" role="alert">${options.error}</small>` : ''}</label>`;
+  const id = options.id ?? options.name ?? 'gateway-field';
+  const helpId = options.help ? fieldIds(options, 'help') : undefined;
+  const errorId = options.error ? fieldIds(options, 'error') : undefined;
+  const describedBy = [helpId, errorId].filter(Boolean).join(' ') || undefined;
+  return html`<div class="gateway-field"><label for=${id}>${options.label}</label><input id=${id} type=${options.type ?? 'text'} name=${ifDefined(options.name)} .value=${options.value ?? ''} placeholder=${ifDefined(options.placeholder)} maxlength=${ifDefined(options.maxLength)} ?required=${options.required} ?disabled=${options.disabled} aria-invalid=${options.error ? 'true' : 'false'} aria-describedby=${ifDefined(describedBy)} aria-errormessage=${ifDefined(errorId)} @input=${options.onInput} />${options.help ? html`<small id=${helpId} class="field-help">${options.help}</small>` : ''}${options.error ? html`<small id=${errorId} class="field-error" role="alert">${options.error}</small>` : ''}</div>`;
 }
 
-export function gatewaySelect(options: FieldBase & { options: TemplateResult }): TemplateResult {
-  return html`<label class="gateway-field">${options.label}<select name=${options.name} ?required=${options.required} ?disabled=${options.disabled} @change=${options.onInput}>${options.options}</select></label>`;
+export function gatewaySelect(options: FieldBase & { options: TemplateResult; help?: string; error?: string }): TemplateResult {
+  const id = options.id ?? options.name ?? 'gateway-select';
+  const helpId = options.help ? fieldIds(options, 'help') : undefined;
+  const errorId = options.error ? fieldIds(options, 'error') : undefined;
+  const describedBy = [helpId, errorId].filter(Boolean).join(' ') || undefined;
+  return html`<div class="gateway-field"><label for=${id}>${options.label}</label><select id=${id} name=${ifDefined(options.name)} ?required=${options.required} ?disabled=${options.disabled} aria-invalid=${options.error ? 'true' : 'false'} aria-describedby=${ifDefined(describedBy)} aria-errormessage=${ifDefined(errorId)} @change=${options.onInput}>${options.options}</select>${options.help ? html`<small id=${helpId} class="field-help">${options.help}</small>` : ''}${options.error ? html`<small id=${errorId} class="field-error" role="alert">${options.error}</small>` : ''}</div>`;
 }
 
 export function gatewayCard(content: TemplateResult, className = ''): TemplateResult {
@@ -84,7 +115,7 @@ export function gatewayStatus(label: string | TemplateResult, status: GatewaySta
 }
 
 export function gatewayAlert(content: string | TemplateResult, tone: 'error' | 'warning' | 'info' = 'error'): TemplateResult {
-  return html`<div class=${['alert', `alert-${tone}`, 'ui-alert'].join(' ')} role="alert">${content}</div>`;
+  return html`<div class=${['alert', `alert-${tone}`, 'ui-alert'].join(' ')} role=${tone === 'error' ? 'alert' : 'status'} aria-live=${tone === 'error' ? 'assertive' : 'polite'}>${content}</div>`;
 }
 
 export function gatewayEmptyState(content: string | TemplateResult): TemplateResult {
@@ -95,6 +126,9 @@ export function gatewayLoadingState(label: string | TemplateResult): TemplateRes
   return html`<div class="ui-loading-state" role="status" aria-live="polite" aria-busy="true"><span class="button-spinner" aria-hidden="true"></span><span>${label}</span></div>`;
 }
 
-export function gatewayDialog(title: string | TemplateResult, content: TemplateResult, actions: TemplateResult): TemplateResult {
-  return html`<div class="modal-backdrop" role="presentation"><section class="modal ui-dialog" role="dialog" aria-modal="true" aria-labelledby="gateway-dialog-title"><h2 id="gateway-dialog-title">${title}</h2>${content}<div class="form-actions">${actions}</div></section></div>`;
+export function gatewayDialog(title: string | TemplateResult, content: TemplateResult, actions: TemplateResult, ids: { dialogId?: string; titleId?: string; descriptionId?: string } = {}): TemplateResult {
+  const dialogId = ids.dialogId ?? 'gateway-dialog';
+  const titleId = ids.titleId ?? `${dialogId}-title`;
+  const descriptionId = ids.descriptionId ?? `${dialogId}-description`;
+  return html`<div class="modal-backdrop" role="presentation"><section id=${dialogId} class="modal ui-dialog" role="dialog" aria-modal="true" aria-labelledby=${titleId} aria-describedby=${descriptionId}><h2 id=${titleId}>${title}</h2><div id=${descriptionId}>${content}</div><div class="form-actions">${actions}</div></section></div>`;
 }

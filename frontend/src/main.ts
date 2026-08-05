@@ -434,6 +434,7 @@ export class GatewayApp extends LitElement {
       this.t('tokenOnce'),
       html`<p>${this.t('tokenOnlyOnce')}</p><div class="token mono">${this.issuedToken}</div>`,
       html`${gatewayButton({ label: this.t('copyToken'), variant: 'secondary', onClick: () => void navigator.clipboard?.writeText(this.issuedToken) })}${gatewayButton({ label: this.t('savedIt'), variant: 'primary', onClick: () => { this.issuedToken = ''; } })}`,
+      { dialogId: 'token-dialog' },
     );
   }
 }

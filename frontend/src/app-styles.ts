@@ -4,7 +4,7 @@ export const APP_STYLES = css`
     :host { --gateway-space-1: 4px; --gateway-space-2: 8px; --gateway-space-3: 12px; --gateway-space-4: 16px; --gateway-space-6: 24px; --gateway-space-8: 32px; --ha-canvas: #07111f; --ha-primary: #03a9f4; --ha-primary-hover: #0288d1; --ha-primary-active: #0277bd; --ha-surface: #0c1b2d; --ha-surface-raised: #12263a; --ha-surface-muted: #071522; --ha-border: #29465f; --ha-text: #e7f0fb; --ha-text-secondary: #9fb8cc; --ha-text-muted: #718aa0; --ha-success: #67e2a0; --ha-warning: #ffd27d; --ha-danger: #ff8e9e; --ha-radius-card: 8px; --ha-radius-control: 8px; --ha-radius-pill: 9999px; --ha-shadow-card: none; display: block; color: var(--ha-text); min-height: 100vh; font: 14px/1.5 Inter, ui-sans-serif, system-ui, sans-serif; }
     * { box-sizing: border-box; }
     .shell { min-height: 100vh; position: relative; background: var(--ha-canvas); }
-    .shell.light { --ha-canvas: #f4f7fb; --ha-primary: #03a9f4; --ha-primary-hover: #0288d1; --ha-primary-active: #0277bd; --ha-surface: #ffffff; --ha-surface-raised: #f8fbfe; --ha-surface-muted: #edf3f7; --ha-border: #c7d6e1; --ha-text: #243447; --ha-text-secondary: #607286; --ha-text-muted: #718394; --ha-success: #2d9864; --ha-warning: #a66f16; --ha-danger: #b34b58; --ha-shadow-card: none; color: var(--ha-text); background: var(--ha-canvas); }
+    .shell.light { --ha-canvas: #f4f7fb; --ha-primary: #03a9f4; --ha-primary-hover: #0288d1; --ha-primary-active: #0277bd; --ha-surface: #ffffff; --ha-surface-raised: #f8fbfe; --ha-surface-muted: #edf3f7; --ha-border: #c7d6e1; --ha-text: #243447; --ha-text-secondary: #607286; --ha-text-muted: #718394; --ha-success: #217346; --ha-warning: #a66f16; --ha-danger: #b34b58; --ha-shadow-card: none; color: var(--ha-text); background: var(--ha-canvas); }
     .shell.light aside, .shell.light .card { background: var(--ha-surface); border-color: var(--ha-border); box-shadow: none; }
     .shell.light .brand small, .shell.light .card-label { color: #607286; }
     .shell.light .tab-navigation { border-color: var(--ha-border); }
@@ -21,7 +21,7 @@ export const APP_STYLES = css`
     .shell.light .result-row { border-color: #c8d6e1; background: #f8fbfd; }
     .shell.light code, .shell.light .mono { color: #47728d; }
     .shell.light .tag { color: #365f79; background: #e7f0f5; border-color: #c1d2de; }
-    .shell.light .ok { color: #2d9864; }
+    .shell.light .ok { color: #217346; }
     .shell.light .warn { color: #a66f16; }
     .shell.light .bad { color: #b34b58; }
     .shell.light nav button:hover { color: #3c4043; background: #f1f3f4; }

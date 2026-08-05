@@ -22,10 +22,12 @@ WORKDIR /frontend
 RUN corepack enable \
     && corepack pnpm install --frozen-lockfile \
     && corepack pnpm run check \
+    && corepack pnpm run check:storybook \
     && corepack pnpm run test:runtime \
     && corepack pnpm run test:architecture \
     && corepack pnpm run test:ux \
-    && corepack pnpm run build
+    && corepack pnpm run build \
+    && corepack pnpm run storybook:build
 
 FROM python:3.12-slim
 ARG BUILD_VERSION=0.5.31-dev.1
@@ -42,6 +44,7 @@ ENV PYTHONUNBUFFERED=1 \
 
 COPY --from=builder /wheels /wheels
 COPY --from=ui-builder /frontend/dist /app/static
+COPY --from=ui-builder /frontend/storybook-static /app/catalog
 RUN python -m pip install --no-cache-dir --no-index --find-links=/wheels /wheels/*.whl \
     && rm -rf /wheels
 COPY run.sh /run.sh

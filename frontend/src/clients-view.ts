@@ -1,5 +1,5 @@
 import { html, type TemplateResult } from 'lit';
-import { gatewayButton, gatewayEmptyState, gatewaySelect, gatewayTextField } from './ui';
+import { gatewayButton, gatewayCard, gatewayEmptyState, gatewaySelect, gatewayTextField } from './ui';
 import type { Client, OperatorService, Profile } from './models';
 
 type Translator = (key: string) => string;
@@ -35,7 +35,7 @@ export function clientsView(ctx: ClientsViewContext): TemplateResult {
   const globallyEnabled = new Set(ctx.operatorServices.map((service) => service.id));
   return html`
     <div class="split">
-      <div class="card">
+      ${gatewayCard(html`
         <div class="toolbar">
           <div><h2>${ctx.t('registeredClients')}</h2><p>${ctx.t('tokensNotListed')}</p></div>
           ${gatewayButton({ label: ctx.t('refresh'), variant: 'secondary', disabled: ctx.busy, onClick: ctx.refresh })}
@@ -65,8 +65,8 @@ export function clientsView(ctx: ClientsViewContext): TemplateResult {
               ${client.status === 'active' ? html`<div class="responsive-actions">${gatewayButton({ label: ctx.t('revoke'), variant: 'danger', disabled: ctx.busy, onClick: () => ctx.revoke(client.client_id) })}${gatewayButton({ label: ctx.t('rotate'), variant: 'secondary', disabled: ctx.busy, onClick: () => ctx.rotate(client.client_id) })}</div>` : html`<div class="responsive-actions">${gatewayButton({ label: ctx.t('deleteClient'), variant: 'danger', disabled: ctx.busy, onClick: () => ctx.deleteClient(client.client_id) })}</div>`}
             </article>`)}
           </div>` : gatewayEmptyState(ctx.t('noClientsIssued'))}
-      </div>
-      <div class="card">
+      `, 'clients-list-card')}
+      ${gatewayCard(html`
         <h2>${ctx.t('issueObserverClient')}</h2><p class="client-form-description">${ctx.t('tokenShownOnce')}</p>
         <form class="form" @submit=${ctx.createClient}>
           ${gatewayTextField({ label: ctx.t('clientId'), name: 'client_id', maxLength: 128, required: true, placeholder: 'nido-observer' })}
@@ -100,6 +100,6 @@ export function clientsView(ctx: ClientsViewContext): TemplateResult {
           </section>`}
           <div class="form-actions">${gatewayButton({ label: ctx.t('issueClient'), variant: 'primary', type: 'submit', disabled: ctx.busy, leadingIcon: '+' })}</div>
         </form>
-      </div>
+      `, 'client-form-card')}
     </div>`;
 }

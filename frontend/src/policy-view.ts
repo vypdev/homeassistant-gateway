@@ -1,5 +1,5 @@
 import { html, type TemplateResult } from 'lit';
-import { gatewayButton, gatewayEmptyState, gatewaySelect, gatewayTextField } from './ui';
+import { gatewayButton, gatewayCard, gatewayEmptyState, gatewaySelect, gatewayTextField } from './ui';
 import type { Client, OperatorService, OperatorServicePolicy } from './models';
 
 type Translator = (key: string) => string;
@@ -32,7 +32,7 @@ export function policyView(ctx: PolicyViewContext): TemplateResult {
 
   return html`
     <div class="split">
-      <div class="card">
+      ${gatewayCard(html`
         <h2>${ctx.t('policyMatrix')}</h2>
         <p>${ctx.t('policySubtitle')}</p>
         <div class="policy-tags">
@@ -41,8 +41,8 @@ export function policyView(ctx: PolicyViewContext): TemplateResult {
           <div class="tag">${ctx.t('policyMutationDenied')}</div>
           <div class="tag">${ctx.t('policyOperatorDisabled')}</div>
         </div>
-      </div>
-      <div class="card">
+      `, 'policy-matrix-card')}
+      ${gatewayCard(html`
         <h2>${ctx.t('evaluateRequest')}</h2>
         <form class="form" @submit=${ctx.evaluatePolicy}>
           ${gatewaySelect({ label: ctx.t('client'), name: 'client_id', options: html`${ctx.clients.map((client) => html`<option value=${client.client_id}>${client.display_name} · ${client.client_id}</option>`)}` })}
@@ -50,10 +50,10 @@ export function policyView(ctx: PolicyViewContext): TemplateResult {
           <label><span><input name="mutation" type="checkbox" class="inline-checkbox" /> ${ctx.t('mutationRequest')}</span></label>
           <div class="form-actions">${gatewayButton({ label: ctx.t('evaluate'), variant: 'primary', type: 'submit', disabled: ctx.busy, leadingIcon: '✓' })}</div>
         </form>
-      </div>
+      `, 'policy-evaluation-card')}
     </div>
 
-    <section class="card operator-policy-card" aria-labelledby="operator-services-title">
+    ${gatewayCard(html`
       <div class="operator-policy-header">
         <div>
           <h2 id="operator-services-title">${ctx.t('operatorServicesTitle')}</h2>
@@ -98,6 +98,6 @@ export function policyView(ctx: PolicyViewContext): TemplateResult {
           `)}
         </div>
       ` : gatewayEmptyState(ctx.t('operatorServicesUnavailable'))}
-    </section>
+      `, 'operator-policy-card')}
   `;
 }

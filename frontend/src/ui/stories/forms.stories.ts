@@ -8,7 +8,7 @@ const meta = {
   title: 'UI/Forms/Fields and feedback',
   tags: ['autodocs'],
   args: { placeholder: 'Home observer', disabled: false },
-  render: (args: FormArgs) => html`<div class="story-surface"><div class="story-stack">${gatewayTextField({ label: 'Display name', placeholder: args.placeholder, disabled: args.disabled, help: 'Visible to Gateway operators.' })}${gatewaySelect({ label: 'Profile', disabled: args.disabled, options: html`<option>Observer · read-only</option><option>Operator</option>` })}${gatewayAlert('Informational feedback stays calm and close to the affected content.', 'info')}${gatewayLoadingState('Checking Gateway')}${gatewayEmptyState('No records found.')}</div></div>`,
+  render: (args: FormArgs) => html`<div class="story-surface"><div class="story-stack">${gatewayTextField({ id: 'display-name', label: 'Display name', placeholder: args.placeholder, disabled: args.disabled, help: 'Visible to Gateway operators.' })}${gatewaySelect({ id: 'profile', label: 'Profile', disabled: args.disabled, options: html`<option>Observer · read-only</option><option>Operator</option>` })}${gatewayAlert('Informational feedback stays calm and close to the affected content.', 'info')}${gatewayLoadingState('Checking Gateway')}${gatewayEmptyState('No records found.')}</div></div>`,
 } satisfies Meta<FormArgs>;
 
 export default meta;

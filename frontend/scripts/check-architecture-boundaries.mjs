@@ -1,5 +1,5 @@
 import { readdir, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 
 const sourceDir = new URL('../src/', import.meta.url);
 const pureModules = new Set([
@@ -16,10 +16,8 @@ const forbidden = [
   { pattern: /from\s+['"]\.\/gateway-api['"]/, label: 'infrastructure adapter' },
   { pattern: /\b(window|document|navigator|localStorage)\b/, label: 'browser global' },
 ];
-
-const uiDir = new URL('../src/ui/', import.meta.url);
 const uiForbidden = [
-  { pattern: /from\s+['"]\.\.\/(?:gateway-controller|gateway-api|api|models)['"]/, label: 'application or infrastructure module' },
+  { pattern: /from\s+['"](?:\.\.\/)+(?:gateway-controller|gateway-api|api|models)(?:\.ts)?['"]/, label: 'application or infrastructure module' },
 ];
 
 const files = await readdir(sourceDir);
@@ -32,12 +30,12 @@ for (const file of files) {
   }
 }
 
-const uiFiles = await readdir(uiDir);
-for (const file of uiFiles) {
-  if (!file.endsWith('.ts')) continue;
-  const content = await readFile(join(uiDir.pathname, file), 'utf8');
+const uiFiles = await readdir(new URL('../src/ui/', import.meta.url), { recursive: true });
+const checkedUiFiles = uiFiles.filter((file) => file.endsWith('.ts'));
+for (const file of checkedUiFiles) {
+  const content = await readFile(join(new URL('../src/ui/', import.meta.url).pathname, file), 'utf8');
   for (const rule of uiForbidden) {
-    if (rule.pattern.test(content)) violations.push(`ui/${file}: imports ${rule.label}`);
+    if (rule.pattern.test(content)) violations.push(`ui/${relative('', file)}: imports ${rule.label}`);
   }
 }
 
@@ -45,4 +43,4 @@ if (violations.length) {
   console.error(`Architecture boundary violations:\n- ${violations.join('\n- ')}`);
   process.exit(1);
 }
-console.log(`frontend architecture boundaries: ok (${pureModules.size} pure modules + ${uiFiles.filter((file) => file.endsWith('.ts')).length} UI modules checked)`);
+console.log(`frontend architecture boundaries: ok (${pureModules.size} pure modules + ${checkedUiFiles.length} recursive UI modules checked)`);

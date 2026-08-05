@@ -9,6 +9,8 @@
     "storybook": "storybook dev -p 6006",
     "storybook:build": "storybook build",
     "check": "tsc --noEmit",
+    "check:storybook": "tsc -p tsconfig.storybook.json --noEmit",
+    "test:storybook": "playwright test --config=playwright.storybook.config.ts",
     "test:runtime": "node scripts/test-runtime.mjs",
     "test:architecture": "node scripts/check-architecture-boundaries.mjs",
     "test:ux": "node scripts/test-ux-contracts.mjs",

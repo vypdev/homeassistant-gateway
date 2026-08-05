@@ -10,7 +10,7 @@
   --ha-text-secondary: #607286;
   --ha-text-muted: #718394;
   --ha-primary: #03a9f4;
-  --ha-success: #2d9864;
+  --ha-success: #217346;
   --ha-warning: #a66f16;
   --ha-danger: #b34b58;
   --ha-radius-card: 8px;
@@ -52,12 +52,18 @@
 .ui-tab:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--ha-primary); outline-offset: 2px; }
 .ui-tab:disabled { cursor: not-allowed; opacity: .5; }
 .ui-tab-icon, .gateway-icon { width: 22px; height: 22px; fill: currentColor; }
-button.primary, button.secondary, button.danger, button.link-button { min-height: 40px; border: 1px solid transparent; border-radius: var(--ha-radius-control); padding: 8px 16px; cursor: pointer; font: 500 14px/1.2 inherit; }
-button.primary { color: #12344d; background: var(--ha-primary); border-color: #0277bd; }
-button.secondary { color: var(--ha-text); background: var(--ha-surface); border-color: var(--ha-border); }
-button.danger { color: #fff; background: var(--ha-danger); border-color: var(--ha-danger); }
-button.link-button { color: var(--ha-primary); background: transparent; border-color: transparent; }
-button:disabled { cursor: not-allowed; opacity: .55; }
+button.primary, button.secondary, button.danger, button.link-button, button.ha-button { min-height: 40px; border: 1px solid transparent; border-radius: var(--ha-radius-control); padding: 8px 16px; cursor: pointer; font: 500 14px/1.2 inherit; }
+button.ha-button-s { min-height: 32px; padding-block: 4px; }
+button.ha-button-l { min-height: 48px; font-size: 16px; }
+button.primary, button.ha-button-brand { color: #12344d; background: var(--ha-primary); border-color: #0277bd; }
+button.secondary, button.ha-button-neutral { color: var(--ha-text); background: var(--ha-surface); border-color: var(--ha-border); }
+button.danger, button.ha-button-danger { color: #fff; background: var(--ha-danger); border-color: var(--ha-danger); }
+button.ha-button-success { color: #fff; background: var(--ha-success); border-color: var(--ha-success); }
+button.ha-button-warning { color: #241b0c; background: var(--ha-warning); border-color: var(--ha-warning); }
+button.link-button, button.ha-button-plain { color: var(--ha-primary); background: transparent; border-color: transparent; }
+button.ha-button-outlined { color: var(--ha-text); background: transparent; border-color: var(--ha-border); }
+button.ha-button-filled { color: var(--ha-text); background: var(--ha-surface-raised); border-color: transparent; }
+button.ha-button:disabled { background: var(--ha-surface-raised); color: var(--ha-text-muted); border-color: var(--ha-border); }
 .icon-button { width: 40px; height: 40px; display: inline-grid; place-items: center; border: 1px solid var(--ha-border); border-radius: var(--ha-radius-control); color: var(--ha-text); background: var(--ha-surface); cursor: pointer; }
 .button-leading-icon { display: inline-flex; margin-inline-end: 8px; }
 .button-spinner { width: 14px; height: 14px; display: inline-block; margin-inline-end: 8px; border: 2px solid currentColor; border-inline-end-color: transparent; border-radius: 50%; animation: gateway-spin 700ms linear infinite; vertical-align: -2px; }
