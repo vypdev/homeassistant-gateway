@@ -1,5 +1,5 @@
 import { html, type TemplateResult } from 'lit';
-import { gatewayEmptyState, gatewaySelect } from './ui-primitives';
+import { gatewayEmptyState, gatewaySelect } from './ui';
 import type { AuditEvent } from './models';
 
 type Translator = (key: string) => string;

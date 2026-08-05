@@ -1,5 +1,5 @@
 import { html, type TemplateResult } from 'lit';
-import { gatewayButton, gatewayStatus } from './ui-primitives';
+import { gatewayButton, gatewayStatus } from './ui';
 import type { AuditEvent, Client, HealthDetails, Ready } from './models';
 
 type Translator = (key: string) => string;

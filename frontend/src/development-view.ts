@@ -1,5 +1,5 @@
 import { html, type TemplateResult } from 'lit';
-import { gatewayButton, gatewayEmptyState, gatewayTextField } from './ui-primitives';
+import { gatewayButton, gatewayEmptyState, gatewayTextField } from './ui';
 import type { DevelopmentCatalog, DevelopmentPack, DevelopmentResult, DevelopmentReport } from './models';
 import { isProblemStatus } from './view-helpers';
 

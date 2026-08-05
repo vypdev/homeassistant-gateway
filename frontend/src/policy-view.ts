@@ -1,5 +1,5 @@
 import { html, type TemplateResult } from 'lit';
-import { gatewayButton, gatewayEmptyState, gatewaySelect, gatewayTextField } from './ui-primitives';
+import { gatewayButton, gatewayEmptyState, gatewaySelect, gatewayTextField } from './ui';
 import type { Client, OperatorService, OperatorServicePolicy } from './models';
 
 type Translator = (key: string) => string;

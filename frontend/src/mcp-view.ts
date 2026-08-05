@@ -1,5 +1,5 @@
 import { html, type TemplateResult } from 'lit';
-import { gatewayButton, gatewayTextField } from './ui-primitives';
+import { gatewayButton, gatewayTextField } from './ui';
 import type { Discovery, Ready } from './models';
 
 type Translator = (key: string) => string;

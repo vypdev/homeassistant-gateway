@@ -69,6 +69,8 @@ jobs:
       - name: Check frontend translation coverage
         working-directory: .
         run: python scripts/check_frontend_i18n.py
+      - name: Build Storybook component catalog
+        run: pnpm run storybook:build
       - name: Build frontend
         run: pnpm run build
       - name: Install Playwright browsers

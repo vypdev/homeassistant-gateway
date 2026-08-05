@@ -18,7 +18,7 @@ import { mcpView as renderMcpView } from './mcp-view';
 import { loadDevelopmentReports, executeDevelopmentJob } from './development-controller';
 import { property, state } from 'lit/decorators.js';
 import { APP_STYLES } from './app-styles';
-import { gatewayAlert, gatewayButton, gatewayDialog } from './ui-primitives';
+import { gatewayAlert, gatewayButton, gatewayDialog } from './ui';
 import { TRANSLATIONS } from './i18n-base';
 import { DEVELOPMENT_TRANSLATIONS } from './i18n-development';
 import { DEVELOPMENT_EXTRA_TRANSLATIONS } from './i18n-development-extra';

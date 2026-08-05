@@ -6,6 +6,8 @@
   "scripts": {
     "build": "vite build",
     "dev": "vite",
+    "storybook": "storybook dev -p 6006",
+    "storybook:build": "storybook build",
     "check": "tsc --noEmit",
     "test:runtime": "node scripts/test-runtime.mjs",
     "test:architecture": "node scripts/check-architecture-boundaries.mjs",
@@ -20,7 +22,11 @@
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
     "@playwright/test": "^1.62.1",
+    "@storybook/addon-a11y": "10.5.6",
+    "@storybook/addon-themes": "10.5.6",
+    "@storybook/web-components-vite": "10.5.6",
     "@types/node": "^22.20.1",
+    "storybook": "10.5.6",
     "typescript": "5.8.3"
   }
 }

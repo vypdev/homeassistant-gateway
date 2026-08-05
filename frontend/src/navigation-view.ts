@@ -41,9 +41,11 @@ export function navigationView(current: View, translate: Translator, navigate: N
       role="tab"
       aria-selected=${current === view}
       aria-current=${current === view ? 'page' : 'false'}
+      aria-label=${translate(key)}
+      title=${translate(key)}
       tabindex=${current === view ? '0' : '-1'}
       @click=${() => navigate(view)}
       @keydown=${(event: KeyboardEvent) => handleKeyDown(event, index, navigate)}
-    >${leadingIcon(icon)}<span>${translate(key)}</span></button>`)}
+    >${leadingIcon(icon)}<span class="sr-only">${translate(key)}</span></button>`)}
   </nav>`;
 }

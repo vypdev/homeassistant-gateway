@@ -6,6 +6,7 @@ __pycache__/
 .venv/
 node_modules/
 frontend/dist/
+frontend/storybook-static/
 frontend/test-results/
 dist/
 build/

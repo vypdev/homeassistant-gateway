@@ -17,6 +17,11 @@ const forbidden = [
   { pattern: /\b(window|document|navigator|localStorage)\b/, label: 'browser global' },
 ];
 
+const uiDir = new URL('../src/ui/', import.meta.url);
+const uiForbidden = [
+  { pattern: /from\s+['"]\.\.\/(?:gateway-controller|gateway-api|api|models)['"]/, label: 'application or infrastructure module' },
+];
+
 const files = await readdir(sourceDir);
 const violations = [];
 for (const file of files) {
@@ -27,8 +32,17 @@ for (const file of files) {
   }
 }
 
+const uiFiles = await readdir(uiDir);
+for (const file of uiFiles) {
+  if (!file.endsWith('.ts')) continue;
+  const content = await readFile(join(uiDir.pathname, file), 'utf8');
+  for (const rule of uiForbidden) {
+    if (rule.pattern.test(content)) violations.push(`ui/${file}: imports ${rule.label}`);
+  }
+}
+
 if (violations.length) {
   console.error(`Architecture boundary violations:\n- ${violations.join('\n- ')}`);
   process.exit(1);
 }
-console.log(`frontend architecture boundaries: ok (${pureModules.size} modules checked)`);
+console.log(`frontend architecture boundaries: ok (${pureModules.size} pure modules + ${uiFiles.filter((file) => file.endsWith('.ts')).length} UI modules checked)`);
