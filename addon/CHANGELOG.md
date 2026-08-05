@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.27
+
+- Translate the initial storage readiness status through the shared status catalog, showing `Listo` instead of the internal `ready` code in Spanish.
+- Add Playwright coverage for the localized initial storage status.
+
 ## 0.5.26
 
 - Fix gateway bootstrap validation for successful health checks whose diagnostic code is correctly returned as `null`.

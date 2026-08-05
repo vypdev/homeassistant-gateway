@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-async function mockGatewayApi(page: import('@playwright/test').Page, theme: 'light' | 'dark' = 'dark') {
+async function mockGatewayApi(page: import('@playwright/test').Page, theme: 'light' | 'dark' = 'dark', locale = 'en') {
   await page.route('**/*', async (route) => {
     const url = new URL(route.request().url());
     const path = url.pathname;
@@ -14,7 +14,7 @@ async function mockGatewayApi(page: import('@playwright/test').Page, theme: 'lig
       '/api/audit': [],
       '/api/development/catalog': { operations: [], packs: [] },
       '/api/development/reports': [],
-      '/api/ui/context': { locale: 'en', theme },
+      '/api/ui/context': { locale, theme },
       '/api/health/details': { status: 'ok', checks: [] },
       '/api/operator/status': { operator_enabled: true, execution: 'disabled', registered_mutation_tools: [], capabilities: [], reason: '' },
       '/api/operator/service-policy': { services: [{ id: 'light.turn_on', domain: 'light', service: 'turn_on', name: 'Turn on', description: 'Turn on a light.', fields: {} }], selected: [] },
@@ -40,6 +40,14 @@ test('renders the Ingress shell and navigates with keyboard focus', async ({ pag
   await expect(development).toBeFocused();
   await development.press('Enter');
   await expect(page.getByRole('heading', { name: /development console|consola de desarrollo/i })).toBeVisible();
+});
+
+test('translates the initial storage readiness status', async ({ page }) => {
+  await page.unroute('**/*');
+  await mockGatewayApi(page, 'dark', 'es');
+  await page.goto('/');
+
+  await expect(page.locator('.cards .card').first().locator('.metric')).toHaveText('Listo');
 });
 
 test('matches the Home Assistant navigation states and uses MDI leading icons', async ({ page }) => {
