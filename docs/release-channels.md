@@ -22,6 +22,7 @@ fetches the `develop` branch, runs frontend checks and builds the frontend befor
 assembling the runtime image.
 
 - Source ref: `develop`
+- Supervisor stage: `experimental`
 - Host MCP port: `18100`
 - Default log level: `debug`
 - Data namespace: `homeassistant_gateway_edge`

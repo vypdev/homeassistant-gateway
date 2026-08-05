@@ -9,6 +9,7 @@ arch:
   - armv7
 startup: application
 boot: manual
+stage: experimental
 init: false
 ingress: true
 ingress_port: 8099

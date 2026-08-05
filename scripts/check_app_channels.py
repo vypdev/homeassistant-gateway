@@ -39,6 +39,10 @@ def main() -> int:
         errors.append("edge must omit image so Supervisor builds it locally")
     if stable.get("slug") == edge.get("slug"):
         errors.append("stable and edge slugs must be distinct")
+    if stable.get("stage") != "stable":
+        errors.append("stable must be explicitly marked as stable")
+    if edge.get("stage") != "experimental":
+        errors.append("edge must be explicitly marked as experimental")
     if port(stable) == port(edge):
         errors.append("stable and edge host ports must be distinct")
     edge_dockerfile = (EDGE / "Dockerfile").read_text(encoding="utf-8")
