@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.25
+
+- Harden frontend HTTP contracts by validating operator policy save responses and normalizing malformed JSON responses as stable gateway errors.
+- Propagate abort signals through the frontend controller and port boundaries for client mutations, preventing obsolete requests and bootstraps from overwriting current state.
+- Add deterministic runtime and Playwright coverage for autosave recovery, physical mutation cancellation and late stale responses.
+- Document the frontend concurrency and contract-testing boundaries.
+
 ## 0.5.24
 
 - Allow the global Operator service ceiling to persist the complete bounded catalog of up to 500 services, including configurations with 234 selected services.
