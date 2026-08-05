@@ -5,14 +5,14 @@ import { createOperatorPolicyService, type OperatorPolicyService } from './opera
 
 export type ClientMutationResult = {
   client: Client & { token: string };
-  bootstrap: GatewayBootstrap;
 };
 
 export interface GatewayController {
   refresh(signal?: AbortSignal): Promise<GatewayBootstrap>;
+  refreshClients(signal?: AbortSignal): Promise<Client[]>;
   createClient(input: CreateClientInput, signal?: AbortSignal): Promise<ClientMutationResult>;
-  revokeClient(clientId: string, signal?: AbortSignal): Promise<GatewayBootstrap>;
-  deleteClient(clientId: string, signal?: AbortSignal): Promise<GatewayBootstrap>;
+  revokeClient(clientId: string, signal?: AbortSignal): Promise<void>;
+  deleteClient(clientId: string, signal?: AbortSignal): Promise<void>;
   rotateClient(clientId: string, signal?: AbortSignal): Promise<ClientMutationResult>;
   loadDiscovery(token: string): Promise<Discovery>;
   loadAudit(decision: string): Promise<AuditEvent[]>;
@@ -22,20 +22,16 @@ export interface GatewayController {
 
 export const createGatewayController = (gatewayPort: GatewayPort, operatorPolicy: OperatorPolicyService = createOperatorPolicyService(async (selected) => { await gatewayPort.saveOperatorPolicy(selected); })): GatewayController => ({
   refresh: (signal) => gatewayPort.loadBootstrap(signal),
-  createClient(input, signal) {
-    return gatewayPort.createClient(input, signal).then(async (client) => ({ client, bootstrap: await gatewayPort.loadBootstrap(signal) }));
+  refreshClients: (signal) => gatewayPort.loadClients(signal),
+  async createClient(input, signal) {
+    const client = await gatewayPort.createClient(input, signal);
+    return { client };
   },
-  async revokeClient(clientId, signal) {
-    await gatewayPort.revokeClient(clientId, signal);
-    return gatewayPort.loadBootstrap(signal);
-  },
-  async deleteClient(clientId, signal) {
-    await gatewayPort.deleteClient(clientId, signal);
-    return gatewayPort.loadBootstrap(signal);
-  },
+  revokeClient: (clientId, signal) => gatewayPort.revokeClient(clientId, signal),
+  deleteClient: (clientId, signal) => gatewayPort.deleteClient(clientId, signal),
   async rotateClient(clientId, signal) {
     const client = await gatewayPort.rotateClient(clientId, signal);
-    return { client, bootstrap: await gatewayPort.loadBootstrap(signal) };
+    return { client };
   },
   loadDiscovery: (token) => gatewayPort.loadDiscovery(token),
   loadAudit: (decision) => gatewayPort.loadAudit(decision),

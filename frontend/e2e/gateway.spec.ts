@@ -152,6 +152,36 @@ test('separates token revocation from permanent client deletion', async ({ page 
 });
 
 
+test('does not wait for the global bootstrap after creating a client', async ({ page }) => {
+  await page.unroute('**/*');
+  await mockGatewayApi(page);
+  let mutationAccepted = false;
+  let healthRequests = 0;
+  const clients: Array<Record<string, unknown>> = [];
+  await page.route('**/api/health/details', async (route) => {
+    healthRequests += 1;
+    if (mutationAccepted) await new Promise((resolve) => setTimeout(resolve, 3000));
+    await route.fallback();
+  });
+  await page.route('**/api/clients', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(clients) });
+      return;
+    }
+    mutationAccepted = true;
+    clients.push({ client_id: 'created-client', display_name: 'Created client', profile: 'observer', capabilities: ['ha.read.diagnostics'], operator_services: [], created_at: '2026-08-05T00:00:00Z', status: 'active', revoked_at: null });
+    await route.fulfill({ status: 201, contentType: 'application/json', body: JSON.stringify({ ...clients[0], token: 'issued-token' }) });
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Clients', exact: true }).click();
+  const healthRequestsBeforeMutation = healthRequests;
+  await page.locator('input[name="client_id"]').fill('created-client');
+  await page.locator('input[name="display_name"]').fill('Created client');
+  await page.getByRole('button', { name: 'Issue client', exact: true }).click();
+  await expect(page.getByText('issued-token', { exact: true })).toBeVisible({ timeout: 1000 });
+  await expect(page.getByTestId('client-record').getByText('created-client', { exact: true })).toBeVisible({ timeout: 1000 });
+  expect(healthRequests).toBe(healthRequestsBeforeMutation);
+});
 test('supports a narrow viewport without horizontal overflow', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');

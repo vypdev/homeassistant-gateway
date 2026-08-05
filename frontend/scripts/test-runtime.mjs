@@ -128,15 +128,20 @@ try {
   assert.ok(calls.every(({ init }) => init?.signal === refreshAbortController.signal));
   refreshAbortController.abort();
   await gatewayApi.createClient({ client_id: 'id', display_name: 'name', profile: 'observer', capabilities: [], operator_services: [] });
+  await gatewayApi.loadClients();
   await gatewayApi.loadDiscovery('secret-token');
   await gatewayApi.loadAudit('deny reason');
   await gatewayApi.saveOperatorPolicy(['light.turn_on']);
   await assert.rejects(() => gatewayApiModule.createGatewayApi(async (path, init) => path === '/operator/service-policy' && init?.method === 'PUT' ? {} : fakeRequest(path, init)).saveOperatorPolicy(['light.turn_on']), /Invalid operator policy save response/);
   await gatewayApi.evaluatePolicy({ client_id: 'id', capability: 'ha.read.states', mutation: false });
-  assert.equal(calls.at(-4).init.headers.Authorization, 'Bearer secret-token');
-  assert.match(calls.at(-3).path, /decision=deny%20reason/);
-  assert.equal(JSON.parse(calls.at(-2).init.body).selected[0], 'light.turn_on');
-  assert.equal(JSON.parse(calls.at(-1).init.body).mutation, false);
+  const discoveryCall = calls.find(({ path }) => path === '/mcp/discovery');
+  const auditCall = calls.find(({ path }) => path.includes('decision=deny%20reason'));
+  const policyCall = calls.find(({ path, init }) => path === '/operator/service-policy' && init?.method === 'PUT');
+  const evaluationCall = calls.find(({ path }) => path === '/policy/evaluate');
+  assert.equal(discoveryCall.init.headers.Authorization, 'Bearer secret-token');
+  assert.match(auditCall.path, /decision=deny%20reason/);
+  assert.equal(JSON.parse(policyCall.init.body).selected[0], 'light.turn_on');
+  assert.equal(JSON.parse(evaluationCall.init.body).mutation, false);
 
   const contractsModule = await import(pathToFileURL(join(tempDir, 'gateway-contracts.mjs')));
   assert.doesNotThrow(() => contractsModule.assertGatewayBootstrap(bootstrap));
@@ -158,6 +163,7 @@ try {
   const controllerBootstrap = { ready: { status: 'ready' }, clients: [], audit: [], development: { operations: [] }, developmentReports: [], uiContext: { locale: 'en', theme: 'auto' }, healthDetails: { status: 'healthy', checks: [] }, operatorStatus: { operator_enabled: true, execution: 'enabled', registered_mutation_tools: [], capabilities: [], reason: 'ready' }, operatorPolicy: { services: [], selected: [] } };
   const fakeGatewayApi = {
     loadBootstrap: async () => { controllerCalls.push('loadBootstrap'); return controllerBootstrap; },
+    loadClients: async () => { controllerCalls.push('loadClients'); return []; },
     createClient: async () => { controllerCalls.push('createClient'); return { token: 'token' }; },
     revokeClient: async () => { controllerCalls.push('revokeClient'); },
     rotateClient: async () => { controllerCalls.push('rotateClient'); return { token: 'rotated' }; },
@@ -174,15 +180,14 @@ try {
   await controller.loadAudit('');
   await controller.saveOperatorPolicy([]);
   await controller.evaluatePolicy({ client_id: 'id', capability: 'ha.read.states', mutation: false });
-  assert.deepEqual(controllerCalls, ['createClient', 'loadBootstrap', 'revokeClient', 'loadBootstrap', 'rotateClient', 'loadBootstrap', 'loadDiscovery', 'loadAudit', 'saveOperatorPolicy', 'evaluatePolicy']);
+  assert.deepEqual(controllerCalls, ['createClient', 'revokeClient', 'rotateClient', 'loadDiscovery', 'loadAudit', 'saveOperatorPolicy', 'evaluatePolicy']);
 
   let observedSignal;
   const mutationSignalController = new AbortController();
   const observedMutationSignals = [];
   fakeGatewayApi.createClient = async (_input, signal) => { observedMutationSignals.push(signal); return { token: 'token' }; };
-  fakeGatewayApi.loadBootstrap = async (signal) => { observedMutationSignals.push(signal); return controllerBootstrap; };
   await controller.createClient({ client_id: 'id', display_name: 'name', profile: 'observer', capabilities: [], operator_services: [] }, mutationSignalController.signal);
-  assert.deepEqual(observedMutationSignals, [mutationSignalController.signal, mutationSignalController.signal]);
+  assert.deepEqual(observedMutationSignals, [mutationSignalController.signal]);
 
   observedSignal = undefined;
   fakeGatewayApi.loadBootstrap = async (signal) => new Promise((resolve, reject) => {

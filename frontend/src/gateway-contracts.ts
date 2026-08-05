@@ -61,6 +61,9 @@ export function assertGatewayBootstrap(value: unknown): asserts value is Gateway
     || !isOperatorPolicy(value.operatorPolicy)) invalid('Invalid gateway bootstrap response');
 }
 
+export function assertClients(value: unknown): asserts value is Client[] {
+  if (!Array.isArray(value) || !value.every(isClient)) invalid('Invalid clients response');
+}
 export function assertOperatorPolicy(value: unknown): asserts value is OperatorServicePolicy {
   if (!isOperatorPolicy(value)) invalid('Invalid operator policy response');
 }

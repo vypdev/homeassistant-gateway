@@ -60,47 +60,43 @@ test('older mutation is canceled when a newer mutation starts', async ({ page })
   await secondMutation;
   await expect(page.getByRole('alert')).toHaveCount(0);
 });
-test('stale mutation bootstrap is ignored even when the transport delivers it late', async ({ page }) => {
+test('stale client mutation cannot overwrite a newer local result', async ({ page }) => {
   await installGatewayMock(page);
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Secure gateway control plane.' })).toBeVisible();
-  const finalClientId = await page.evaluate(async () => {
+  const statuses = await page.evaluate(async () => {
     const app = document.querySelector('gateway-app') as unknown as Record<string, unknown> & {
       revoke: (id: string) => Promise<void>;
       clients: Array<Record<string, unknown>>;
+      gatewayController: Record<string, unknown>;
     };
     window.confirm = () => true;
-    let firstResolve: ((value: unknown) => void) | undefined;
-    let secondResolve: ((value: unknown) => void) | undefined;
-    const snapshot = (clientId: string) => ({
-      ready: app.ready,
-      clients: [{ client_id: clientId, display_name: clientId, profile: 'observer', capabilities: [], operator_services: [] }],
-      audit: app.audit,
-      development: app.development,
-      developmentReports: app.developmentReports,
-      uiContext: app.uiContext,
-      healthDetails: app.healthDetails,
-      operatorStatus: app.operatorStatus,
-      operatorPolicy: app.operatorPolicy,
-    });
+    app.clients = [
+      { client_id: 'first', display_name: 'First', profile: 'observer', capabilities: [], operator_services: [], created_at: '2026-08-05T00:00:00Z', status: 'active', revoked_at: null },
+      { client_id: 'second', display_name: 'Second', profile: 'observer', capabilities: [], operator_services: [], created_at: '2026-08-05T00:00:00Z', status: 'active', revoked_at: null },
+    ];
+    let firstResolve: (() => void) | undefined;
+    let secondResolve: (() => void) | undefined;
     app.gatewayController = {
-      revokeClient: (clientId: string) => new Promise((resolve) => {
+      revokeClient: (clientId: string) => new Promise<void>((resolve) => {
         if (clientId === 'first') firstResolve = resolve;
         else secondResolve = resolve;
       }),
+      refreshClients: async () => app.clients,
     };
     const first = app.revoke('first');
     await new Promise((resolve) => setTimeout(resolve, 0));
     const second = app.revoke('second');
     await new Promise((resolve) => setTimeout(resolve, 0));
-    secondResolve?.(snapshot('second'));
+    secondResolve?.();
     await second;
-    firstResolve?.(snapshot('first'));
+    firstResolve?.();
     await first;
-    return app.clients[0].client_id;
+    return app.clients.map((client) => [client.client_id, client.status]);
   });
-  expect(finalClientId).toBe('second');
+  expect(statuses).toEqual([['first', 'active'], ['second', 'revoked']]);
 });
+
 test('boot error exposes a retry action and recovers when readiness returns', async ({ page }) => {
   await installGatewayMock(page);
   let readinessAttempts = 0;

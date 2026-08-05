@@ -1,5 +1,5 @@
 import { api } from './api';
-import { assertGatewayBootstrap, assertIssuedClient, assertOperatorPolicy, assertOperatorPolicySaveResponse, assertPolicyEvaluation } from './gateway-contracts';
+import { assertClients, assertGatewayBootstrap, assertIssuedClient, assertOperatorPolicy, assertOperatorPolicySaveResponse, assertPolicyEvaluation } from './gateway-contracts';
 import type { CreateClientInput, GatewayPort, PolicyEvaluationInput } from './gateway-port';
 import type { AuditEvent, Client, DevelopmentCatalog, DevelopmentReport, Discovery, GatewayBootstrap, HealthDetails, OperatorServicePolicy, OperatorStatus, Ready, UiContext } from './models';
 
@@ -26,6 +26,11 @@ export const createGatewayApi = (request: Request = api): GatewayApi => ({
     const bootstrap = { ready, clients, audit, development, developmentReports, uiContext, healthDetails, operatorStatus, operatorPolicy };
     assertGatewayBootstrap(bootstrap);
     return bootstrap;
+  },
+  async loadClients(signal?: AbortSignal) {
+    const clients = await request<Client[]>('/clients', signal ? { signal } : undefined);
+    assertClients(clients);
+    return clients;
   },
   async createClient(input, signal) {
     const result = await request<Client & { token: string }>('/clients', {

@@ -68,6 +68,11 @@ export class GatewayApp extends LitElement {
   @state() ready: Ready | null = null;
   @state() clients: Client[] = [];
   @state() busy = false;
+  @state() clientsBusy = false;
+  @state() auditBusy = false;
+  @state() discoveryBusy = false;
+  @state() policyBusy = false;
+  @state() developmentBusy = false;
   @state() error = '';
   @state() issuedToken = '';
   @state() discovery: Discovery | null = null;
@@ -187,7 +192,12 @@ export class GatewayApp extends LitElement {
   private finishMutation(version: number, controller: AbortController) {
     if (version !== this.mutationVersion || this.mutationController !== controller) return;
     this.mutationController = null;
-    this.busy = false;
+  }
+
+  private syncClientsInBackground(version: number) {
+    void this.gatewayController.refreshClients()
+      .then((clients) => { if (version === this.mutationVersion) this.clients = clients; })
+      .catch(() => { /* the mutation result remains visible; manual refresh can retry */ });
   }
 
   setView(view: View) { this.view = view; this.error = ''; }
@@ -197,14 +207,17 @@ export class GatewayApp extends LitElement {
     const form = event.target as HTMLFormElement;
     const data = new FormData(form);
     const mutation = this.beginMutation();
-    this.busy = true; this.error = '';
+    this.clientsBusy = true; this.error = '';
     try {
       const result = await this.gatewayController.createClient({ client_id: String(data.get('client_id') ?? ''), display_name: String(data.get('display_name') ?? ''), profile: String(data.get('profile') ?? 'observer'), capabilities: [...this.selectedCapabilities], operator_services: data.getAll('operator_services').map(String) }, mutation.controller.signal);
       if (!this.isCurrentMutation(mutation.version, mutation.controller)) return;
-      this.issuedToken = result.client.token; form.reset(); this.selectedCapabilities = new Set(['ha.read.diagnostics']); this.clientProfile = 'observer'; this.permissionTab = 'capabilities'; this.applyBootstrap(result.bootstrap); this.bootState = 'ready';
+      const { token, ...client } = result.client;
+      this.clients = [...this.clients, client];
+      this.issuedToken = token; form.reset(); this.selectedCapabilities = new Set(['ha.read.diagnostics']); this.clientProfile = 'observer'; this.permissionTab = 'capabilities';
+      this.syncClientsInBackground(mutation.version);
     } catch (error) {
       if (this.isCurrentMutation(mutation.version, mutation.controller)) this.error = this.errorMessage(error, 'errorIssueClient');
-    } finally { this.finishMutation(mutation.version, mutation.controller); }
+    } finally { if (this.isCurrentMutation(mutation.version, mutation.controller)) this.clientsBusy = false; this.finishMutation(mutation.version, mutation.controller); }
   }
 
   setClientProfile(profile: Profile) {
@@ -244,46 +257,55 @@ export class GatewayApp extends LitElement {
   async revoke(clientId: string) {
     if (!window.confirm(this.t('revokeConfirm').replace('{client}', clientId))) return;
     const mutation = this.beginMutation();
-    this.busy = true; this.error = '';
+    this.clientsBusy = true; this.error = '';
     try {
-      const bootstrap = await this.gatewayController.revokeClient(clientId, mutation.controller.signal);
-      if (this.isCurrentMutation(mutation.version, mutation.controller)) this.applyBootstrap(bootstrap);
+      await this.gatewayController.revokeClient(clientId, mutation.controller.signal);
+      if (this.isCurrentMutation(mutation.version, mutation.controller)) {
+        this.clients = this.clients.map((client) => client.client_id === clientId ? { ...client, status: 'revoked', revoked_at: new Date().toISOString() } : client);
+        this.syncClientsInBackground(mutation.version);
+      }
     } catch (error) {
       if (this.isCurrentMutation(mutation.version, mutation.controller)) this.error = this.errorMessage(error, 'errorRevokeClient');
-    } finally { this.finishMutation(mutation.version, mutation.controller); }
+    } finally { if (this.isCurrentMutation(mutation.version, mutation.controller)) this.clientsBusy = false; this.finishMutation(mutation.version, mutation.controller); }
   }
 
   async deleteClient(clientId: string) {
     if (!window.confirm(this.t('deleteConfirm').replace('{client}', clientId))) return;
     const mutation = this.beginMutation();
-    this.busy = true; this.error = '';
+    this.clientsBusy = true; this.error = '';
     try {
-      const bootstrap = await this.gatewayController.deleteClient(clientId, mutation.controller.signal);
-      if (this.isCurrentMutation(mutation.version, mutation.controller)) this.applyBootstrap(bootstrap);
+      await this.gatewayController.deleteClient(clientId, mutation.controller.signal);
+      if (this.isCurrentMutation(mutation.version, mutation.controller)) {
+        this.clients = this.clients.filter((client) => client.client_id !== clientId);
+        this.syncClientsInBackground(mutation.version);
+      }
     } catch (error) {
       if (this.isCurrentMutation(mutation.version, mutation.controller)) this.error = this.errorMessage(error, 'errorDeleteClient');
-    } finally { this.finishMutation(mutation.version, mutation.controller); }
+    } finally { if (this.isCurrentMutation(mutation.version, mutation.controller)) this.clientsBusy = false; this.finishMutation(mutation.version, mutation.controller); }
   }
 
   async rotate(clientId: string) {
     if (!window.confirm(this.t('rotateConfirm').replace('{client}', clientId))) return;
     const mutation = this.beginMutation();
-    this.busy = true; this.error = '';
+    this.clientsBusy = true; this.error = '';
     try {
       const result = await this.gatewayController.rotateClient(clientId, mutation.controller.signal);
       if (!this.isCurrentMutation(mutation.version, mutation.controller)) return;
-      this.issuedToken = result.client.token; this.applyBootstrap(result.bootstrap);
+      const { token, ...client } = result.client;
+      this.clients = this.clients.map((item) => item.client_id === clientId ? client : item);
+      this.issuedToken = token;
+      this.syncClientsInBackground(mutation.version);
     } catch (error) {
       if (this.isCurrentMutation(mutation.version, mutation.controller)) this.error = this.errorMessage(error, 'errorRotateClient');
-    } finally { this.finishMutation(mutation.version, mutation.controller); }
+    } finally { if (this.isCurrentMutation(mutation.version, mutation.controller)) this.clientsBusy = false; this.finishMutation(mutation.version, mutation.controller); }
   }
 
   async loadDiscovery(event: Event) {
     event.preventDefault(); const form = event.target as HTMLFormElement; const token = String(new FormData(form).get('token') ?? '');
-    this.busy = true; this.error = '';
+    this.discoveryBusy = true; this.error = '';
     try { this.discovery = await this.gatewayController.loadDiscovery(token); }
     catch (error) { this.error = this.errorMessage(error, 'errorDiscovery'); }
-    finally { this.busy = false; }
+    finally { this.discoveryBusy = false; }
   }
 
   async loadDevelopmentReports() {
@@ -291,7 +313,7 @@ export class GatewayApp extends LitElement {
   }
 
   async startDevelopmentJob(operation: string, parameters: Record<string, string>, errorKey: string) {
-    this.busy = true; this.error = ''; this.developmentProgress = { status: 'queued', completed: 0, total: 0 };
+    this.developmentBusy = true; this.error = ''; this.developmentProgress = { status: 'queued', completed: 0, total: 0 };
     try {
       await executeDevelopmentJob(operation, parameters, {
         onSnapshot: (snapshot) => {
@@ -302,7 +324,7 @@ export class GatewayApp extends LitElement {
         onFinished: () => this.loadDevelopmentReports(),
       });
     } catch (error) { this.error = this.errorMessage(error, errorKey); }
-    finally { this.busy = false; }
+    finally { this.developmentBusy = false; }
   }
 
   async runDevelopment(operation: string) {
@@ -342,6 +364,8 @@ export class GatewayApp extends LitElement {
     return html`<div class="shell ${this.effectiveTheme}">${neuralBackground()}<main class="boot-stage" aria-busy=${failed ? 'false' : 'true'}><section class="boot-card" aria-live="polite"><div class="boot-orbit" aria-hidden="true"><div class="boot-core"></div></div><h1>${failed ? this.t('errorLoadState') : this.t('checkingGateway')}</h1><p>${this.t('healthDescription')}</p>${failed ? html`<div class="alert" role="alert" style="margin-top:20px">${this.error}</div><button class="secondary boot-retry" @click=${() => void this.refresh()}>${this.t('refresh')}</button>` : html`<div class="boot-status"><span class="dot"></span>${this.t('checkingGateway')}</div><div class="boot-progress" role="progressbar" aria-label=${this.t('checkingGateway')}></div>`}</section></main></div>`;
   }
 
+  private get anyBusy() { return this.busy || this.clientsBusy || this.auditBusy || this.discoveryBusy || this.policyBusy || this.developmentBusy; }
+
   render() {
     if (this.bootState !== 'ready') return this.loadingView();
     const active = this.view;
@@ -351,7 +375,7 @@ export class GatewayApp extends LitElement {
         ${navigationView(this.view, this.t.bind(this), (view) => this.setView(view))}
         <div class="side-foot"><div class="ok">● ${this.t('observerFirst')}</div><div>${this.t('operatorDisabled')}</div></div>
       </aside>
-      <main aria-busy=${this.busy ? 'true' : 'false'}>
+      <main aria-busy=${this.anyBusy ? 'true' : 'false'}>
         <div class="topline"><div><div class="eyebrow">Home Assistant App · MCP Gateway</div><h1>${this.pageTitle()}</h1><p>${this.subtitle()}</p></div><div style="display:grid;gap:10px;justify-items:end"><label class="muted">${this.t('language')}<select aria-label=${this.t('language')} @change=${(event: Event) => this.setLocale((event.target as HTMLSelectElement).value)}><option value="">Home Assistant (${this.uiContext.locale})</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt">Português</option><option value="it">Italiano</option><option value="zh">中文</option><option value="ja">日本語</option><option value="ru">Русский</option><option value="hi">हिन्दी</option><option value="ar">العربية</option></select></label><div class="status-pill ${this.ready?.status === 'ready' ? '' : 'warn'}"><span class="dot"></span>${this.ready?.status === 'ready' ? this.t('gatewayReady') : this.t('checkingGateway')}</div></div></div>
         ${this.error ? html`<div class="alert" role="alert">${this.error}</div>` : ''}
         ${active === 'overview' ? html`${this.overview()}${this.healthPanel()}${this.topologyPanel()}` : active === 'development' ? this.developmentView() : active === 'clients' ? this.clientsView() : active === 'policy' ? this.policyView() : active === 'mcp' ? this.mcpView() : this.auditView()}
@@ -369,20 +393,27 @@ export class GatewayApp extends LitElement {
 
   topologyPanel() { return topologyView({ ready: this.ready, clients: this.clients, audit: this.audit, healthDetails: this.healthDetails, t: this.t.bind(this), statusText: this.statusText.bind(this), navigate: (view) => this.setView(view) }); }
 
-  developmentView() { return renderDevelopmentView({ catalog: this.development, progress: this.developmentProgress, results: this.developmentResults, reports: this.developmentReports, output: this.developmentOutput, entity: this.developmentEntity, startTime: this.developmentStartTime, busy: this.busy, t: this.t.bind(this), statusText: this.statusText.bind(this), packText: this.packText.bind(this), operationText: this.operationText.bind(this), setEntity: (value) => { this.developmentEntity = value; }, setStartTime: (value) => { this.developmentStartTime = value; }, runAll: () => void this.runAllDevelopment(), runPack: (name) => void this.runDevelopmentPack(name), runOperation: (name) => void this.runDevelopment(name), download: () => this.downloadDiagnostic(), copyProblemReports: () => void this.copyProblemReports(), copyDiagnostic: (result) => void this.copyDiagnostic(result), retry: (operation) => void this.retryDevelopment(operation), reasonText: (reason) => reason === 'empty_result' ? this.t('statusPartial') : reason }); }
+  developmentView() { return renderDevelopmentView({ catalog: this.development, progress: this.developmentProgress, results: this.developmentResults, reports: this.developmentReports, output: this.developmentOutput, entity: this.developmentEntity, startTime: this.developmentStartTime, busy: this.developmentBusy, t: this.t.bind(this), statusText: this.statusText.bind(this), packText: this.packText.bind(this), operationText: this.operationText.bind(this), setEntity: (value) => { this.developmentEntity = value; }, setStartTime: (value) => { this.developmentStartTime = value; }, runAll: () => void this.runAllDevelopment(), runPack: (name) => void this.runDevelopmentPack(name), runOperation: (name) => void this.runDevelopment(name), download: () => this.downloadDiagnostic(), copyProblemReports: () => void this.copyProblemReports(), copyDiagnostic: (result) => void this.copyDiagnostic(result), retry: (operation) => void this.retryDevelopment(operation), reasonText: (reason) => reason === 'empty_result' ? this.t('statusPartial') : reason }); }
 
-  clientsView() { return renderClientsView({ clients: this.clients, busy: this.busy, t: this.t.bind(this), refresh: () => void this.refresh(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), deleteClient: (clientId) => void this.deleteClient(clientId), rotate: (clientId) => void this.rotate(clientId), capabilitySelector: () => this.capabilitySelector(), operatorEnabled: this.operatorEnabled, operatorServices: selectedOperatorServices(this.operatorPolicy), navigateToPolicy: () => this.setView('policy'), permissionTab: this.permissionTab, setPermissionTab: (tab) => { this.permissionTab = tab; }, profile: this.clientProfile, setProfile: (profile) => this.setClientProfile(profile) }); }
+  async refreshClients() {
+    this.clientsBusy = true;
+    try { this.clients = await this.gatewayController.refreshClients(); }
+    catch (error) { this.error = this.errorMessage(error, 'errorLoadState'); }
+    finally { this.clientsBusy = false; }
+  }
+
+  clientsView() { return renderClientsView({ clients: this.clients, busy: this.clientsBusy, t: this.t.bind(this), refresh: () => void this.refreshClients(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), deleteClient: (clientId) => void this.deleteClient(clientId), rotate: (clientId) => void this.rotate(clientId), capabilitySelector: () => this.capabilitySelector(), operatorEnabled: this.operatorEnabled, operatorServices: selectedOperatorServices(this.operatorPolicy), navigateToPolicy: () => this.setView('policy'), permissionTab: this.permissionTab, setPermissionTab: (tab) => { this.permissionTab = tab; }, profile: this.clientProfile, setProfile: (profile) => this.setClientProfile(profile) }); }
 
   auditView() { return auditView({ audit: this.audit, t: this.t.bind(this), loadAudit: (decision) => void this.loadAudit(decision) }); }
 
-  async loadAudit(decision: string) { this.busy = true; try { this.audit = await this.gatewayController.loadAudit(decision); } catch (error) { this.error = this.errorMessage(error, 'errorAudit'); } finally { this.busy = false; } }
+  async loadAudit(decision: string) { this.auditBusy = true; try { this.audit = await this.gatewayController.loadAudit(decision); } catch (error) { this.error = this.errorMessage(error, 'errorAudit'); } finally { this.auditBusy = false; } }
   private queueOperatorPolicySave() {
     if (!this.operatorPolicy) return;
     const saveVersion = ++this.policySaveVersion;
-    this.busy = true; this.error = '';
+    this.policyBusy = true; this.error = '';
     void this.gatewayController.saveOperatorPolicy(this.operatorPolicy.selected)
       .catch((error) => { if (saveVersion === this.policySaveVersion) this.error = this.errorMessage(error, 'operatorServicesPolicyInvalid'); })
-      .finally(() => { if (saveVersion === this.policySaveVersion) this.busy = false; });
+      .finally(() => { if (saveVersion === this.policySaveVersion) this.policyBusy = false; });
   }
   toggleOperatorService(service: string, checked: boolean) {
     if (!this.operatorPolicy) return;
@@ -395,9 +426,9 @@ export class GatewayApp extends LitElement {
     this.queueOperatorPolicySave();
   }
 
-  policyView() { return renderPolicyView({ clients: this.clients, busy: this.busy, t: this.t.bind(this), evaluatePolicy: this.evaluatePolicy.bind(this), operatorPolicy: this.operatorPolicy, toggleOperatorService: this.toggleOperatorService.bind(this), toggleOperatorServiceGroup: this.toggleOperatorServiceGroup.bind(this) }); }
-  async evaluatePolicy(event: Event) { event.preventDefault(); const data = new FormData(event.target as HTMLFormElement); this.busy = true; try { const result = await this.gatewayController.evaluatePolicy({ client_id: String(data.get('client_id') ?? ''), capability: String(data.get('capability') ?? ''), mutation: data.has('mutation') }); window.alert(`${result.decision}: ${result.reason}`); } catch (error) { this.error = this.errorMessage(error, 'errorPolicy'); } finally { this.busy = false; } }
-  mcpView() { return renderMcpView({ ready: this.ready, discovery: this.discovery, busy: this.busy, t: this.t.bind(this), loadDiscovery: this.loadDiscovery.bind(this) }); }
+  policyView() { return renderPolicyView({ clients: this.clients, busy: this.policyBusy, t: this.t.bind(this), evaluatePolicy: this.evaluatePolicy.bind(this), operatorPolicy: this.operatorPolicy, toggleOperatorService: this.toggleOperatorService.bind(this), toggleOperatorServiceGroup: this.toggleOperatorServiceGroup.bind(this) }); }
+  async evaluatePolicy(event: Event) { event.preventDefault(); const data = new FormData(event.target as HTMLFormElement); this.policyBusy = true; try { const result = await this.gatewayController.evaluatePolicy({ client_id: String(data.get('client_id') ?? ''), capability: String(data.get('capability') ?? ''), mutation: data.has('mutation') }); window.alert(`${result.decision}: ${result.reason}`); } catch (error) { this.error = this.errorMessage(error, 'errorPolicy'); } finally { this.policyBusy = false; } }
+  mcpView() { return renderMcpView({ ready: this.ready, discovery: this.discovery, busy: this.discoveryBusy, t: this.t.bind(this), loadDiscovery: this.loadDiscovery.bind(this) }); }
   tokenModal() { return html`<div class="modal-backdrop" role="dialog" aria-modal="true"><div class="modal"><div class="eyebrow">${this.t('oneTimeCredential')}</div><h2>${this.t('tokenOnce')}</h2><p>${this.t('tokenOnlyOnce')}</p><div class="token mono">${this.issuedToken}</div><div class="form-actions"><button class="secondary" @click=${() => navigator.clipboard?.writeText(this.issuedToken)}>${this.t('copyToken')}</button><button class="primary" @click=${() => { this.issuedToken = ''; }}>${this.t('savedIt')}</button></div></div></div>`; }
 }
 

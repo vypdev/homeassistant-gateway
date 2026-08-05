@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.30
+
+- Prevent client mutations from waiting for the full gateway bootstrap before updating the UI.
+- Isolate busy states for clients, policy, discovery, and development operations.
+- Add lightweight client refresh and regression coverage for slow bootstrap endpoints and stale mutation ordering.
+
 ## 0.5.29
 
 - Keep revoked client tokens permanently unauthorized through the explicit revoke lifecycle.
