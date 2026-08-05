@@ -110,7 +110,7 @@ try {
     if (path === '/development/catalog') return { enabled: true, upstream: 'fake', operations: [], packs: [], mutations: { status: 'blocked', reason: 'test', approval_required: true } };
     if (path === '/development/reports') return [];
     if (path === '/ui/context') return { locale: 'en', theme: 'auto' };
-    if (path === '/health/details') return { status: 'healthy', checks: [] };
+    if (path === '/health/details') return { status: 'healthy', checks: [{ name: 'core', status: 'ok', latency_ms: 4, http_status: 200, code: null }] };
     if (path === '/operator/status') return { operator_enabled: true, execution: 'enabled', registered_mutation_tools: [], capabilities: [], reason: 'ready' };
     if (path === '/operator/service-policy') return init?.method === 'PUT' ? { selected: JSON.parse(init.body).selected } : { services: [], selected: [] };
     if (path === '/mcp/discovery') return { tools: [] };

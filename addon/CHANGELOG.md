@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.26
+
+- Fix gateway bootstrap validation for successful health checks whose diagnostic code is correctly returned as `null`.
+- Add runtime coverage for the live health-check response shape so valid Home Assistant readiness data is accepted by the frontend.
+
 ## 0.5.25
 
 - Harden frontend HTTP contracts by validating operator policy save responses and normalizing malformed JSON responses as stable gateway errors.

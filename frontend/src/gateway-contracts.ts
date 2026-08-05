@@ -19,9 +19,10 @@ const isAuditEvent = (value: unknown): value is AuditEvent => {
   return (value.remote_user_id === null || typeof value.remote_user_id === 'string') && typeof value.status_code === 'number';
 };
 const isHealthCheck = (value: unknown): value is HealthCheck => isRecord(value)
-  && hasStrings(value, ['name', 'status', 'code'])
+  && hasStrings(value, ['name', 'status'])
   && typeof value.latency_ms === 'number'
-  && (value.http_status === null || typeof value.http_status === 'number');
+  && (value.http_status === null || typeof value.http_status === 'number')
+  && (value.code === null || typeof value.code === 'string');
 const isHealthDetails = (value: unknown): value is HealthDetails => isRecord(value)
   && typeof value.status === 'string'
   && Array.isArray(value.checks)
