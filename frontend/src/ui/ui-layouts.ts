@@ -1,6 +1,48 @@
 import { html, type TemplateResult } from 'lit';
-import { gatewayIcon, gatewayStatus, type GatewayStatus } from './ui-primitives';
+import { gatewayButton, gatewayCheckbox, gatewayIcon, gatewayStatus, type GatewayStatus } from './ui-primitives';
 
+export type GatewayCheckboxGroupOption = {
+  value: string;
+  label: string | TemplateResult;
+  description?: string | TemplateResult;
+  checked?: boolean;
+  disabled?: boolean;
+  className?: string;
+  onChange?: (event: Event) => void;
+};
+
+export type GatewayCheckboxGroupOptions = {
+  selectedCount: number;
+  selectedLabel: string | TemplateResult;
+  selectAllLabel: string | TemplateResult;
+  clearLabel: string | TemplateResult;
+  items: readonly GatewayCheckboxGroupOption[];
+  onSelectAll: () => void;
+  onClear: () => void;
+};
+
+export function gatewayCheckboxGroup(options: GatewayCheckboxGroupOptions): TemplateResult {
+  return html`<section class="capability-selector" aria-label=${typeof options.selectedLabel === 'string' ? options.selectedLabel : ''}>
+    <div class="capability-toolbar">
+      <span class="muted">${options.selectedCount} ${options.selectedLabel}</span>
+      <span class="capability-actions">
+        ${gatewayButton({ label: options.selectAllLabel, variant: 'secondary', onClick: options.onSelectAll })}
+        ${gatewayButton({ label: options.clearLabel, variant: 'secondary', onClick: options.onClear })}
+      </span>
+    </div>
+    <div class="capability-grid">
+      ${options.items.map((item) => gatewayCheckbox({
+        name: 'capabilities',
+        value: item.value,
+        checked: item.checked,
+        disabled: item.disabled,
+        className: ['capability-option', item.className].filter(Boolean).join(' '),
+        onChange: item.onChange,
+        label: html`<span><strong>${item.label} · <code>${item.value}</code></strong>${item.description ? html`<small>${item.description}</small>` : ''}</span>`,
+      }))}
+    </div>
+  </section>`;
+}
 export type GatewaySettingsItem = {
   title: string;
   description: string;

@@ -22,6 +22,8 @@ export function navigationView(current: View, translate: Translator, navigate: N
     id: `navigation-${view}`,
     label: translate(key),
     icon,
+    iconOnly: true,
+    iconClassName: 'navigation-icon',
     selected: current === view,
     onSelect: () => navigate(view),
   }));

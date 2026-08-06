@@ -39,6 +39,8 @@ export type GatewayTab = {
   selected?: boolean;
   disabled?: boolean;
   panelId?: string;
+  iconOnly?: boolean;
+  iconClassName?: string;
   onSelect: () => void;
 };
 
@@ -78,7 +80,7 @@ export function gatewayTabGroup(tabs: GatewayTab[], ariaLabel: string, className
 }
 
 export function gatewayTab(tab: GatewayTab, tabIndex = tab.selected ? 0 : -1, onKeydown?: (event: KeyboardEvent) => void): TemplateResult {
-  return html`<button id=${tab.id} class="ui-tab" type="button" role="tab" tabindex=${tabIndex} aria-selected=${tab.selected ?? false} aria-controls=${ifDefined(tab.panelId)} ?disabled=${tab.disabled} aria-label=${tab.label} title=${tab.label} @keydown=${onKeydown} @click=${tab.onSelect}>${tab.icon ? gatewayIcon(tab.icon, 'ui-tab-icon') : ''}<span>${tab.label}</span></button>`;
+  return html`<button id=${tab.id} class=${['ui-tab', tab.iconOnly ? 'ui-tab-icon-only' : ''].filter(Boolean).join(' ')} type="button" role="tab" tabindex=${tabIndex} aria-selected=${tab.selected ?? false} aria-controls=${ifDefined(tab.panelId)} ?disabled=${tab.disabled} aria-label=${tab.label} title=${tab.label} @keydown=${onKeydown} @click=${tab.onSelect}>${tab.icon ? gatewayIcon(tab.icon, tab.iconClassName ?? 'ui-tab-icon') : ''}<span class=${tab.iconOnly ? 'sr-only' : ''}>${tab.label}</span></button>`;
 }
 
 function fieldIds(options: FieldBase, suffix: string): string {
