@@ -5,7 +5,9 @@
 FROM python:3.12-slim AS builder
 ARG GATEWAY_REPOSITORY=https://github.com/vypdev/homeassistant-gateway.git
 ARG GATEWAY_REF=develop
+ARG BUILD_VERSION=0.5.31-dev.2
 
+RUN echo "Building Edge ${BUILD_VERSION} from ${GATEWAY_REF}"
 RUN apt-get update \
     && apt-get install --no-install-recommends -y build-essential git libffi-dev \
     && rm -rf /var/lib/apt/lists/*

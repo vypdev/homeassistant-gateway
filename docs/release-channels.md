@@ -50,14 +50,22 @@ The same policy applies if the default branch is named `master` instead of
 
 ## Updating Edge
 
-Edge tracks the current `develop` branch. After pushing a new development
-commit, refresh the app repository and rebuild/reinstall the Edge app from the
-Supervisor UI. A local checkout with uncommitted changes is not visible to a
-remote Supervisor build; changes must be committed and pushed first.
+Edge tracks the current `develop` branch for the source checkout performed by
+`addon-edge/Dockerfile`. Supervisor can nevertheless index the app metadata
+(`config.yaml`) from the repository's default branch. When that happens, the
+Edge version must also be present on `main` (or the Supervisor repository must
+be configured to use `develop`) before Supervisor can offer the update.
+
+After pushing a new development commit, refresh the app repository and
+rebuild/reinstall the Edge app from the Supervisor UI. A local checkout with
+uncommitted changes is not visible to a remote Supervisor build; changes must
+be committed and pushed first.
 
 The Edge version is deliberately explicit (`MAJOR.MINOR.PATCH-dev.N`) so
-Supervisor can identify the channel. Increment it when a new Edge build needs to
-be recognized as an update.
+Supervisor can identify the channel. Increment it when a new Edge build needs
+to be recognized as an update. If the repository is indexed from `main`, merge
+or release the Edge metadata to `main` through the normal `develop → main`
+workflow; do not copy Stable credentials or runtime data between channels.
 
 ## Release policy
 
