@@ -17,10 +17,10 @@ workflow. Stable follows `main` and is updated through tagged releases.
 
 `Home Assistant Gateway Edge` (`homeassistant_gateway_edge`) is the development
 channel. It follows the Zigbee2MQTT Edge model: the metadata uses the fixed
-version `edge` and Supervisor consumes a published per-architecture image from
-GHCR. GitHub Actions builds those images from `develop`.
+version `edge` and Supervisor consumes one published multi-architecture image
+from GHCR. GitHub Actions builds that image from `develop`.
 
-- Image template: `ghcr.io/vypdev/homeassistant-gateway-edge-{arch}:edge`
+- Image: `ghcr.io/vypdev/homeassistant-gateway-edge:edge`
 - Source ref: `develop`
 - Supervisor stage: `experimental`
 - Host MCP port: `18100`

@@ -1,7 +1,7 @@
 name: Home Assistant Gateway Edge
 version: "edge"
 slug: homeassistant_gateway_edge
-image: ghcr.io/vypdev/homeassistant-gateway-edge-{arch}
+image: ghcr.io/vypdev/homeassistant-gateway-edge
 description: Development build of the Home Assistant Gateway from the develop branch
 url: https://github.com/vypdev/homeassistant-gateway
 arch:

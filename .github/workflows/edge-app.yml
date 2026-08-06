@@ -25,18 +25,8 @@ permissions:
 
 jobs:
   build-and-publish:
-    name: Build Edge (${{ matrix.arch }})
+    name: Build Edge (multi-architecture)
     runs-on: [self-hosted, X64, Linux, coolify]
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: amd64
-            platform: linux/amd64
-          - arch: aarch64
-            platform: linux/arm64
-          - arch: armv7
-            platform: linux/arm/v7
 
     steps:
       - name: Check out develop source
@@ -63,17 +53,16 @@ jobs:
         with:
           context: .
           file: addon-edge/Dockerfile
-          platforms: ${{ matrix.platform }}
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
           push: true
           build-args: |
             BUILD_VERSION=edge
-            BUILD_ARCH=${{ matrix.arch }}
           tags: |
-            ghcr.io/${{ github.repository }}-edge-${{ matrix.arch }}:edge
-            ghcr.io/${{ github.repository }}-edge-${{ matrix.arch }}:edge-${{ github.sha }}
+            ghcr.io/${{ github.repository }}-edge:edge
+            ghcr.io/${{ github.repository }}-edge:edge-${{ github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=edge
             org.opencontainers.image.revision=${{ github.sha }}
-          cache-from: type=gha,scope=edge-${{ matrix.arch }}
-          cache-to: type=gha,mode=max,scope=edge-${{ matrix.arch }}
+          cache-from: type=gha,scope=edge
+          cache-to: type=gha,mode=max,scope=edge
