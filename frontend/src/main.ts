@@ -5,7 +5,7 @@ import type { GatewayController } from './gateway-controller';
 import { GatewayError } from './gateway-errors';
 import { CAPABILITY_DEFINITIONS } from './capabilities';
 import { capabilitiesAfterProfileChange, capabilitiesForProfile, toggleCapability as applyCapabilityToggle } from './capability-policy';
-import { selectedOperatorServices, toggleOperatorServiceGroupSelection, toggleOperatorServiceSelection } from './operator-policy';
+import { selectedOperatorServices as getSelectedOperatorServices, toggleOperatorServiceGroupSelection, toggleOperatorServiceSelection } from './operator-policy';
 import { resolveLocale, resolveTheme, translate } from './locale';
 import { capabilityText as resolveCapabilityText, operationText as resolveOperationText, packText as resolvePackText, pageSubtitle, pageTitle, statusText as resolveStatusText } from './view-helpers';
 import { navigationView } from './navigation-view';
@@ -18,7 +18,7 @@ import { mcpView as renderMcpView } from './mcp-view';
 import { loadDevelopmentReports, executeDevelopmentJob } from './development-controller';
 import { property, state } from 'lit/decorators.js';
 import { APP_STYLES } from './app-styles';
-import { gatewayAlert, gatewayButton, gatewayDialog } from './ui-primitives';
+import { gatewayAlert, gatewayButton, gatewayCheckboxGroup, gatewayDialog, gatewaySelect } from './ui';
 import { TRANSLATIONS } from './i18n-base';
 import { DEVELOPMENT_TRANSLATIONS } from './i18n-development';
 import { DEVELOPMENT_EXTRA_TRANSLATIONS } from './i18n-development-extra';
@@ -88,6 +88,7 @@ export class GatewayApp extends LitElement {
   @state() developmentEntity = '';
   @state() developmentStartTime = '';
   @state() selectedCapabilities = new Set<string>(['ha.read.diagnostics']);
+  @state() selectedOperatorServices = new Set<string>();
   @state() clientProfile: Profile = 'observer';
   @state() permissionTab: 'capabilities' | 'operator-services' = 'capabilities';
   @state() bootState: 'checking' | 'ready' | 'error' = 'checking';
@@ -209,11 +210,11 @@ export class GatewayApp extends LitElement {
     const mutation = this.beginMutation();
     this.clientsBusy = true; this.error = '';
     try {
-      const result = await this.gatewayController.createClient({ client_id: String(data.get('client_id') ?? ''), display_name: String(data.get('display_name') ?? ''), profile: String(data.get('profile') ?? 'observer'), capabilities: [...this.selectedCapabilities], operator_services: data.getAll('operator_services').map(String) }, mutation.controller.signal);
+      const result = await this.gatewayController.createClient({ client_id: String(data.get('client_id') ?? ''), display_name: String(data.get('display_name') ?? ''), profile: String(data.get('profile') ?? 'observer'), capabilities: [...this.selectedCapabilities], operator_services: [...this.selectedOperatorServices] }, mutation.controller.signal);
       if (!this.isCurrentMutation(mutation.version, mutation.controller)) return;
       const { token, ...client } = result.client;
       this.clients = [...this.clients, client];
-      this.issuedToken = token; form.reset(); this.selectedCapabilities = new Set(['ha.read.diagnostics']); this.clientProfile = 'observer'; this.permissionTab = 'capabilities';
+      this.issuedToken = token; form.reset(); this.selectedCapabilities = new Set(['ha.read.diagnostics']); this.selectedOperatorServices = new Set(); this.clientProfile = 'observer'; this.permissionTab = 'capabilities';
       this.syncClientsInBackground(mutation.version);
     } catch (error) {
       if (this.isCurrentMutation(mutation.version, mutation.controller)) this.error = this.errorMessage(error, 'errorIssueClient');
@@ -223,6 +224,11 @@ export class GatewayApp extends LitElement {
   setClientProfile(profile: Profile) {
     this.clientProfile = profile;
     this.selectedCapabilities = new Set(capabilitiesAfterProfileChange(profile, this.selectedCapabilities));
+    if (profile !== 'operator') this.selectedOperatorServices = new Set();
+  }
+
+  setOperatorServiceSelection(services: readonly string[]) {
+    this.selectedOperatorServices = new Set(services);
   }
 
   toggleCapability(name: string, checked: boolean) {
@@ -250,8 +256,26 @@ export class GatewayApp extends LitElement {
   }
 
   capabilitySelector() {
-    const selectAll = this.clientProfile === 'operator' ? () => { this.selectedCapabilities = new Set(capabilitiesForProfile('operator', CAPABILITY_DEFINITIONS)); } : () => this.selectObserverCapabilities();
-    return html`<div class="capability-toolbar"><span class="muted">${this.selectedCapabilities.size} ${this.t('selectedCapabilities')}</span><span class="capability-actions"><button type="button" class="secondary" @click=${selectAll}>${this.t('selectAllObserver')}</button><button type="button" class="secondary" @click=${() => this.clearCapabilities()}>${this.t('clearSelection')}</button></span></div><div class="capability-grid">${CAPABILITY_DEFINITIONS.map((item) => html`<label class="capability-option ${item.group === 'operator' ? 'operator' : ''}"><input type="checkbox" value=${item.name} .checked=${this.selectedCapabilities.has(item.name)} ?disabled=${item.group === 'operator' && (!this.operatorEnabled || this.clientProfile !== 'operator')} @change=${(event: Event) => this.toggleCapability(item.name, (event.target as HTMLInputElement).checked)} /><span><strong>${this.capabilityText(item.name, 'Label', item.label)} · <code>${item.name}</code></strong><small>${this.capabilityText(item.name, 'Description', item.description)}</small></span></label>`)}</div>`;
+    const selectAll = this.clientProfile === 'operator'
+      ? () => { this.selectedCapabilities = new Set(capabilitiesForProfile('operator', CAPABILITY_DEFINITIONS)); }
+      : () => this.selectObserverCapabilities();
+    return gatewayCheckboxGroup({
+      selectedCount: this.selectedCapabilities.size,
+      selectedLabel: this.t('selectedCapabilities'),
+      selectAllLabel: this.t('selectAllObserver'),
+      clearLabel: this.t('clearSelection'),
+      onSelectAll: selectAll,
+      onClear: () => this.clearCapabilities(),
+      items: CAPABILITY_DEFINITIONS.map((item) => ({
+        value: item.name,
+        label: this.capabilityText(item.name, 'Label', item.label),
+        description: this.capabilityText(item.name, 'Description', item.description),
+        checked: this.selectedCapabilities.has(item.name),
+        disabled: item.group === 'operator' && (!this.operatorEnabled || this.clientProfile !== 'operator'),
+        className: item.group === 'operator' ? 'operator' : '',
+        onChange: (event: Event) => this.toggleCapability(item.name, (event.target as HTMLInputElement).checked),
+      })),
+    });
   }
 
   async revoke(clientId: string) {
@@ -373,7 +397,7 @@ export class GatewayApp extends LitElement {
       <header class="app-header">
         <div class="brand"><img class="brand-mark" src="/icon.png" alt="" width="34" height="34" /><div><strong>${this.t('gateway')}</strong><small>${this.t('controlPlane')}</small></div></div>
         ${navigationView(this.view, this.t.bind(this), (view) => this.setView(view))}
-        <div class="header-tools"><label class="muted">${this.t('language')}<select aria-label=${this.t('language')} @change=${(event: Event) => this.setLocale((event.target as HTMLSelectElement).value)}><option value="">Home Assistant (${this.uiContext.locale})</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt">Português</option><option value="it">Italiano</option><option value="zh">中文</option><option value="ja">日本語</option><option value="ru">Русский</option><option value="hi">हिन्दी</option><option value="ar">العربية</option></select></label><div class="status-pill ${this.ready?.status === 'ready' ? '' : 'warn'}"><span class="dot"></span>${this.ready?.status === 'ready' ? this.t('gatewayReady') : this.t('checkingGateway')}</div></div>
+        <div class="header-tools">${gatewaySelect({ label: this.t('language'), id: 'language', className: 'header-language', onInput: (event) => this.setLocale((event.target as HTMLSelectElement).value), options: html`<option value="">Home Assistant (${this.uiContext.locale})</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt">Português</option><option value="it">Italiano</option><option value="zh">中文</option><option value="ja">日本語</option><option value="ru">Русский</option><option value="hi">हिन्दी</option><option value="ar">العربية</option>`})}<div class="status-pill ${this.ready?.status === 'ready' ? '' : 'warn'}"><span class="dot"></span>${this.ready?.status === 'ready' ? this.t('gatewayReady') : this.t('checkingGateway')}</div></div>
       </header>
       <main aria-busy=${this.anyBusy ? 'true' : 'false'}>
         <div class="topline"><div><div class="eyebrow">Home Assistant App · MCP Gateway</div><h1>${this.pageTitle()}</h1><p>${this.subtitle()}</p></div></div>
@@ -402,7 +426,7 @@ export class GatewayApp extends LitElement {
     finally { this.clientsBusy = false; }
   }
 
-  clientsView() { return renderClientsView({ clients: this.clients, busy: this.clientsBusy, t: this.t.bind(this), refresh: () => void this.refreshClients(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), deleteClient: (clientId) => void this.deleteClient(clientId), rotate: (clientId) => void this.rotate(clientId), capabilitySelector: () => this.capabilitySelector(), operatorEnabled: this.operatorEnabled, operatorServices: selectedOperatorServices(this.operatorPolicy), navigateToPolicy: () => this.setView('policy'), permissionTab: this.permissionTab, setPermissionTab: (tab) => { this.permissionTab = tab; }, profile: this.clientProfile, setProfile: (profile) => this.setClientProfile(profile) }); }
+  clientsView() { return renderClientsView({ clients: this.clients, busy: this.clientsBusy, t: this.t.bind(this), refresh: () => void this.refreshClients(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), deleteClient: (clientId) => void this.deleteClient(clientId), rotate: (clientId) => void this.rotate(clientId), capabilitySelector: () => this.capabilitySelector(), operatorEnabled: this.operatorEnabled, operatorServices: getSelectedOperatorServices(this.operatorPolicy), selectedOperatorServices: [...this.selectedOperatorServices], setOperatorServiceSelection: (services) => this.setOperatorServiceSelection(services), navigateToPolicy: () => this.setView('policy'), permissionTab: this.permissionTab, setPermissionTab: (tab) => { this.permissionTab = tab; }, profile: this.clientProfile, setProfile: (profile) => this.setClientProfile(profile) }); }
 
   auditView() { return auditView({ audit: this.audit, t: this.t.bind(this), loadAudit: (decision) => void this.loadAudit(decision) }); }
 
@@ -434,6 +458,7 @@ export class GatewayApp extends LitElement {
       this.t('tokenOnce'),
       html`<p>${this.t('tokenOnlyOnce')}</p><div class="token mono">${this.issuedToken}</div>`,
       html`${gatewayButton({ label: this.t('copyToken'), variant: 'secondary', onClick: () => void navigator.clipboard?.writeText(this.issuedToken) })}${gatewayButton({ label: this.t('savedIt'), variant: 'primary', onClick: () => { this.issuedToken = ''; } })}`,
+      { dialogId: 'token-dialog' },
     );
   }
 }

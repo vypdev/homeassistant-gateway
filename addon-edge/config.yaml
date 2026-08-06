@@ -1,5 +1,5 @@
 name: Home Assistant Gateway Edge
-version: "0.5.31-dev.1"
+version: "0.5.31-dev.2"
 slug: homeassistant_gateway_edge
 description: Development build of the Home Assistant Gateway from the develop branch
 url: https://github.com/vypdev/homeassistant-gateway

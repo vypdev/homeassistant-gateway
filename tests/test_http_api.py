@@ -17,6 +17,7 @@ from homeassistant_gateway.application.clients import (
 )
 from homeassistant_gateway.application.development import DevelopmentToolRunner
 from homeassistant_gateway.infrastructure.security.tokens import SecureTokenIssuer
+from homeassistant_gateway.presentation import http as http_module
 from homeassistant_gateway.presentation.http import create_app
 
 
@@ -145,6 +146,18 @@ def test_development_catalog_requires_ingress_and_lists_probes() -> None:
     assert len(response.json()["operations"]) == 19
     assert len(response.json()["packs"]) == 4
     assert response.json()["mutations"]["status"] == "disabled"
+
+
+def test_embedded_ui_catalog_is_available_through_ingress(tmp_path, monkeypatch) -> None:
+    catalog = tmp_path / "catalog"
+    catalog.mkdir()
+    (catalog / "index.html").write_text("<html><body>catalog</body></html>", encoding="utf-8")
+    monkeypatch.setattr(http_module, "UI_CATALOG_DIST", catalog)
+
+    response = request(make_app(), "GET", "/catalog/", headers=ingress_headers())
+
+    assert response.status_code == 200
+    assert "catalog" in response.text
 
 
 def test_ui_context_is_ingress_protected_and_returns_ha_preferences() -> None:

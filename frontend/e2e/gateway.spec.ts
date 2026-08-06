@@ -63,11 +63,11 @@ test('matches the Home Assistant navigation states and uses MDI leading icons', 
   await expect(buttons.first()).toHaveAttribute('aria-selected', 'true');
   await expect(buttons.first()).toHaveCSS('border-bottom-width', '2px');
   await expect(buttons.first()).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
-  await expect(buttons.first()).toHaveCSS('color', 'rgb(3, 169, 244)');
-  await expect(buttons.first().locator('svg')).toHaveCSS('fill', 'rgb(3, 169, 244)');
+  await expect(buttons.first()).toHaveCSS('color', 'rgb(36, 52, 71)');
+  await expect(buttons.first().locator('svg')).toHaveCSS('fill', 'rgb(36, 52, 71)');
 
   await buttons.nth(1).hover();
-  await expect(buttons.nth(1)).toHaveCSS('background-color', /color\(srgb|oklab|rgba\(/);
+  await expect(buttons.nth(1)).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
 });
 
 test('keeps the static shell and local motion reduced when requested', async ({ page }) => {

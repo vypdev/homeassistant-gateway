@@ -1,11 +1,23 @@
 import { html, type TemplateResult } from 'lit';
-import { gatewayButton, gatewayEmptyState, gatewaySelect, gatewayTextField } from './ui-primitives';
+import { gatewayButton, gatewayCard, gatewayCheckbox, gatewayCheckboxGroup, gatewayEmptyState, gatewayFormActions, gatewaySelect, gatewayTextField, type GatewayCheckboxGroupOption } from './ui';
 import type { Client, OperatorService, OperatorServicePolicy } from './models';
 
 type Translator = (key: string) => string;
 type EvaluatePolicy = (event: Event) => void;
 type ToggleService = (service: string, checked: boolean) => void;
 type ToggleServiceGroup = (services: string[], checked: boolean) => void;
+
+function gatewayCheckboxGroupOption(service: OperatorService, selected: ReadonlySet<string>, serviceGrantCount: (serviceId: string) => number, ctx: PolicyViewContext): GatewayCheckboxGroupOption {
+  const grants = serviceGrantCount(service.id);
+  return {
+    value: service.id,
+    label: service.name,
+    description: html`${service.description}<span class="operator-service-meta">${ctx.t('operatorServicesGrantedTo').replace('{count}', String(grants))}${!selected.has(service.id) && grants ? ` · ${ctx.t('operatorServicesGlobalBlocked')}` : ''}</span>`,
+    checked: selected.has(service.id),
+    className: 'operator-service-option',
+    onChange: (event) => ctx.toggleOperatorService(service.id, (event.target as HTMLInputElement).checked),
+  };
+}
 
 export type PolicyViewContext = {
   clients: Client[];
@@ -32,7 +44,7 @@ export function policyView(ctx: PolicyViewContext): TemplateResult {
 
   return html`
     <div class="split">
-      <div class="card">
+      ${gatewayCard(html`
         <h2>${ctx.t('policyMatrix')}</h2>
         <p>${ctx.t('policySubtitle')}</p>
         <div class="policy-tags">
@@ -41,19 +53,19 @@ export function policyView(ctx: PolicyViewContext): TemplateResult {
           <div class="tag">${ctx.t('policyMutationDenied')}</div>
           <div class="tag">${ctx.t('policyOperatorDisabled')}</div>
         </div>
-      </div>
-      <div class="card">
+      `, 'policy-matrix-card')}
+      ${gatewayCard(html`
         <h2>${ctx.t('evaluateRequest')}</h2>
         <form class="form" @submit=${ctx.evaluatePolicy}>
           ${gatewaySelect({ label: ctx.t('client'), name: 'client_id', options: html`${ctx.clients.map((client) => html`<option value=${client.client_id}>${client.display_name} · ${client.client_id}</option>`)}` })}
           ${gatewayTextField({ label: ctx.t('capability'), name: 'capability', value: 'ha.read.diagnostics', required: true })}
-          <label><span><input name="mutation" type="checkbox" class="inline-checkbox" /> ${ctx.t('mutationRequest')}</span></label>
-          <div class="form-actions">${gatewayButton({ label: ctx.t('evaluate'), variant: 'primary', type: 'submit', disabled: ctx.busy, leadingIcon: '✓' })}</div>
+          ${gatewayCheckbox({ label: ctx.t('mutationRequest'), name: 'mutation' })}
+          ${gatewayFormActions(gatewayButton({ label: ctx.t('evaluate'), variant: 'primary', type: 'submit', disabled: ctx.busy, leadingIcon: '✓' }))}
         </form>
-      </div>
+      `, 'policy-evaluation-card')}
     </div>
 
-    <section class="card operator-policy-card" aria-labelledby="operator-services-title">
+    ${gatewayCard(html`
       <div class="operator-policy-header">
         <div>
           <h2 id="operator-services-title">${ctx.t('operatorServicesTitle')}</h2>
@@ -77,27 +89,21 @@ export function policyView(ctx: PolicyViewContext): TemplateResult {
 
         <p class="muted operator-policy-change-note">${ctx.t('operatorServicesChanges')} ${ctx.t('operatorServicesRequiresApproval')}</p>
         <div class="operator-service-groups">
-          ${[...grouped.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([domain, services]) => html`
-            <section class="operator-service-group" aria-labelledby=${`operator-domain-${domain}`}>
-              <div class="operator-service-group-header">
-                <h3 id=${`operator-domain-${domain}`}>${domain}</h3>
-                ${(() => {
-                  const groupSelected = services.some((service) => selected.has(service.id));
-                  return gatewayButton({ label: ctx.t(groupSelected ? 'operatorServicesClearAll' : 'operatorServicesSelectAll'), variant: 'secondary', className: 'operator-service-group-action', onClick: () => ctx.toggleOperatorServiceGroup(services.map((service) => service.id), !groupSelected) });
-                })()}
-              </div>
-              <div class="operator-service-list">
-                ${services.map((service) => html`
-                  <label class="operator-service-option">
-                    <input type="checkbox" .checked=${selected.has(service.id)} @change=${(event: Event) => ctx.toggleOperatorService(service.id, (event.target as HTMLInputElement).checked)} />
-                    <span><strong>${service.name} · <code>${service.id}</code></strong><small>${service.description}</small><small class="operator-service-meta">${ctx.t('operatorServicesGrantedTo').replace('{count}', String(serviceGrantCount(service.id)))}${!selected.has(service.id) && serviceGrantCount(service.id) ? ` · ${ctx.t('operatorServicesGlobalBlocked')}` : ''}</small></span>
-                  </label>
-                `)}
-              </div>
-            </section>
-          `)}
+          ${[...grouped.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([domain, services]) => {
+            const groupSelected = services.some((service) => selected.has(service.id));
+            return gatewayCheckboxGroup({
+              selectedCount: services.filter((service) => selected.has(service.id)).length,
+              selectedLabel: ctx.t('operatorServicesSelected'),
+              title: domain,
+              className: 'operator-service-group',
+              selectAllLabel: ctx.t('operatorServicesSelectAll'),
+              toggleLabel: ctx.t(groupSelected ? 'operatorServicesClearAll' : 'operatorServicesSelectAll'),
+              onToggle: () => ctx.toggleOperatorServiceGroup(services.map((service) => service.id), !groupSelected),
+              items: services.map((service) => gatewayCheckboxGroupOption(service, selected, serviceGrantCount, ctx)),
+            });
+          })}
         </div>
       ` : gatewayEmptyState(ctx.t('operatorServicesUnavailable'))}
-    </section>
+      `, 'operator-policy-card')}
   `;
 }

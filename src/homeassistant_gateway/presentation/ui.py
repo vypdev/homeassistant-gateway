@@ -3,6 +3,7 @@ from pathlib import Path
 from fastapi.responses import FileResponse, HTMLResponse, Response
 
 UI_DIST = Path("/app/static")
+UI_CATALOG_DIST = Path("/app/catalog")
 
 FALLBACK_HTML = """<!doctype html>
 <html lang="en">

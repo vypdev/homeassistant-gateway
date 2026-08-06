@@ -10,10 +10,9 @@ The frontend acceptance suite is implemented with Playwright and is intentionall
 4. **UX contracts** (`pnpm run test:ux`) validate structural presentation requirements that should remain true without a browser.
 5. **Responsive acceptance** (`e2e/responsive.spec.ts`) checks all six application screens at ten explicit viewport sizes.
 6. **Flow acceptance** covers clients, permission tabs, global Operator Services policy, Audit filtering, and Development Console execution evidence.
-7. **Accessibility** (`e2e/accessibility.spec.ts`) runs Axe on every primary view and validates keyboard focus, tabs, form names and state.
-8. **Visual regression** (`e2e/visual.spec.ts`) uses deterministic Chromium baselines for dark/light themes at phone and desktop sizes.
-9. **Production-bundle smoke** runs the same browser suite against `vite preview`, not only the development server.
-10. **Artifact/live verification** remains separate: passing Playwright proves the UI and HTTP contract, not Home Assistant Supervisor installation.
+7. **Visual regression and Home Assistant parity** (`e2e/visual.spec.ts` and the Storybook catalog) use deterministic screenshots and manual comparison against the committed official Home Assistant references.
+8. **Production-bundle smoke** runs the same browser suite against `vite preview`, not only the development server.
+9. **Artifact/live verification** remains separate: passing Playwright proves the UI and HTTP contract, not Home Assistant Supervisor installation.
 
 ## Responsive invariants
 
