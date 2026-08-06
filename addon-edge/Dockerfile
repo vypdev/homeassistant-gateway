@@ -30,7 +30,7 @@ RUN corepack enable \
     && corepack pnpm run storybook:build
 
 FROM python:3.12-slim
-ARG BUILD_VERSION=0.5.31-dev.1
+ARG BUILD_VERSION=0.5.31-dev.2
 ARG BUILD_ARCH=amd64
 LABEL io.hass.version="${BUILD_VERSION}" \
       io.hass.type="app" \
