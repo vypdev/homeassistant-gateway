@@ -36,8 +36,8 @@ def main() -> int:
 
     if stable.get("image") != "ghcr.io/vypdev/homeassistant-gateway":
         errors.append("stable must consume the published GHCR image")
-    if edge.get("image") != "ghcr.io/vypdev/homeassistant-gateway-edge-{arch}":
-        errors.append("edge must consume the published per-architecture GHCR image")
+    if edge.get("image") != "ghcr.io/vypdev/homeassistant-gateway-edge":
+        errors.append("edge must consume the published multi-architecture GHCR image")
     if edge.get("version") != "edge":
         errors.append("edge must use the fixed edge version")
     if stable.get("slug") == edge.get("slug"):
@@ -81,7 +81,7 @@ def main() -> int:
         return 1
 
     print(f"PASS app-channel: stable={stable['slug']}:{port(stable)} edge={edge['slug']}:{port(edge)}")
-    print("PASS app-channel: stable=image edge=image-per-arch tag=edge source=develop")
+    print("PASS app-channel: stable=image edge=multi-architecture-image tag=edge source=develop")
     return 0
 
 
