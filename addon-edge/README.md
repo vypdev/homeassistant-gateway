@@ -2,9 +2,19 @@
 
 This directory contains the development app variant of Home Assistant Gateway.
 
-Unlike the stable `addon/` package, Edge intentionally has no published image in
-`config.yaml`. Home Assistant Supervisor builds `Dockerfile` during installation
-or rebuild. The Dockerfile fetches the `develop` branch, validates the frontend with pnpm, generates the production frontend bundle and the Storybook component catalog, and packages the same runtime used by Stable.
+Like the Zigbee2MQTT Edge app, Edge uses a fixed `edge` version and a published
+per-architecture GHCR image. The image is built by GitHub Actions from the
+`develop` branch and consumed by Supervisor through `config.yaml`.
+
+The published images are:
+
+- `ghcr.io/vypdev/homeassistant-gateway-edge-amd64:edge`
+- `ghcr.io/vypdev/homeassistant-gateway-edge-aarch64:edge`
+- `ghcr.io/vypdev/homeassistant-gateway-edge-armv7:edge`
+
+Edge does not build a Docker image locally in Supervisor. To update Edge,
+backup its data, uninstall it, refresh the repository and install it again,
+then restore the configuration if required.
 
 ## Development catalog
 

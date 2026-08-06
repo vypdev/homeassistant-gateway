@@ -36,8 +36,10 @@ def main() -> int:
 
     if stable.get("image") != "ghcr.io/vypdev/homeassistant-gateway":
         errors.append("stable must consume the published GHCR image")
-    if "image" in edge:
-        errors.append("edge must omit image so Supervisor builds it locally")
+    if edge.get("image") != "ghcr.io/vypdev/homeassistant-gateway-edge-{arch}":
+        errors.append("edge must consume the published per-architecture GHCR image")
+    if edge.get("version") != "edge":
+        errors.append("edge must use the fixed edge version")
     if stable.get("slug") == edge.get("slug"):
         errors.append("stable and edge slugs must be distinct")
     if stable.get("stage") != "stable":
@@ -47,8 +49,8 @@ def main() -> int:
     if port(stable) == port(edge):
         errors.append("stable and edge host ports must be distinct")
     edge_dockerfile = (EDGE / "Dockerfile").read_text(encoding="utf-8")
-    if "ARG GATEWAY_REF=develop" not in edge_dockerfile:
-        errors.append("edge Dockerfile must default to the develop ref")
+    if "COPY . /src" not in edge_dockerfile:
+        errors.append("edge Dockerfile must build from the checked-out develop source")
     for required_label in ('io.hass.version', 'io.hass.type="app"', 'io.hass.arch'):
         if required_label not in edge_dockerfile:
             errors.append(f"edge Dockerfile is missing label {required_label}")
@@ -79,7 +81,7 @@ def main() -> int:
         return 1
 
     print(f"PASS app-channel: stable={stable['slug']}:{port(stable)} edge={edge['slug']}:{port(edge)}")
-    print("PASS app-channel: stable=image edge=local-build ref=develop")
+    print("PASS app-channel: stable=image edge=image-per-arch tag=edge source=develop")
     return 0
 
 
