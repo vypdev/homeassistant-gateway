@@ -8,37 +8,44 @@ export type GatewayCheckboxGroupOption = {
   checked?: boolean;
   disabled?: boolean;
   className?: string;
+  showValue?: boolean;
   onChange?: (event: Event) => void;
 };
 
 export type GatewayCheckboxGroupOptions = {
   selectedCount: number;
   selectedLabel: string | TemplateResult;
+  showSelectionCount?: boolean;
+  name?: string;
+  title?: string | TemplateResult;
+  className?: string;
   selectAllLabel: string | TemplateResult;
-  clearLabel: string | TemplateResult;
+  clearLabel?: string | TemplateResult;
+  toggleLabel?: string | TemplateResult;
   items: readonly GatewayCheckboxGroupOption[];
-  onSelectAll: () => void;
-  onClear: () => void;
+  onSelectAll?: () => void;
+  onClear?: () => void;
+  onToggle?: () => void;
 };
 
 export function gatewayCheckboxGroup(options: GatewayCheckboxGroupOptions): TemplateResult {
-  return html`<section class="capability-selector" aria-label=${typeof options.selectedLabel === 'string' ? options.selectedLabel : ''}>
+  return html`<section class=${['capability-selector', options.className].filter(Boolean).join(' ')} aria-label=${typeof options.title === 'string' ? options.title : typeof options.selectedLabel === 'string' ? options.selectedLabel : ''}>
+    ${options.title ? html`<div class="operator-service-group-header"><h3>${options.title}</h3></div>` : ''}
     <div class="capability-toolbar">
-      <span class="muted">${options.selectedCount} ${options.selectedLabel}</span>
+      ${options.showSelectionCount === false ? '' : html`<span class="muted">${options.selectedCount} ${options.selectedLabel}</span>`}
       <span class="capability-actions">
-        ${gatewayButton({ label: options.selectAllLabel, variant: 'secondary', onClick: options.onSelectAll })}
-        ${gatewayButton({ label: options.clearLabel, variant: 'secondary', onClick: options.onClear })}
+        ${options.onToggle ? gatewayButton({ label: options.toggleLabel ?? options.selectAllLabel, variant: 'secondary', onClick: options.onToggle }) : html`${options.onSelectAll ? gatewayButton({ label: options.selectAllLabel, variant: 'secondary', onClick: options.onSelectAll }) : ''}${options.onClear && options.clearLabel ? gatewayButton({ label: options.clearLabel, variant: 'secondary', onClick: options.onClear }) : ''}`}
       </span>
     </div>
     <div class="capability-grid">
       ${options.items.map((item) => gatewayCheckbox({
-        name: 'capabilities',
+        name: options.name ?? 'capabilities',
         value: item.value,
         checked: item.checked,
         disabled: item.disabled,
         className: ['capability-option', item.className].filter(Boolean).join(' '),
         onChange: item.onChange,
-        label: html`<span><strong>${item.label} · <code>${item.value}</code></strong>${item.description ? html`<small>${item.description}</small>` : ''}</span>`,
+        label: html`<span><strong>${item.label}${item.showValue === false ? '' : html` · <code>${item.value}</code>`}</strong>${item.description ? html`<small>${item.description}</small>` : ''}</span>`,
       }))}
     </div>
   </section>`;

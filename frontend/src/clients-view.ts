@@ -1,16 +1,8 @@
 import { html, type TemplateResult } from 'lit';
-import { gatewayButton, gatewayCard, gatewayCheckbox, gatewayEmptyState, gatewayFormActions, gatewaySelect, gatewayTable, gatewayTabGroup, gatewayTextField } from './ui';
+import { gatewayButton, gatewayCard, gatewayCheckboxGroup, gatewayEmptyState, gatewayFormActions, gatewaySelect, gatewayTable, gatewayTabGroup, gatewayTextField } from './ui';
 import type { Client, OperatorService, Profile } from './models';
 
 type Translator = (key: string) => string;
-
-function setOperatorServiceSelection(event: Event, checked: boolean) {
-  event.preventDefault();
-  const form = (event.currentTarget as HTMLElement).closest('form');
-  form?.querySelectorAll<HTMLInputElement>('input[name="operator_services"]').forEach((input) => {
-    input.checked = checked;
-  });
-}
 
 export type ClientsViewContext = {
   clients: Client[];
@@ -24,6 +16,8 @@ export type ClientsViewContext = {
   capabilitySelector: () => TemplateResult;
   operatorEnabled: boolean;
   operatorServices: OperatorService[];
+  selectedOperatorServices: readonly string[];
+  setOperatorServiceSelection: (services: readonly string[]) => void;
   navigateToPolicy: () => void;
   permissionTab: 'capabilities' | 'operator-services';
   setPermissionTab: (tab: 'capabilities' | 'operator-services') => void;
@@ -66,8 +60,8 @@ export function clientsView(ctx: ClientsViewContext): TemplateResult {
           ${gatewayTextField({ label: ctx.t('displayName'), name: 'display_name', maxLength: 256, required: true, placeholder: 'Nido house monitor' })}
           ${gatewaySelect({ label: ctx.t('profile'), name: 'profile', onInput: (event) => ctx.setProfile((event.target as HTMLSelectElement).value as Profile), options: html`<option value="observer">${ctx.t('readOnly')}</option><option value="operator" ?disabled=${!ctx.operatorEnabled}>operator${ctx.operatorEnabled ? '' : ` · ${ctx.t('operatorDisabledOption')}`}</option>` })}
           ${gatewayTabGroup([
-            { id: 'capabilities-tab', label: ctx.t('permissionsCapabilitiesTab'), selected: ctx.permissionTab === 'capabilities', panelId: 'capabilities-panel', onSelect: () => ctx.setPermissionTab('capabilities') },
-            { id: 'operator-services-tab', label: ctx.t('permissionsOperatorServicesTab'), selected: ctx.permissionTab === 'operator-services', panelId: 'operator-services-panel', onSelect: () => ctx.setPermissionTab('operator-services') },
+            { id: 'capabilities-tab', label: ctx.t('permissionsCapabilitiesTab'), className: 'permission-tab', selected: ctx.permissionTab === 'capabilities', panelId: 'capabilities-panel', onSelect: () => ctx.setPermissionTab('capabilities') },
+            { id: 'operator-services-tab', label: ctx.t('permissionsOperatorServicesTab'), className: 'permission-tab', selected: ctx.permissionTab === 'operator-services', panelId: 'operator-services-panel', onSelect: () => ctx.setPermissionTab('operator-services') },
           ], ctx.t('permissionsCapabilitiesTab'), 'permission-tabs')}
           ${ctx.permissionTab === 'capabilities' ? html`<section id="capabilities-panel" class="permission-panel" role="tabpanel" aria-labelledby="capabilities-tab">
             <p class="permission-panel-description">${ctx.t('permissionsCapabilitiesDescription')}</p>
@@ -78,20 +72,31 @@ export function clientsView(ctx: ClientsViewContext): TemplateResult {
             <fieldset class="form capability-option operator operator-service-fieldset">
               <legend>${ctx.t('operatorServiceGrants')}</legend>
               <small class="muted">${ctx.t('operatorServiceGrantDescription')}</small>
-              ${ctx.operatorServices.length ? html`<div class="operator-service-selection-toolbar">
-                <span class="muted">${ctx.t('operatorServicesSelectionHint')}</span>
-                <span class="operator-service-selection-actions">
-                  ${gatewayButton({ label: ctx.t('operatorServicesSelectAll'), variant: 'secondary', onClick: (event) => setOperatorServiceSelection(event, true) })}
-                  ${gatewayButton({ label: ctx.t('operatorServicesClearAll'), variant: 'secondary', onClick: (event) => setOperatorServiceSelection(event, false) })}
-                </span>
-              </div>
-              <div class="operator-service-list">${ctx.operatorServices.map((service) => gatewayCheckbox({
+              <p class="muted operator-service-selection-hint">${ctx.t('operatorServicesSelectionHint')}</p>
+              ${ctx.operatorServices.length ? gatewayCheckboxGroup({
                 name: 'operator_services',
-                value: service.id,
-                disabled: !ctx.operatorEnabled,
-                className: 'check-row operator-service-option',
-                label: html`<strong>${service.name}</strong> · <span class="mono">${service.id}</span><br><small>${service.description}</small>`,
-              }))}</div>` : html`<div class="operator-services-empty" role="note"><span>${ctx.t('operatorServicesNoneAvailable')}</span><button class="link-button" type="button" @click=${ctx.navigateToPolicy}>${ctx.t('operatorServicesOpenPolicy')}</button></div>`}
+                selectedCount: ctx.selectedOperatorServices.length,
+                selectedLabel: ctx.t('operatorServicesSelected'),
+                showSelectionCount: false,
+                selectAllLabel: ctx.t('operatorServicesSelectAll'),
+                clearLabel: ctx.t('operatorServicesClearAll'),
+                onSelectAll: () => ctx.setOperatorServiceSelection(ctx.operatorServices.map((service) => service.id)),
+                onClear: () => ctx.setOperatorServiceSelection([]),
+                items: ctx.operatorServices.map((service) => ({
+                  value: service.id,
+                  label: service.name,
+                  description: html`<span class="mono">${service.id}</span><br>${service.description}`,
+                  showValue: false,
+                  checked: ctx.selectedOperatorServices.includes(service.id),
+                  disabled: !ctx.operatorEnabled,
+                  className: 'operator-service-option',
+                  onChange: (event: Event) => {
+                    const selected = new Set(ctx.selectedOperatorServices);
+                    if ((event.target as HTMLInputElement).checked) selected.add(service.id); else selected.delete(service.id);
+                    ctx.setOperatorServiceSelection([...selected]);
+                  },
+                })),
+              }) : html`<div class="operator-services-empty" role="note"><span>${ctx.t('operatorServicesNoneAvailable')}</span><button class="link-button" type="button" @click=${ctx.navigateToPolicy}>${ctx.t('operatorServicesOpenPolicy')}</button></div>`}
             </fieldset>
           </section>`}
           ${gatewayFormActions(gatewayButton({ label: ctx.t('issueClient'), variant: 'primary', type: 'submit', disabled: ctx.busy, leadingIcon: '+' }))}
