@@ -1,5 +1,5 @@
 import { html, type TemplateResult } from 'lit';
-import { gatewayButton, gatewayCard, gatewayMetricCard, gatewayStatus, gatewayTagList, gatewayToolbar } from './ui';
+import { gatewayButton, gatewayCard, gatewayColumns, gatewayMetricCard, gatewayResultRow, gatewayStatus, gatewayTagList, gatewayToolbar } from './ui';
 import type { AuditEvent, Client, HealthDetails, Ready } from './models';
 
 type Translator = (key: string) => string;
@@ -19,12 +19,12 @@ export type OverviewViewContext = {
 export function overviewView(ctx: OverviewViewContext): TemplateResult {
   const active = ctx.clients.filter((client) => client.status === 'active').length;
   return html`
-    <section class="cards">
+    ${gatewayColumns(html`
       ${gatewayMetricCard(ctx.t('storage'), ctx.statusText(ctx.ready?.storage ?? 'unknown'), ctx.t('privateState'), 'ok')}
       ${gatewayMetricCard(ctx.t('homeAssistant'), ctx.statusText(ctx.ready?.home_assistant ?? 'unknown'), ctx.t('supervisorUpstream'), ctx.ready?.home_assistant === 'ready' ? 'ok' : 'warn')}
       ${gatewayMetricCard(ctx.t('activeClients'), String(active), ctx.t('bearerIdentities'))}
       ${gatewayMetricCard(ctx.t('auditEvents'), String(ctx.audit.length), ctx.t('sanitizedRecords'))}
-    </section>
+    `, 4, 'cards')}
     <div class="split">
       ${gatewayCard(html`<h2>${ctx.t('systemPosture')}</h2><p>${ctx.t('postureDescription')}</p>${gatewayTagList([ctx.t('ingressTrusted'), ctx.t('tokenDigests'), ctx.t('readOnlyMcp')])}`, 'wide')}
       ${gatewayCard(html`<h2>${ctx.t('quickActions')}</h2><div class="form-actions overview-actions">${gatewayButton({ label: ctx.t('manageClients'), variant: 'primary', onClick: () => ctx.navigate('clients') })}${gatewayButton({ label: ctx.t('viewAudit'), variant: 'secondary', onClick: () => ctx.navigate('audit') })}</div>`, 'wide')}
@@ -38,7 +38,7 @@ export function healthView(ctx: OverviewViewContext): TemplateResult {
     <section class="card overview-health">
       ${gatewayToolbar(ctx.t('upstreamHealth'), ctx.t('healthDescription'), gatewayStatus(ctx.statusText(ctx.healthDetails.status), tone))}
       <div class="result-list">
-        ${ctx.healthDetails.checks.map((check) => html`<div class="result-row"><span><strong>${check.name}</strong> <span class=${check.status === 'ok' ? 'ok' : 'bad'}>${ctx.statusText(check.status)}</span></span><span class="mono">${check.latency_ms} ms · ${check.http_status ?? 'transport'}${check.code ? ` · ${check.code}` : ''}</span></div>`)}
+        ${ctx.healthDetails.checks.map((check) => gatewayResultRow(html`<span><strong>${check.name}</strong> <span class=${check.status === 'ok' ? 'ok' : 'bad'}>${ctx.statusText(check.status)}</span></span>`, html`<span class="mono">${check.latency_ms} ms · ${check.http_status ?? 'transport'}${check.code ? ` · ${check.code}` : ''}</span>`))}
       </div>
     </section>
   `;

@@ -55,6 +55,9 @@ html, body, #storybook-root, .sb-show-main, .sb-main-padded { margin: 0; padding
 .story-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .story-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .story-card { border: 1px solid var(--ha-border); border-radius: var(--ha-radius-card); background: var(--ha-surface); padding: 16px; }
+.ha-check-control { min-height: 40px; display: inline-flex; align-items: center; gap: 8px; color: var(--ha-text); font-size: 14px; line-height: 1.4; cursor: pointer; }
+.ha-check-control input { width: 18px; height: 18px; margin: 0; accent-color: var(--ha-primary); }
+.ha-check-control input:disabled { cursor: not-allowed; }
 .story-copy { color: var(--ha-text-secondary); }
 .family-preview { display: grid; gap: 16px; width: 100%; }
 .ha-heading { display: grid; gap: 4px; }

@@ -94,6 +94,10 @@ export function gatewayTextField(options: FieldBase & { type?: 'text' | 'passwor
   return html`<div class="gateway-field"><label for=${id}>${options.label}</label><input id=${id} type=${options.type ?? 'text'} name=${ifDefined(options.name)} .value=${options.value ?? ''} placeholder=${ifDefined(options.placeholder)} maxlength=${ifDefined(options.maxLength)} ?required=${options.required} ?disabled=${options.disabled} aria-invalid=${options.error ? 'true' : 'false'} aria-describedby=${ifDefined(describedBy)} aria-errormessage=${ifDefined(errorId)} @input=${options.onInput} />${options.help ? html`<small id=${helpId} class="field-help">${options.help}</small>` : ''}${options.error ? html`<small id=${errorId} class="field-error" role="alert">${options.error}</small>` : ''}</div>`;
 }
 
+export function gatewayCheckbox(options: { label: string | TemplateResult; name?: string; value?: string; checked?: boolean; disabled?: boolean; className?: string; onChange?: (event: Event) => void }): TemplateResult {
+  return html`<label class=${['ha-check-control', options.className].filter(Boolean).join(' ')}><input type="checkbox" name=${ifDefined(options.name)} value=${ifDefined(options.value)} ?checked=${options.checked} ?disabled=${options.disabled} @change=${options.onChange} /><span>${options.label}</span></label>`;
+}
+
 export function gatewaySelect(options: FieldBase & { options: TemplateResult; help?: string; error?: string; appearance?: 'standard' | 'ha-reference' }): TemplateResult {
   const id = options.id ?? options.name ?? 'gateway-select';
   const helpId = options.help ? fieldIds(options, 'help') : undefined;

@@ -1,5 +1,5 @@
 import { html, type TemplateResult } from 'lit';
-import { gatewayButton, gatewayCard, gatewayEmptyState, gatewaySelect, gatewayTextField } from './ui';
+import { gatewayButton, gatewayCard, gatewayCheckbox, gatewayEmptyState, gatewayFormActions, gatewaySelect, gatewayTextField } from './ui';
 import type { Client, OperatorService, OperatorServicePolicy } from './models';
 
 type Translator = (key: string) => string;
@@ -47,8 +47,8 @@ export function policyView(ctx: PolicyViewContext): TemplateResult {
         <form class="form" @submit=${ctx.evaluatePolicy}>
           ${gatewaySelect({ label: ctx.t('client'), name: 'client_id', options: html`${ctx.clients.map((client) => html`<option value=${client.client_id}>${client.display_name} · ${client.client_id}</option>`)}` })}
           ${gatewayTextField({ label: ctx.t('capability'), name: 'capability', value: 'ha.read.diagnostics', required: true })}
-          <label><span><input name="mutation" type="checkbox" class="inline-checkbox" /> ${ctx.t('mutationRequest')}</span></label>
-          <div class="form-actions">${gatewayButton({ label: ctx.t('evaluate'), variant: 'primary', type: 'submit', disabled: ctx.busy, leadingIcon: '✓' })}</div>
+          ${gatewayCheckbox({ label: ctx.t('mutationRequest'), name: 'mutation' })}
+          ${gatewayFormActions(gatewayButton({ label: ctx.t('evaluate'), variant: 'primary', type: 'submit', disabled: ctx.busy, leadingIcon: '✓' }))}
         </form>
       `, 'policy-evaluation-card')}
     </div>
