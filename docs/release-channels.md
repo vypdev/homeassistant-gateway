@@ -16,11 +16,11 @@ workflow. Stable follows `main` and is updated through tagged releases.
 ## Edge
 
 `Home Assistant Gateway Edge` (`homeassistant_gateway_edge`) is the development
-channel. It has no `image` field, so Supervisor builds it from
-`addon-edge/Dockerfile` when the app is installed or rebuilt. The Dockerfile
-fetches the `develop` branch, runs frontend checks and builds the frontend before
-assembling the runtime image.
+channel. It follows the Zigbee2MQTT Edge model: the metadata uses the fixed
+version `edge` and Supervisor consumes a published per-architecture image from
+GHCR. GitHub Actions builds those images from `develop`.
 
+- Image template: `ghcr.io/vypdev/homeassistant-gateway-edge-{arch}:edge`
 - Source ref: `develop`
 - Supervisor stage: `experimental`
 - Host MCP port: `18100`
@@ -50,18 +50,24 @@ The same policy applies if the default branch is named `master` instead of
 
 ## Updating Edge
 
-Edge tracks the current `develop` branch. After pushing a new development
-commit, refresh the app repository and rebuild/reinstall the Edge app from the
-Supervisor UI. A local checkout with uncommitted changes is not visible to a
-remote Supervisor build; changes must be committed and pushed first.
+Edge images are built and published by the `Edge App` workflow on every push to
+`develop`. The image tag remains `edge`, so Supervisor cannot detect a new
+image through a numeric version update.
 
-The Edge version is deliberately explicit (`MAJOR.MINOR.PATCH-dev.N`) so
-Supervisor can identify the channel. Increment it when a new Edge build needs to
-be recognized as an update.
+To update Edge, follow the same procedure documented by Zigbee2MQTT:
+
+1. Back up the Edge configuration and data.
+2. Uninstall `Home Assistant Gateway Edge`.
+3. Refresh the app repository in Supervisor.
+4. Install Edge again.
+5. Restore the configuration if required.
+
+Stable credentials and data must never be copied into Edge. Edge uses a
+separate slug, data namespace and host port.
 
 ## Release policy
 
 Stable releases continue to be driven by `addon/CHANGELOG.md` and the release
-workflow. Edge does not publish a GHCR image and does not create GitHub releases.
-The two channels share source, tests and runtime behavior, but their packaging
-and distribution paths remain separate.
+workflow. Edge publishes a separate GHCR image and does not create GitHub
+releases. The two channels share source, tests and runtime behavior, but their
+packaging and distribution paths remain separate.
