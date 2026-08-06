@@ -36,8 +36,8 @@ channels.
 ## Branch and workflow policy
 
 Development work is performed on `develop`. Every push to `develop` and every
-pull request targeting `develop` runs the full CI workflow, including backend,
-frontend, browser, packaging and Edge image checks.
+pull request targeting `develop` or `main` runs the required CI checks,
+including backend, frontend, browser and packaging validation.
 
 Stable `main` is release-only. A release is prepared by opening a pull request
 from `develop` to `main` with the version, changelog and release metadata
