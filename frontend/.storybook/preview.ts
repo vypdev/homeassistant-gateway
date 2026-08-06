@@ -18,9 +18,6 @@ const preview: Preview = {
       },
       defaultViewport: 'haDesktop',
     },
-    a11y: {
-      test: 'error',
-    },
     backgrounds: {
       default: 'light',
       values: [

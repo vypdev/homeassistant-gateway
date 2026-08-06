@@ -7,13 +7,13 @@ type ButtonArgs = { label: string; variant: GatewayButtonVariant; disabled: bool
 const meta = {
   title: 'UI/Actions/Button',
   tags: ['autodocs'],
-  args: { label: 'Continue', variant: 'primary', disabled: false, loading: false },
+  args: { label: 'Add trigger', variant: 'primary', disabled: false, loading: false },
   argTypes: {
     variant: { control: 'select', options: ['primary', 'secondary', 'danger', 'link'] },
     disabled: { control: 'boolean' },
     loading: { control: 'boolean' },
   },
-  render: (args: ButtonArgs) => html`<div class="story-surface"><div class="story-row">${gatewayButton({ ...args, leadingIcon: '→' })}</div></div>`,
+  render: (args: ButtonArgs) => html`<div class="story-surface"><div class="story-row">${gatewayButton({ ...args, leadingIcon: html`<svg class="gateway-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z"></path></svg>` })}</div></div>`,
 } satisfies Meta<ButtonArgs>;
 
 export default meta;
