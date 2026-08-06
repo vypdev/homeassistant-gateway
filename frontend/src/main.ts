@@ -18,7 +18,7 @@ import { mcpView as renderMcpView } from './mcp-view';
 import { loadDevelopmentReports, executeDevelopmentJob } from './development-controller';
 import { property, state } from 'lit/decorators.js';
 import { APP_STYLES } from './app-styles';
-import { gatewayAlert, gatewayButton, gatewayDialog } from './ui';
+import { gatewayAlert, gatewayButton, gatewayDialog, gatewaySelect } from './ui';
 import { TRANSLATIONS } from './i18n-base';
 import { DEVELOPMENT_TRANSLATIONS } from './i18n-development';
 import { DEVELOPMENT_EXTRA_TRANSLATIONS } from './i18n-development-extra';
@@ -373,7 +373,7 @@ export class GatewayApp extends LitElement {
       <header class="app-header">
         <div class="brand"><img class="brand-mark" src="/icon.png" alt="" width="34" height="34" /><div><strong>${this.t('gateway')}</strong><small>${this.t('controlPlane')}</small></div></div>
         ${navigationView(this.view, this.t.bind(this), (view) => this.setView(view))}
-        <div class="header-tools"><label class="muted">${this.t('language')}<select aria-label=${this.t('language')} @change=${(event: Event) => this.setLocale((event.target as HTMLSelectElement).value)}><option value="">Home Assistant (${this.uiContext.locale})</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt">Português</option><option value="it">Italiano</option><option value="zh">中文</option><option value="ja">日本語</option><option value="ru">Русский</option><option value="hi">हिन्दी</option><option value="ar">العربية</option></select></label><div class="status-pill ${this.ready?.status === 'ready' ? '' : 'warn'}"><span class="dot"></span>${this.ready?.status === 'ready' ? this.t('gatewayReady') : this.t('checkingGateway')}</div></div>
+        <div class="header-tools">${gatewaySelect({ label: this.t('language'), id: 'language', className: 'header-language', appearance: 'ha-reference', onInput: (event) => this.setLocale((event.target as HTMLSelectElement).value), options: html`<option value="">Home Assistant (${this.uiContext.locale})</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt">Português</option><option value="it">Italiano</option><option value="zh">中文</option><option value="ja">日本語</option><option value="ru">Русский</option><option value="hi">हिन्दी</option><option value="ar">العربية</option>`})}<div class="status-pill ${this.ready?.status === 'ready' ? '' : 'warn'}"><span class="dot"></span>${this.ready?.status === 'ready' ? this.t('gatewayReady') : this.t('checkingGateway')}</div></div>
       </header>
       <main aria-busy=${this.anyBusy ? 'true' : 'false'}>
         <div class="topline"><div><div class="eyebrow">Home Assistant App · MCP Gateway</div><h1>${this.pageTitle()}</h1><p>${this.subtitle()}</p></div></div>

@@ -98,13 +98,13 @@ export function gatewayCheckbox(options: { label: string | TemplateResult; name?
   return html`<label class=${['ha-check-control', options.className].filter(Boolean).join(' ')}><input type="checkbox" name=${ifDefined(options.name)} value=${ifDefined(options.value)} ?checked=${options.checked} ?disabled=${options.disabled} @change=${options.onChange} /><span>${options.label}</span></label>`;
 }
 
-export function gatewaySelect(options: FieldBase & { options: TemplateResult; help?: string; error?: string; appearance?: 'standard' | 'ha-reference' }): TemplateResult {
+export function gatewaySelect(options: FieldBase & { options: TemplateResult; help?: string; error?: string; appearance?: 'standard' | 'ha-reference'; className?: string }): TemplateResult {
   const id = options.id ?? options.name ?? 'gateway-select';
   const helpId = options.help ? fieldIds(options, 'help') : undefined;
   const errorId = options.error ? fieldIds(options, 'error') : undefined;
   const describedBy = [helpId, errorId].filter(Boolean).join(' ') || undefined;
   const reference = options.appearance === 'ha-reference';
-  return html`<div class=${['gateway-field', reference ? 'gateway-field-reference' : ''].filter(Boolean).join(' ')}>${reference ? html`<label class="sr-only" for=${id}>${options.label}</label>` : html`<label for=${id}>${options.label}</label>`}<select class=${reference ? 'gateway-select-reference' : ''} id=${id} name=${ifDefined(options.name)} ?required=${options.required} ?disabled=${options.disabled} aria-invalid=${options.error ? 'true' : 'false'} aria-describedby=${ifDefined(describedBy)} aria-errormessage=${ifDefined(errorId)} @change=${options.onInput}>${options.options}</select>${options.help ? html`<small id=${helpId} class="field-help">${options.help}</small>` : ''}${options.error ? html`<small id=${errorId} class="field-error" role="alert">${options.error}</small>` : ''}</div>`;
+  return html`<div class=${['gateway-field', reference ? 'gateway-field-reference' : '', options.className].filter(Boolean).join(' ')}>${reference ? html`<label class="sr-only" for=${id}>${options.label}</label>` : html`<label for=${id}>${options.label}</label>`}<select class=${reference ? 'gateway-select-reference' : ''} id=${id} name=${ifDefined(options.name)} ?required=${options.required} ?disabled=${options.disabled} aria-invalid=${options.error ? 'true' : 'false'} aria-describedby=${ifDefined(describedBy)} aria-errormessage=${ifDefined(errorId)} @change=${options.onInput}>${options.options}</select>${options.help ? html`<small id=${helpId} class="field-help">${options.help}</small>` : ''}${options.error ? html`<small id=${errorId} class="field-error" role="alert">${options.error}</small>` : ''}</div>`;
 }
 
 export function gatewayCard(content: TemplateResult, className = ''): TemplateResult {
