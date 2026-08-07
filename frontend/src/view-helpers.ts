@@ -50,9 +50,9 @@ export function packText(translator: Translator, pack: string, field: 'Label' | 
 }
 
 export function pageTitle(translator: Translator, view: string): string {
-  return ({ overview: translator('overviewTitle'), development: translator('developmentTitle'), clients: translator('clientsTitle'), policy: translator('policyTitle'), mcp: translator('mcpTitle'), audit: translator('auditTitle') } as Record<string, string>)[view] ?? translator('overviewTitle');
+  return ({ overview: translator('overviewTitle'), development: translator('developmentTitle'), clients: translator('clientsTitle'), policy: translator('policyTitle'), mcp: translator('mcpTitle'), audit: translator('auditTitle'), catalog: translator('catalogTitle') } as Record<string, string>)[view] ?? translator('overviewTitle');
 }
 
 export function pageSubtitle(translator: Translator, view: string): string {
-  return ({ overview: translator('overviewSubtitle'), development: translator('developmentSubtitle'), clients: translator('clientsSubtitle'), policy: translator('policySubtitle'), mcp: translator('mcpSubtitle'), audit: translator('auditSubtitle') } as Record<string, string>)[view] ?? translator('overviewSubtitle');
+  return ({ overview: translator('overviewSubtitle'), development: translator('developmentSubtitle'), clients: translator('clientsSubtitle'), policy: translator('policySubtitle'), mcp: translator('mcpSubtitle'), audit: translator('auditSubtitle'), catalog: translator('catalogSubtitle') } as Record<string, string>)[view] ?? translator('overviewSubtitle');
 }
