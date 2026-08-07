@@ -2,14 +2,18 @@
 
 This directory contains the development app variant of Home Assistant Gateway.
 
-Like the Zigbee2MQTT Edge app, Edge uses a fixed `edge` version and a published
-GHCR image. The image is built by GitHub Actions from the `develop` branch and
-published as one multi-architecture manifest consumed by Supervisor through
-`config.yaml`.
+Edge uses a development semantic version derived from the latest stable release:
+`<stable>-edge-<iteration>` (for example, `0.5.31-edge-1`). The image is
+built by GitHub Actions from the `develop` branch and published as one
+multi-architecture manifest consumed by Supervisor through `config.yaml`.
 
 The published image is:
 
-- `ghcr.io/vypdev/homeassistant-gateway-edge:edge`
+- `ghcr.io/vypdev/homeassistant-gateway-edge:edge` (moving alias)
+- `ghcr.io/vypdev/homeassistant-gateway-edge:0.5.31-edge-1` (versioned image)
+
+Increment the `edge` iteration in `config.yaml` for each development UI or
+application iteration. Keep the stable base unchanged until the next release.
 
 Edge does not build a Docker image locally in Supervisor. To update Edge,
 backup its data, uninstall it, refresh the repository and install it again,
