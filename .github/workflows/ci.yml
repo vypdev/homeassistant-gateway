@@ -44,11 +44,13 @@ jobs:
 
   frontend:
     runs-on: [self-hosted, X64, Linux, coolify]
+    container:
+      image: mcr.microsoft.com/playwright:v1.62.1-noble
     defaults:
       run:
         working-directory: frontend
     env:
-      PLAYWRIGHT_BROWSERS_PATH: 0
+      PLAYWRIGHT_BROWSERS_PATH: /ms-playwright
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
