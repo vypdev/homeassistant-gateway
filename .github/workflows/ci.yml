@@ -78,7 +78,7 @@ jobs:
       - name: Build Storybook component catalog
         run: pnpm run storybook:build
       - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium firefox webkit
+        run: pnpm exec playwright install --with-deps --force chromium firefox webkit
       - name: Test Storybook component catalog
         run: pnpm run test:storybook
       - name: Build frontend
