@@ -158,6 +158,9 @@ def test_embedded_ui_catalog_is_available_through_ingress(tmp_path, monkeypatch)
 
     assert response.status_code == 200
     assert "catalog" in response.text
+    assert response.headers["x-frame-options"] == "SAMEORIGIN"
+    assert "script-src 'self' 'unsafe-inline'" in response.headers["content-security-policy"]
+    assert "frame-ancestors 'self'" in response.headers["content-security-policy"]
 
 
 def test_ui_context_is_ingress_protected_and_returns_ha_preferences() -> None:
@@ -166,6 +169,8 @@ def test_ui_context_is_ingress_protected_and_returns_ha_preferences() -> None:
     response = request(app, "GET", "/api/ui/context", headers=ingress_headers())
     assert response.status_code == 200
     assert response.json() == {"locale": "es", "theme": "light"}
+    assert response.headers["x-frame-options"] == "DENY"
+    assert "script-src 'self';" in response.headers["content-security-policy"]
 
 
 def test_health_details_is_ingress_protected_and_reports_checks() -> None:
