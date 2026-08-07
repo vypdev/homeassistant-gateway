@@ -10,7 +10,7 @@ multi-architecture manifest consumed by Supervisor through `config.yaml`.
 The published image is:
 
 - `ghcr.io/vypdev/homeassistant-gateway-edge:edge` (moving alias)
-- `ghcr.io/vypdev/homeassistant-gateway-edge:0.5.31-edge-2` (versioned image)
+- `ghcr.io/vypdev/homeassistant-gateway-edge:0.5.31-edge-3` (versioned image)
 
 Increment the `edge` iteration in `config.yaml` for each development UI or
 application iteration. Keep the stable base unchanged until the next release.
