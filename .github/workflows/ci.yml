@@ -47,6 +47,8 @@ jobs:
     defaults:
       run:
         working-directory: frontend
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: 0
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
