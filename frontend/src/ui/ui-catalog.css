@@ -104,7 +104,7 @@ html, body, #storybook-root, .sb-show-main, .sb-main-padded { margin: 0; padding
 .metric { display: block; margin-top: 8px; font-size: 28px; letter-spacing: -.04em; }
 .gateway-tab-bar { display: flex; align-items: stretch; gap: 0; overflow-x: auto; border-bottom: 1px solid var(--ha-border); }
 .ui-tab-group { display: flex; align-items: stretch; gap: 0; overflow-x: auto; border-bottom: 1px solid var(--ha-border); }
-.ui-tab { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: #1c1c1c; background: transparent; cursor: pointer; font: 500 14px/1 inherit; white-space: nowrap; }
+.ui-tab { min-height: 48px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: #1c1c1c; background: transparent; cursor: pointer; font: 500 14px/1 Roboto, Noto, sans-serif; white-space: nowrap; }
 .ui-tab:hover:not(:disabled) { color: var(--ha-text); }
 .ui-tab[aria-selected="true"] { color: var(--ha-text); border-bottom-color: var(--ha-text); }
 .ui-tab:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px solid var(--ha-primary); outline-offset: 2px; }
@@ -120,7 +120,7 @@ html, body, #storybook-root, .sb-show-main, .sb-main-padded { margin: 0; padding
 .story-surface-tab-bar { max-width: 900px; min-height: 56px; padding: 0; background: var(--ha-surface); }
 .story-tab-bar-frame { min-height: 56px; display: flex; align-items: stretch; background: var(--ha-surface); }
 .story-tab-bar-frame > .gateway-tab-bar { width: 100%; }
-button.primary, button.secondary, button.danger, button.link-button, button.ha-button { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 4px; border: 1px solid transparent; border-radius: var(--ha-radius-control); padding: 8px 16px; cursor: pointer; font: 500 14px/1 inherit; }
+button.primary, button.secondary, button.danger, button.link-button, button.ha-button { min-height: 40px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: 1px solid transparent; border-radius: var(--ha-radius-pill); padding: 8px 16px; cursor: pointer; font: 500 14px/1 Roboto, Noto, sans-serif; }
 button.ha-button-xs { min-height: 24px; padding-block: 2px; padding-inline: 10px; font-size: 12px; }
 button.ha-button-s { min-height: 32px; padding-block: 4px; }
 button.ha-button-l { min-height: 48px; font-size: 16px; }

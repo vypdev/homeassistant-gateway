@@ -29,6 +29,18 @@ test('leading icons stay vertically centered inside Home Assistant controls', as
   await expect(button).toHaveCSS('align-items', 'center');
 });
 
+test('buttons follow the official Home Assistant geometry contract', async ({ page }) => {
+  await page.goto('/iframe.html?id=ui-actions-button--primary&viewMode=story');
+  const button = page.getByRole('button', { name: 'Add trigger' });
+  await expect(button).toHaveCSS('min-height', '40px');
+  await expect(button).toHaveCSS('height', '40px');
+  await expect(button).toHaveCSS('border-radius', '9999px');
+  await expect(button).toHaveCSS('padding-left', '16px');
+  await expect(button).toHaveCSS('padding-right', '16px');
+  await expect(button).toHaveCSS('font-size', '14px');
+  await expect(button).toHaveCSS('line-height', '14px');
+});
+
 test('tabs story changes the selected state through the public callback', async ({ page }) => {
   await page.goto('/iframe.html?id=ui-navigation-tabs--icon-tabs&viewMode=story');
   await page.getByRole('tab', { name: 'Actions' }).click();

@@ -30,8 +30,14 @@ async def request_identity_middleware(
     response = await call_next(request)
     response.headers["X-Request-ID"] = request_id
     response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["X-Frame-Options"] = "DENY"
+    catalog_request = request.url.path == "/catalog" or request.url.path.startswith("/catalog/")
+    response.headers["X-Frame-Options"] = "SAMEORIGIN" if catalog_request else "DENY"
     response.headers["Referrer-Policy"] = "no-referrer"
-    response.headers["Content-Security-Policy"] = "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; connect-src 'self'"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; connect-src 'self'; frame-ancestors 'self'"
+        if catalog_request
+        else "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; connect-src 'self'"
+    )
     record_audit(request, response, "allowed" if response.status_code < 400 else "denied", "success" if response.status_code < 400 else "error")
     return response
