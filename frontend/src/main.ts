@@ -19,7 +19,7 @@ import { mcpView as renderMcpView } from './mcp-view';
 import { loadDevelopmentReports, executeDevelopmentJob } from './development-controller';
 import { property, state } from 'lit/decorators.js';
 import { APP_STYLES } from './app-styles';
-import { gatewayAlert, gatewayButton, gatewayCheckboxGroup, gatewayDialog, gatewaySelect } from './ui';
+import { gatewayAlert, gatewayButton, gatewayCheckboxGroup, gatewayDialog } from './ui';
 import { TRANSLATIONS } from './i18n-base';
 import { DEVELOPMENT_TRANSLATIONS } from './i18n-development';
 import { DEVELOPMENT_EXTRA_TRANSLATIONS } from './i18n-development-extra';
@@ -62,7 +62,6 @@ export class GatewayApp extends LitElement {
     developmentReports: { state: true },
     uiContext: { state: true },
     healthDetails: { state: true },
-    localeOverride: { state: true },
   };
 
   @property({ type: String }) view: View = 'overview';
@@ -82,7 +81,6 @@ export class GatewayApp extends LitElement {
   @state() developmentReports: DevelopmentReport[] = [];
   @state() uiContext: UiContext = { locale: 'en', theme: 'auto' };
   @state() healthDetails: HealthDetails = { status: 'unknown', checks: [] };
-  @state() localeOverride = localStorage.getItem('gateway-locale') ?? '';
   @state() developmentResults: DevelopmentResult[] = [];
   @state() developmentProgress = { status: 'idle', completed: 0, total: 0 };
   @state() developmentOutput: unknown = null;
@@ -112,11 +110,11 @@ export class GatewayApp extends LitElement {
 
   connectedCallback() { super.connectedCallback(); void this.refresh(); }
 
-  get locale() { return resolveLocale(this.localeOverride, this.uiContext.locale, TRANSLATIONS); }
+  get locale() { return resolveLocale('', this.uiContext.locale, TRANSLATIONS); }
   t(key: string) {
     return translate(key, this.locale, [TRANSLATIONS, DEVELOPMENT_TRANSLATIONS, DEVELOPMENT_EXTRA_TRANSLATIONS, UI_TRANSLATIONS, UI_EXTRA_TRANSLATIONS, POLICY_TRANSLATIONS, CLIENT_POLICY_TRANSLATIONS, PERMISSION_TABS_TRANSLATIONS, FINAL_TRANSLATIONS], TRANSLATIONS);
   }
-  setLocale(locale: string) { this.localeOverride = locale; if (locale) localStorage.setItem('gateway-locale', locale); else localStorage.removeItem('gateway-locale'); }
+
   get effectiveTheme() { return resolveTheme(this.uiContext.theme, Boolean(window.matchMedia?.('(prefers-color-scheme: light)').matches)); }
 
   private errorMessage(error: unknown, fallbackKey: string): string {
@@ -394,18 +392,16 @@ export class GatewayApp extends LitElement {
   render() {
     if (this.bootState !== 'ready') return this.loadingView();
     const active = this.view;
-    return html`<div class="shell ${this.effectiveTheme}"><div class="layout">
-      <header class="app-header">
-        <div class="brand"><img class="brand-mark" src="/icon.png" alt="" width="34" height="34" /><div><strong>${this.t('gateway')}</strong><small>${this.t('controlPlane')}</small></div></div>
-        ${navigationView(this.view, this.t.bind(this), (view) => this.setView(view))}
-        <div class="header-tools">${gatewaySelect({ label: this.t('language'), id: 'language', className: 'header-language', onInput: (event) => this.setLocale((event.target as HTMLSelectElement).value), options: html`<option value="">Home Assistant (${this.uiContext.locale})</option><option value="en">English</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt">Português</option><option value="it">Italiano</option><option value="zh">中文</option><option value="ja">日本語</option><option value="ru">Русский</option><option value="hi">हिन्दी</option><option value="ar">العربية</option>`})}<div class="status-pill ${this.ready?.status === 'ready' ? '' : 'warn'}"><span class="dot"></span>${this.ready?.status === 'ready' ? this.t('gatewayReady') : this.t('checkingGateway')}</div></div>
-      </header>
-      <main aria-busy=${this.anyBusy ? 'true' : 'false'}>
+    return html`<div class="shell ${this.effectiveTheme}">
+      ${navigationView(this.view, this.t.bind(this), (view) => this.setView(view))}
+      <main class="layout" aria-busy=${this.anyBusy ? 'true' : 'false'}>
+        <div class="content-status"><div class="status-pill ${this.ready?.status === 'ready' ? '' : 'warn'}"><span class="dot"></span>${this.ready?.status === 'ready' ? this.t('gatewayReady') : this.t('checkingGateway')}</div></div>
         <div class="topline"><div><div class="eyebrow">Home Assistant App · MCP Gateway</div><h1>${this.pageTitle()}</h1><p>${this.subtitle()}</p></div></div>
         ${this.error ? html`<div class="alert" role="alert">${this.error}</div>` : ''}
         ${active === 'overview' ? html`${this.overview()}${this.healthPanel()}${this.topologyPanel()}` : active === 'development' ? this.developmentView() : active === 'clients' ? this.clientsView() : active === 'policy' ? this.policyView() : active === 'mcp' ? this.mcpView() : active === 'catalog' ? catalogView() : this.auditView()}
       </main>
-    </div>${this.issuedToken ? this.tokenModal() : ''}</div>`;
+      ${this.issuedToken ? this.tokenModal() : ''}
+    </div>`;
   }
 
   nav(view: View, icon: string, label: string) { return html`<button class=${this.view === view ? 'active' : ''} @click=${() => this.setView(view)}><span aria-hidden="true">${icon}</span> ${label}</button>`; }

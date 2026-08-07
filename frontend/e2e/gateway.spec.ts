@@ -67,7 +67,35 @@ test('matches the Home Assistant navigation states and uses MDI leading icons', 
   await expect(buttons.first().locator('svg')).toHaveCSS('fill', 'rgb(36, 52, 71)');
 
   await buttons.nth(1).hover();
-  await expect(buttons.nth(1)).toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+  await expect(buttons.nth(1)).toHaveCSS('background-color', 'rgb(241, 243, 244)');
+});
+
+test('keeps the navigation bar flush with the viewport and removes shell side controls', async ({ page }) => {
+  await page.goto('/');
+
+  await expect(page.locator('.brand')).toHaveCount(0);
+  await expect(page.locator('.header-language')).toHaveCount(0);
+
+  const geometry = await page.locator('.shell > .tab-navigation').evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    const contentStatus = element.parentElement?.querySelector('.content-status');
+    const statusRect = contentStatus?.getBoundingClientRect();
+    return {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      viewportWidth: window.innerWidth,
+      statusInsideMain: Boolean(contentStatus?.closest('main')),
+      statusTop: statusRect?.top ?? -1,
+      mainTop: element.parentElement?.querySelector('main')?.getBoundingClientRect().top ?? -1,
+    };
+  });
+
+  expect(geometry.left).toBe(0);
+  expect(geometry.top).toBe(0);
+  expect(geometry.width).toBe(geometry.viewportWidth);
+  expect(geometry.statusInsideMain).toBe(true);
+  expect(geometry.statusTop).toBeGreaterThanOrEqual(geometry.mainTop);
 });
 
 test('keeps the static shell and local motion reduced when requested', async ({ page }) => {

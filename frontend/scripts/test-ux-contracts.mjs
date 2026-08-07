@@ -29,7 +29,9 @@ assert.match(development, /retry/);
 assert.match(styles, /prefers-reduced-motion/);
 assert.doesNotMatch(styles, /\.dot-field|dot-zone-drift|dot-focus-drift|backdrop-filter/);
 assert.doesNotMatch(main, /neuralBackground/);
-assert.match(main, /src="\/icon\.png"/);
+assert.doesNotMatch(main, /gatewaySelect|setLocale|localeOverride/);
+assert.match(main, /content-status/);
+assert.match(main, /navigationView\(/);
 assert.match(index, /href="\/favicon\.png"/);
 assert.match(index, /href="\/icon\.png"/);
 assert.match(main, /aria-busy/);
@@ -53,5 +55,6 @@ assert.match(styles, /--gateway-space-4: 16px/);
 assert.match(styles, /border-radius: var\(--ha-radius-control\)/);
 assert.match(styles, /border-radius: var\(--ha-radius-pill\)/);
 assert.match(styles, /@media \(max-width: 900px\)/);
+assert.match(styles, /\.tab-navigation \{ width: 100%; \}/);
 
 console.log('frontend UX contracts: ok');
