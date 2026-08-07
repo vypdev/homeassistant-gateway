@@ -14,10 +14,10 @@ permissions:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, X64, Linux, coolify]
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install test dependencies
@@ -29,10 +29,10 @@ jobs:
       - name: Run live smoke harness (no live target in CI)
         run: python scripts/live_smoke.py
   app-packaging:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, X64, Linux, coolify]
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Install packaging validation dependency
@@ -43,15 +43,18 @@ jobs:
         run: docker build --file addon-edge/Dockerfile --tag homeassistant-gateway-edge:ci .
 
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, X64, Linux, coolify]
     defaults:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: "22"
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
       - name: Enable pnpm with Corepack
         run: corepack enable && corepack install
       - name: Enforce pnpm package-manager policy

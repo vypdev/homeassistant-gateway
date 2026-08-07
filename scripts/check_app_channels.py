@@ -51,7 +51,7 @@ def main() -> int:
     edge_dockerfile = (EDGE / "Dockerfile").read_text(encoding="utf-8")
     if "COPY . /src" not in edge_dockerfile:
         errors.append("edge Dockerfile must build from the checked-out develop source")
-    for required_label in ('io.hass.version', 'io.hass.type="app"', 'io.hass.arch'):
+    for required_label in ('io.hass.version', 'io.hass.type="app"'):
         if required_label not in edge_dockerfile:
             errors.append(f"edge Dockerfile is missing label {required_label}")
     if "COPY --from=ui-builder /frontend/storybook-static /app/catalog" not in edge_dockerfile:

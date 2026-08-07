@@ -17,10 +17,10 @@ workflow. Stable follows `main` and is updated through tagged releases.
 
 `Home Assistant Gateway Edge` (`homeassistant_gateway_edge`) is the development
 channel. It follows the Zigbee2MQTT Edge model: the metadata uses the fixed
-version `edge` and Supervisor consumes a published per-architecture image from
-GHCR. GitHub Actions builds those images from `develop`.
+version `edge` and Supervisor consumes one published multi-architecture image
+from GHCR. GitHub Actions builds that image from `develop`.
 
-- Image template: `ghcr.io/vypdev/homeassistant-gateway-edge-{arch}:edge`
+- Image: `ghcr.io/vypdev/homeassistant-gateway-edge:edge`
 - Source ref: `develop`
 - Supervisor stage: `experimental`
 - Host MCP port: `18100`
@@ -36,8 +36,13 @@ channels.
 ## Branch and workflow policy
 
 Development work is performed on `develop`. Every push to `develop` and every
-pull request targeting `develop` runs the full CI workflow, including backend,
-frontend, browser, packaging and Edge image checks.
+pull request targeting `develop` or `main` runs the required CI checks,
+including backend, frontend, browser and packaging validation.
+
+All CI, Edge, and release workflows run on the repository's labeled self-hosted
+Coolify runner (`self-hosted`, `X64`, `Linux`, `coolify`). Because this is a
+public repository, pull requests must be restricted to collaborators before
+they are allowed to execute on the persistent private runner.
 
 Stable `main` is release-only. A release is prepared by opening a pull request
 from `develop` to `main` with the version, changelog and release metadata

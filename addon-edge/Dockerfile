@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # Edge images are built by GitHub Actions from the develop checkout.
-# Supervisor consumes the published per-architecture image from config.yaml.
+# Supervisor consumes one published multi-architecture manifest from config.yaml.
 FROM python:3.12-slim AS builder
 WORKDIR /src
 COPY . /src
@@ -26,10 +26,8 @@ RUN corepack enable \
 
 FROM python:3.12-slim
 ARG BUILD_VERSION=edge
-ARG BUILD_ARCH=amd64
 LABEL io.hass.version="${BUILD_VERSION}" \
-      io.hass.type="app" \
-      io.hass.arch="${BUILD_ARCH}"
+      io.hass.type="app"
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     GATEWAY_DATA_DIR=/data \
