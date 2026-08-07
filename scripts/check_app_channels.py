@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 import sys
 
 import yaml
@@ -38,8 +39,14 @@ def main() -> int:
         errors.append("stable must consume the published GHCR image")
     if edge.get("image") != "ghcr.io/vypdev/homeassistant-gateway-edge":
         errors.append("edge must consume the published multi-architecture GHCR image")
-    if edge.get("version") != "edge":
-        errors.append("edge must use the fixed edge version")
+    stable_version = stable.get("version")
+    edge_version = edge.get("version")
+    if not isinstance(stable_version, str) or not re.fullmatch(r"\d+\.\d+\.\d+", stable_version):
+        errors.append("stable must use a semantic release version")
+    elif not isinstance(edge_version, str) or not re.fullmatch(
+        rf"{re.escape(stable_version)}-edge-\d+", edge_version
+    ):
+        errors.append("edge version must match <stable>-edge-<iteration>")
     if stable.get("slug") == edge.get("slug"):
         errors.append("stable and edge slugs must be distinct")
     if stable.get("stage") != "stable":
@@ -81,7 +88,7 @@ def main() -> int:
         return 1
 
     print(f"PASS app-channel: stable={stable['slug']}:{port(stable)} edge={edge['slug']}:{port(edge)}")
-    print("PASS app-channel: stable=image edge=multi-architecture-image tag=edge source=develop")
+    print(f"PASS app-channel: stable=image edge=multi-architecture-image version={edge_version} source=develop")
     return 0
 
 
