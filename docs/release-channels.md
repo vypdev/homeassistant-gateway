@@ -39,10 +39,10 @@ Development work is performed on `develop`. Every push to `develop` and every
 pull request targeting `develop` or `main` runs the required CI checks,
 including backend, frontend, browser and packaging validation.
 
-Trusted branch pushes and release workflows run on the repository's labeled
-self-hosted Coolify runner (`self-hosted`, `X64`, `Linux`, `coolify`). Pull
-requests continue to use GitHub-hosted runners because this is a public
-repository and PR code must not execute on a persistent private runner.
+All CI, Edge, and release workflows run on the repository's labeled self-hosted
+Coolify runner (`self-hosted`, `X64`, `Linux`, `coolify`). Because this is a
+public repository, pull requests must be restricted to collaborators before
+they are allowed to execute on the persistent private runner.
 
 Stable `main` is release-only. A release is prepared by opening a pull request
 from `develop` to `main` with the version, changelog and release metadata
