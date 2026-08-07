@@ -55,12 +55,15 @@ export const APP_STYLES = css`
     .header-tools .header-language .gateway-select-reference { min-height: 40px; }
     .header-tools label { min-width: 116px; }
     main { min-width: 0; padding: var(--gateway-space-6) 0 42px; }
-    .navigation-tabs { min-width: 0; height: 64px; display: flex; align-items: stretch; gap: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
-    .navigation-tabs .ui-tab { position: relative; flex: 0 0 48px; min-height: 64px; display: inline-flex; align-items: center; justify-content: center; gap: 0; padding: 0 12px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--ha-text-secondary); background: transparent; cursor: pointer; font: 500 14px/1 inherit; white-space: nowrap; transition: color 150ms ease, border-color 150ms ease; }
+    .catalog-view { min-height: calc(100vh - 230px); margin-inline: calc(var(--gateway-space-6) * -1); }
+    .catalog-view iframe { display: block; width: 100%; min-height: calc(100vh - 230px); border: 0; background: var(--ha-surface); }
+    .navigation-tabs { min-width: 0; min-height: 56px; display: flex; align-items: stretch; gap: 0; overflow-x: auto; overflow-y: hidden; scrollbar-width: none; border-bottom: 1px solid var(--ha-border); background: var(--ha-surface); }
+    .navigation-tabs::-webkit-scrollbar { display: none; }
+    .navigation-tabs .ui-tab { position: relative; flex: 0 0 auto; min-width: 0; min-height: 56px; display: inline-flex; align-items: center; justify-content: center; gap: 0; padding: 16px; border: 0; border-bottom: 2px solid transparent; border-radius: 0; color: var(--ha-text-secondary); background: transparent; cursor: pointer; font: 500 14px/1 inherit; opacity: .8; white-space: nowrap; transition: color 150ms ease, border-color 150ms ease; }
     .navigation-tabs .ui-tab:hover:not([aria-selected="true"]) { color: var(--ha-text); background: transparent; }
-    .navigation-tabs .ui-tab[aria-selected="true"] { color: var(--ha-text); border-bottom-color: var(--ha-text); }
-    .navigation-tabs .ui-tab:focus-visible { outline: 2px solid var(--ha-primary); outline-offset: -2px; }
-    .navigation-tabs .ui-tab .ui-tab-icon, .navigation-tabs .ui-tab .navigation-icon { flex: 0 0 22px; width: 22px; height: 22px; fill: currentColor; }
+    .navigation-tabs .ui-tab[aria-selected="true"] { color: var(--ha-text); opacity: 1; border-bottom-color: var(--ha-text); }
+    .navigation-tabs .ui-tab:focus-visible { outline: 2px solid var(--ha-primary); outline-offset: -4px; }
+    .navigation-tabs .ui-tab .ui-tab-icon, .navigation-tabs .ui-tab .navigation-icon { flex: 0 0 20px; width: 20px; height: 20px; fill: currentColor; }
     .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
     .side-foot { display: none; }
     .topline { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; margin-bottom: 28px; }

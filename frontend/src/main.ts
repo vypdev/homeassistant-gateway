@@ -9,6 +9,7 @@ import { selectedOperatorServices as getSelectedOperatorServices, toggleOperator
 import { resolveLocale, resolveTheme, translate } from './locale';
 import { capabilityText as resolveCapabilityText, operationText as resolveOperationText, packText as resolvePackText, pageSubtitle, pageTitle, statusText as resolveStatusText } from './view-helpers';
 import { navigationView } from './navigation-view';
+import { catalogView } from './catalog-view';
 import { overviewView, healthView, topologyView } from './overview-view';
 import { auditView } from './audit-view';
 import { clientsView as renderClientsView } from './clients-view';
@@ -402,7 +403,7 @@ export class GatewayApp extends LitElement {
       <main aria-busy=${this.anyBusy ? 'true' : 'false'}>
         <div class="topline"><div><div class="eyebrow">Home Assistant App · MCP Gateway</div><h1>${this.pageTitle()}</h1><p>${this.subtitle()}</p></div></div>
         ${this.error ? html`<div class="alert" role="alert">${this.error}</div>` : ''}
-        ${active === 'overview' ? html`${this.overview()}${this.healthPanel()}${this.topologyPanel()}` : active === 'development' ? this.developmentView() : active === 'clients' ? this.clientsView() : active === 'policy' ? this.policyView() : active === 'mcp' ? this.mcpView() : this.auditView()}
+        ${active === 'overview' ? html`${this.overview()}${this.healthPanel()}${this.topologyPanel()}` : active === 'development' ? this.developmentView() : active === 'clients' ? this.clientsView() : active === 'policy' ? this.policyView() : active === 'mcp' ? this.mcpView() : active === 'catalog' ? catalogView() : this.auditView()}
       </main>
     </div>${this.issuedToken ? this.tokenModal() : ''}</div>`;
   }

@@ -5,6 +5,7 @@ export type GatewayButtonVariant = 'brand' | 'neutral' | 'success' | 'warning' |
 export type GatewayButtonAppearance = 'accent' | 'filled' | 'outlined' | 'plain';
 export type GatewayButtonSize = 'xs' | 's' | 'm' | 'l' | 'xl';
 export type GatewayStatus = 'ok' | 'warn' | 'bad' | '';
+export type GatewayTabBarVariant = 'standard' | 'dashboard';
 
 export type GatewayButtonOptions = {
   label: string | TemplateResult;
@@ -67,22 +68,40 @@ export function gatewayIconButton(path: string, label: string, onClick: (event: 
   return html`<button class="icon-button" type="button" aria-label=${label} title=${label} ?disabled=${disabled} @click=${onClick}>${gatewayIcon(path)}</button>`;
 }
 
-export function gatewayTabGroup(tabs: GatewayTab[], ariaLabel: string, className = ''): TemplateResult {
+export function gatewayTabBar(tabs: GatewayTab[], ariaLabel: string, className = '', variant: GatewayTabBarVariant = 'standard'): TemplateResult {
   const selectedIndex = Math.max(0, tabs.findIndex((tab) => tab.selected));
+  const nextEnabledIndex = (start: number, direction: 1 | -1): number => {
+    for (let offset = 0; offset < tabs.length; offset += 1) {
+      const index = (start + offset * direction + tabs.length) % tabs.length;
+      if (!tabs[index]?.disabled) return index;
+    }
+    return start;
+  };
   const handleKeydown = (event: KeyboardEvent, index: number) => {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
     event.preventDefault();
     const direction = event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0;
-    const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + direction + tabs.length) % tabs.length;
+    const nextIndex = event.key === 'Home'
+      ? nextEnabledIndex(0, 1)
+      : event.key === 'End'
+        ? nextEnabledIndex(tabs.length - 1, -1)
+        : nextEnabledIndex((index + direction + tabs.length) % tabs.length, direction as 1 | -1);
     const nextTab = tabs[nextIndex];
     if (nextTab && !nextTab.disabled) nextTab.onSelect();
   };
-  return html`<div class=${['ui-tab-group', className].filter(Boolean).join(' ')} role="tablist" aria-label=${ariaLabel}>${tabs.map((tab, index) => gatewayTab(tab, index === selectedIndex ? 0 : -1, (event) => handleKeydown(event, index)))}</div>`;
+  return html`<div class=${['gateway-tab-bar', 'ui-tab-group', `gateway-tab-bar-${variant}`, className].filter(Boolean).join(' ')} role="tablist" aria-label=${ariaLabel}>${tabs.map((tab, index) => gatewayTabItem(tab, index === selectedIndex ? 0 : -1, (event) => handleKeydown(event, index)))}</div>`;
 }
 
-export function gatewayTab(tab: GatewayTab, tabIndex = tab.selected ? 0 : -1, onKeydown?: (event: KeyboardEvent) => void): TemplateResult {
-  return html`<button id=${tab.id} class=${['ui-tab', tab.className, tab.iconOnly ? 'ui-tab-icon-only' : ''].filter(Boolean).join(' ')} type="button" role="tab" tabindex=${tabIndex} aria-selected=${tab.selected ?? false} aria-controls=${ifDefined(tab.panelId)} ?disabled=${tab.disabled} aria-label=${tab.label} title=${tab.label} @keydown=${onKeydown} @click=${tab.onSelect}>${tab.icon ? gatewayIcon(tab.icon, tab.iconClassName ?? 'ui-tab-icon') : ''}<span class=${tab.iconOnly ? 'sr-only' : ''}>${tab.label}</span></button>`;
+export function gatewayTabItem(tab: GatewayTab, tabIndex = tab.selected ? 0 : -1, onKeydown?: (event: KeyboardEvent) => void): TemplateResult {
+  const activate = (event: Event) => {
+    tab.onSelect();
+    (event.currentTarget as HTMLElement).scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  };
+  return html`<button id=${tab.id} class=${['ui-tab', tab.className, tab.iconOnly ? 'ui-tab-icon-only' : ''].filter(Boolean).join(' ')} type="button" role="tab" tabindex=${tabIndex} aria-selected=${tab.selected ?? false} aria-controls=${ifDefined(tab.panelId)} ?disabled=${tab.disabled} aria-label=${tab.label} title=${tab.label} @keydown=${onKeydown} @click=${activate}>${tab.icon ? gatewayIcon(tab.icon, tab.iconClassName ?? 'ui-tab-icon') : ''}<span class=${tab.iconOnly ? 'sr-only' : ''}>${tab.label}</span></button>`;
 }
+
+export const gatewayTabGroup = gatewayTabBar;
+export const gatewayTab = gatewayTabItem;
 
 function fieldIds(options: FieldBase, suffix: string): string {
   const base = options.id ?? options.name ?? 'gateway-field';

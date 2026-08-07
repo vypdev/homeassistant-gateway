@@ -21,7 +21,7 @@ RUN corepack enable \
     && corepack pnpm run test:runtime \
     && corepack pnpm run test:architecture \
     && corepack pnpm run test:ux \
-    && corepack pnpm run build \
+    && VITE_EDGE_CHANNEL=true corepack pnpm run build \
     && corepack pnpm run storybook:build
 
 FROM python:3.12-slim

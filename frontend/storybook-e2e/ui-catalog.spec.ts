@@ -4,6 +4,7 @@ const stories = [
   ['catalog', 'ui-home-assistant-control-matrix--light', 'tab', 'YAML'],
   ['button', 'ui-actions-button--primary', 'button', 'Add trigger'],
   ['tabs', 'ui-navigation-tabs--icon-tabs', 'tab', 'YAML'],
+  ['tab-bar', 'ui-navigation-tabbar--dashboard', 'tab', 'Overview'],
   ['card', 'ui-containers-card--default', 'heading', 'Gateway readiness'],
   ['forms', 'ui-forms-fields-and-feedback--default', 'label', 'Display name'],
   ['settings', 'ui-home-assistant-settings-menu--landing', 'heading', 'Settings'],
