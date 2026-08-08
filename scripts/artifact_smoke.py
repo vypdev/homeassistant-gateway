@@ -21,7 +21,8 @@ def run(command: list[str], *, check: bool = True) -> subprocess.CompletedProces
 
 
 def wait_for_health(port: int) -> bool:
-    deadline = time.monotonic() + 20
+    timeout = float(os.environ.get("GATEWAY_ARTIFACT_HEALTH_TIMEOUT", "60"))
+    deadline = time.monotonic() + max(timeout, 5.0)
     while time.monotonic() < deadline:
         try:
             with urllib.request.urlopen(f"http://127.0.0.1:{port}/health", timeout=2) as response:
