@@ -1,6 +1,6 @@
 name: Home Assistant Gateway Edge
 # Edge images are published from main for every source/configuration change.
-version: "0.5.32-edge-2"
+version: "0.5.32-edge-3"
 slug: homeassistant_gateway_edge
 image: ghcr.io/vypdev/homeassistant-gateway-edge
 description: Development build of the Home Assistant Gateway from the main branch
