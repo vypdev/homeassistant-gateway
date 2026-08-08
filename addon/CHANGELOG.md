@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.32
+
+- Align the production frontend with Home Assistant visual tokens, typography, surfaces, tabs and semantic button geometry across the application and shared UI primitives.
+- Add the embedded Edge-only Storybook catalog with reusable production primitives, responsive stories and visual/UX contracts.
+- Harden the embedded catalog security boundary with same-origin framing and narrowly scoped Storybook CSP while retaining strict headers for normal routes.
+- Add explicit operator service and automation controls with global policy ceilings, per-client grants, approval gates, idempotency and audit-safe execution.
+- Publish Stable and Edge from `main`, with Stable on host port `18099` and Edge on host port `18100`.
+
 ## 0.5.31
 
 - Align the frontend shell with the documented Home Assistant visual line: remove decorative dot-field/gradient/glassmorphism effects, use solid surfaces, moderate card elevation, medium-radius controls, and semantic spacing tokens.

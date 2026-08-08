@@ -2,9 +2,15 @@
 
 ## Current status
 
-The operator profile is **implemented as a disabled safety framework**. The gateway does not register Home Assistant mutation tools and does not execute service calls, automation updates or configuration writes.
+The operator profile is implemented as an explicit, approval-gated execution path.
+Stable and Edge keep it disabled by default. When enabled, the gateway can expose
+allowlisted Home Assistant service and automation controls only to operator
+clients with the matching capability and explicit service grants. Every mutation
+requires a short-lived approval and a single-use execution token.
 
-The observer profile remains the production capability. Reading automation configuration through `ha_automation_config` is read-only and does not activate the operator profile.
+The observer profile remains the default production capability. Reading
+automation configuration through `ha_automation_config` is read-only and does
+not activate the operator profile.
 
 The following Ingress endpoint reports the effective state:
 
@@ -55,9 +61,9 @@ A future mutation must satisfy all of these checks before an infrastructure adap
 
 The emergency control can disable operator execution without disabling observer reads. Approval tokens are stored only as digests, are bounded in memory and are single-use. Idempotency reservations reject replay and payload reuse.
 
-The application ports now support a SQLite-backed operator state adapter. It persists approval metadata, token digests, consumed state and idempotency fingerprints with private database permissions; plaintext approval tokens and proposed payloads are never stored. The adapter is available for composition, but it is not connected to an active mutation route while operator execution remains disabled.
+The application ports now support a SQLite-backed operator state adapter. It persists approval metadata, token digests, consumed state and idempotency fingerprints with private database permissions; plaintext approval tokens and proposed payloads are never stored. The adapter is connected to the bounded mutation routes when operator execution is enabled.
 
-The Ingress-only HTTP boundary exposes `POST /api/operator/approval` and `POST /api/operator/execute` for contract testing. Both reject requests with `403 operator_disabled` while the global flag is false. If the flag is enabled without a mutation adapter, execution remains bounded and returns `mutation_adapter_not_configured`; no MCP mutation tool is registered by this release.
+The Ingress-only HTTP boundary exposes `POST /api/operator/approval` and `POST /api/operator/execute`. Both reject requests with `403 operator_disabled` while the global flag is false. If the flag is enabled without a mutation adapter, execution remains bounded and returns `mutation_adapter_not_configured`; MCP mutation tools are discovered only when the global policy and client grants allow them.
 
 ## Home Assistant contract research
 

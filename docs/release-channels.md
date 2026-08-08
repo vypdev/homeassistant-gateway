@@ -16,12 +16,11 @@ workflow. Stable follows `main` and is updated through tagged releases.
 ## Edge
 
 `Home Assistant Gateway Edge` (`homeassistant_gateway_edge`) is the development
-channel. It follows the Zigbee2MQTT Edge model: the metadata uses the fixed
-version `edge` and Supervisor consumes one published multi-architecture image
-from GHCR. GitHub Actions builds that image from `develop`.
+channel. Supervisor consumes the versioned multi-architecture image published
+to GHCR by GitHub Actions from `main`.
 
-- Image: `ghcr.io/vypdev/homeassistant-gateway-edge:edge`
-- Source ref: `develop`
+- Image: `ghcr.io/vypdev/homeassistant-gateway-edge:0.5.32-edge-1`
+- Source ref: `main`
 - Supervisor stage: `experimental`
 - Host MCP port: `18100`
 - Default log level: `debug`
@@ -35,8 +34,8 @@ channels.
 
 ## Branch and workflow policy
 
-Development work is performed on `develop`. Every push to `develop` and every
-pull request targeting `develop` or `main` runs the required CI checks,
+Development work is performed on `develop`. Every pull request targeting
+`develop` or `main` runs the required CI checks,
 including backend, frontend, browser and packaging validation.
 
 All CI, Edge, and release workflows run on the repository's labeled self-hosted
@@ -48,7 +47,9 @@ Stable `main` is release-only. A release is prepared by opening a pull request
 from `develop` to `main` with the version, changelog and release metadata
 updated. After that pull request is merged, the `Release App` workflow runs on
 `main`, publishes the stable multi-architecture image and creates the GitHub
-release. Stable `main` does not run the development CI workflow.
+release. The `Edge App` workflow also runs only on pushes to `main` and
+publishes the versioned Edge image from that exact source branch. Stable `main`
+does not run the development CI workflow on direct pushes.
 
 The same policy applies if the default branch is named `master` instead of
 `main`.
@@ -56,16 +57,16 @@ The same policy applies if the default branch is named `master` instead of
 ## Updating Edge
 
 Edge images are built and published by the `Edge App` workflow on every push to
-`develop`. The image tag remains `edge`, so Supervisor cannot detect a new
-image through a numeric version update.
+`main`. Each release uses an immutable `<stable>-edge-<iteration>` version tag,
+alongside the moving `edge` and commit aliases, so Supervisor can detect a new
+versioned Edge image.
 
 To update Edge, follow the same procedure documented by Zigbee2MQTT:
 
 1. Back up the Edge configuration and data.
-2. Uninstall `Home Assistant Gateway Edge`.
-3. Refresh the app repository in Supervisor.
-4. Install Edge again.
-5. Restore the configuration if required.
+2. Refresh the app repository in Supervisor.
+3. Update `Home Assistant Gateway Edge` to the new version.
+4. Restore the configuration if required.
 
 Stable credentials and data must never be copied into Edge. Edge uses a
 separate slug, data namespace and host port.

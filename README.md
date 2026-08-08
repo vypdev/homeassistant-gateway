@@ -7,7 +7,7 @@
 
 The default surface is **observer/read-only**: inventory, states, registries, history, logbook, diagnostics and metadata. Administration is served through Home Assistant Ingress, while direct MCP transport is protected by a host allowlist, Bearer token, client identity and capabilities.
 
-> **Current status:** `v0.5.13`. Operator provisioning follows the effective add-on flag, but **no operator mutation is enabled yet**. No MCP write tools are registered.
+> **Current status:** `v0.5.32`. Stable defaults to observer/read-only operation. Operator service and automation controls are available only when explicitly enabled, allowlisted, granted to an operator client and approved per operation.
 
 ## How to use it
 

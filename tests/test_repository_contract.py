@@ -12,8 +12,8 @@ def test_security_contract_exists() -> None:
 
 def test_operator_is_not_enabled_by_default() -> None:
     text = (ROOT / "README.md").read_text()
-    assert "no operator mutation is enabled yet" in text.lower()
-    assert "No MCP write tools are registered" in text
+    assert "Stable defaults to observer/read-only operation" in text
+    assert "explicitly enabled" in text
 
 
 

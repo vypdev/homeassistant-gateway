@@ -11,7 +11,7 @@ pnpm run storybook
 
 Then open `http://localhost:6006`.
 
-The Edge app embeds the same static catalog generated from `develop`. Through Supervisor Ingress, open `/catalog/`. Stable intentionally does not package the catalog.
+The Edge app embeds the same static catalog generated from `main`. Through Supervisor Ingress, open `/catalog/`. Stable intentionally does not package the catalog.
 
 Build the static catalog with:
 
