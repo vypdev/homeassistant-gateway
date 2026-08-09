@@ -169,8 +169,8 @@ export const APP_STYLES = css`
     .mutation-card { margin-top: 14px; }
     .mutation-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
     .pack-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 16px 0; }
-    .pack-grid > button.secondary { border-radius: 8px; text-align: left; }
-    .pack-grid button { display: grid; gap: 5px; text-align: left; padding: 12px 13px; min-height: 72px; }
+    .pack-grid > button.secondary { border-radius: 8px; justify-content: flex-start; text-align: start; }
+    .pack-grid button { display: grid; gap: 5px; justify-items: start; text-align: start; padding: 12px 13px; min-height: 72px; }
     .pack-grid small { color: var(--ha-text-secondary); line-height: 1.4; }
     .capability-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 14px; }
     .capability-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }

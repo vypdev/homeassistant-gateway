@@ -11,6 +11,7 @@ export interface GatewayController {
   refresh(signal?: AbortSignal, onProgress?: BootstrapProgress): Promise<GatewayBootstrap>;
   refreshClients(signal?: AbortSignal): Promise<Client[]>;
   createClient(input: CreateClientInput, signal?: AbortSignal): Promise<ClientMutationResult>;
+  updateClientCapabilities(clientId: string, capabilities: string[], signal?: AbortSignal): Promise<Client>;
   revokeClient(clientId: string, signal?: AbortSignal): Promise<void>;
   deleteClient(clientId: string, signal?: AbortSignal): Promise<void>;
   rotateClient(clientId: string, signal?: AbortSignal): Promise<ClientMutationResult>;
@@ -28,6 +29,7 @@ export const createGatewayController = (gatewayPort: GatewayPort, operatorPolicy
     const client = await gatewayPort.createClient(input, signal);
     return { client };
   },
+  updateClientCapabilities: (clientId, capabilities, signal) => gatewayPort.updateClientCapabilities(clientId, capabilities, signal),
   revokeClient: (clientId, signal) => gatewayPort.revokeClient(clientId, signal),
   deleteClient: (clientId, signal) => gatewayPort.deleteClient(clientId, signal),
   async rotateClient(clientId, signal) {

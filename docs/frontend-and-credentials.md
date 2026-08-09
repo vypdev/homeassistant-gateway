@@ -18,6 +18,7 @@ The App UI is served through Home Assistant Supervisor Ingress. It must not requ
 - Revocation is immediate and auditable.
 - Operator client creation is controlled by the effective `/api/operator/status` policy gate; mutation execution remains disabled independently.
 - The UI cannot grant a capability that the server policy does not recognize.
+- Active clients can explicitly update their capability set from the Clients view. During development, the existing token remains valid; future production policy will require rotation after any client-property change.
 
 ## Ingress
 

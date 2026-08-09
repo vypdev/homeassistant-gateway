@@ -13,6 +13,10 @@ export type ClientsViewContext = {
   revoke: (clientId: string) => void;
   deleteClient: (clientId: string) => void;
   rotate: (clientId: string) => void;
+  editCapabilities: (clientId: string) => void;
+  saveCapabilities: () => void;
+  cancelCapabilityEdit: () => void;
+  editingClientId: string | null;
   probe: (clientId: string) => void;
   probeReport: CapabilityProbeReport | null;
   probeBusy: boolean;
@@ -44,7 +48,7 @@ export function clientsView(ctx: ClientsViewContext): TemplateResult {
             html`<span class="tag">${client.profile}</span>`,
             html`${client.capabilities.map((capability) => html`<span class="tag">${capability}</span>`)}${client.profile === 'operator' ? html`<br><small class="muted">${ctx.t('operatorServiceGrants')}: ${client.operator_services.filter((service) => globallyEnabled.has(service)).length ? client.operator_services.filter((service) => globallyEnabled.has(service)).join(', ') : ctx.t('operatorServicesNoneAvailable')}</small>` : ''}`,
             html`<span class=${client.status === 'active' ? 'ok' : 'bad'}>${client.status}</span>`,
-            html`${gatewayButton({ label: ctx.t('probeCapabilities'), variant: 'secondary', disabled: ctx.probeBusy, onClick: () => ctx.probe(client.client_id) })}${client.status === 'active' ? html`${gatewayButton({ label: ctx.t('revoke'), variant: 'danger', disabled: ctx.busy, onClick: () => ctx.revoke(client.client_id) })}${gatewayButton({ label: ctx.t('rotate'), variant: 'secondary', disabled: ctx.busy, onClick: () => ctx.rotate(client.client_id) })}` : gatewayButton({ label: ctx.t('deleteClient'), variant: 'danger', disabled: ctx.busy, onClick: () => ctx.deleteClient(client.client_id) })}`,
+            html`${gatewayButton({ label: ctx.t('probeCapabilities'), variant: 'secondary', disabled: ctx.probeBusy, onClick: () => ctx.probe(client.client_id) })}${client.status === 'active' ? html`${gatewayButton({ label: ctx.t('editCapabilities'), variant: 'secondary', disabled: ctx.busy, onClick: () => ctx.editCapabilities(client.client_id) })}${gatewayButton({ label: ctx.t('revoke'), variant: 'danger', disabled: ctx.busy, onClick: () => ctx.revoke(client.client_id) })}${gatewayButton({ label: ctx.t('rotate'), variant: 'secondary', disabled: ctx.busy, onClick: () => ctx.rotate(client.client_id) })}` : gatewayButton({ label: ctx.t('deleteClient'), variant: 'danger', disabled: ctx.busy, onClick: () => ctx.deleteClient(client.client_id) })}`,
           ]))}</div>
           <div class="responsive-records" data-testid="clients-responsive-records">
             ${ctx.clients.map((client) => html`<article class="responsive-record" data-testid="client-record">
@@ -53,7 +57,7 @@ export function clientsView(ctx: ClientsViewContext): TemplateResult {
               <div class="responsive-field"><span>${ctx.t('profile')}</span><span class="tag">${client.profile}</span></div>
               <div class="responsive-field responsive-field-stack"><span>${ctx.t('capabilities')}</span><div class="responsive-values">${client.capabilities.map((capability) => html`<span class="tag">${capability}</span>`)}</div></div>
               ${client.profile === 'operator' ? html`<div class="responsive-field responsive-field-stack"><span>${ctx.t('operatorServiceGrants')}</span><code class="responsive-wrap">${client.operator_services.filter((service) => globallyEnabled.has(service)).join(', ') || ctx.t('operatorServicesNoneAvailable')}</code></div>` : ''}
-              <div class="responsive-actions">${gatewayButton({ label: ctx.t('probeCapabilities'), variant: 'secondary', disabled: ctx.probeBusy, onClick: () => ctx.probe(client.client_id) })}${client.status === 'active' ? html`${gatewayButton({ label: ctx.t('revoke'), variant: 'danger', disabled: ctx.busy, onClick: () => ctx.revoke(client.client_id) })}${gatewayButton({ label: ctx.t('rotate'), variant: 'secondary', disabled: ctx.busy, onClick: () => ctx.rotate(client.client_id) })}` : gatewayButton({ label: ctx.t('deleteClient'), variant: 'danger', disabled: ctx.busy, onClick: () => ctx.deleteClient(client.client_id) })}</div>
+              <div class="responsive-actions">${gatewayButton({ label: ctx.t('probeCapabilities'), variant: 'secondary', disabled: ctx.probeBusy, onClick: () => ctx.probe(client.client_id) })}${client.status === 'active' ? html`${gatewayButton({ label: ctx.t('editCapabilities'), variant: 'secondary', disabled: ctx.busy, onClick: () => ctx.editCapabilities(client.client_id) })}${gatewayButton({ label: ctx.t('revoke'), variant: 'danger', disabled: ctx.busy, onClick: () => ctx.revoke(client.client_id) })}${gatewayButton({ label: ctx.t('rotate'), variant: 'secondary', disabled: ctx.busy, onClick: () => ctx.rotate(client.client_id) })}` : gatewayButton({ label: ctx.t('deleteClient'), variant: 'danger', disabled: ctx.busy, onClick: () => ctx.deleteClient(client.client_id) })}</div>
             </article>`)}
           </div>
           ${ctx.probeReport ? html`<section class="capability-probe-panel" aria-live="polite">
@@ -64,6 +68,12 @@ export function clientsView(ctx: ClientsViewContext): TemplateResult {
           </section>` : ''}
         ` : gatewayEmptyState(ctx.t('noClientsIssued'))}
       `, 'clients-list-card')}
+      ${ctx.editingClientId ? gatewayCard(html`
+        <h2>${ctx.t('editCapabilities')}</h2>
+        <p class="client-form-description">${ctx.t('capabilitiesUpdateWithoutRotation')}</p>
+        ${ctx.capabilitySelector()}
+        ${gatewayFormActions(html`${gatewayButton({ label: ctx.t('saveCapabilities'), variant: 'primary', disabled: ctx.busy, onClick: ctx.saveCapabilities })}${gatewayButton({ label: ctx.t('cancel'), variant: 'secondary', disabled: ctx.busy, onClick: ctx.cancelCapabilityEdit })}`)}
+      `, 'client-capabilities-edit-card') : ''}
       ${gatewayCard(html`
         <h2>${ctx.t('issueObserverClient')}</h2><p class="client-form-description">${ctx.t('tokenShownOnce')}</p>
         <form class="form" @submit=${ctx.createClient}>

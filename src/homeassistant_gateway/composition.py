@@ -12,6 +12,7 @@ from homeassistant_gateway.application.clients import (
     ListClients,
     RevokeClient,
     RotateClient,
+    UpdateClientCapabilities,
 )
 from homeassistant_gateway.application.development import DevelopmentToolRunner
 from homeassistant_gateway.application.observer import ObserverDiagnostics
@@ -147,6 +148,7 @@ def build_app(settings: AppSettings) -> FastAPI:
         revoke_client=RevokeClient(repository, clock),
         delete_client=DeleteClient(repository),
         rotate_client=RotateClient(repository, token_issuer),
+        update_client_capabilities=UpdateClientCapabilities(repository, settings.operator_enabled),
         authenticate_client=authenticate_client,
         authorize_request=authorize_request,
         audit_sink=audit_repository,

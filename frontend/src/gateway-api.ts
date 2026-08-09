@@ -1,6 +1,6 @@
 import { api } from './api';
 import { BootstrapError, GatewayError, gatewayErrorFromUnknown } from './gateway-errors';
-import { assertCapabilityProbeReport, assertClients, assertGatewayBootstrap, assertIssuedClient, assertOperatorPolicy, assertOperatorPolicySaveResponse, assertPolicyEvaluation } from './gateway-contracts';
+import { assertCapabilityProbeReport, assertClient, assertClients, assertGatewayBootstrap, assertIssuedClient, assertOperatorPolicy, assertOperatorPolicySaveResponse, assertPolicyEvaluation } from './gateway-contracts';
 import type { BootstrapProgress, CreateClientInput, GatewayPort, PolicyEvaluationInput } from './gateway-port';
 import type { AuditEvent, BootstrapCheck, BootstrapCheckId, CapabilityProbeReport, Client, DevelopmentCatalog, DevelopmentReport, Discovery, GatewayBootstrap, HealthDetails, OperatorServicePolicy, OperatorStatus, Ready, UiContext } from './models';
 
@@ -80,6 +80,15 @@ export const createGatewayApi = (request: Request = api): GatewayApi => ({
       signal,
     });
     assertIssuedClient(result);
+    return result;
+  },
+  async updateClientCapabilities(clientId, capabilities, signal) {
+    const result = await request<Client>(`/clients/${encodeURIComponent(clientId)}/capabilities`, {
+      method: 'PATCH',
+      body: JSON.stringify({ capabilities }),
+      signal,
+    });
+    assertClient(result);
     return result;
   },
   revokeClient: (clientId, signal) => request<void>(`/clients/${encodeURIComponent(clientId)}/revoke`, { method: 'POST', signal }),

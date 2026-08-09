@@ -14,6 +14,7 @@ from homeassistant_gateway.application.clients import (
     ListClients,
     RevokeClient,
     RotateClient,
+    UpdateClientCapabilities,
 )
 from homeassistant_gateway.application.development import DevelopmentToolRunner
 from homeassistant_gateway.infrastructure.security.tokens import SecureTokenIssuer
@@ -112,6 +113,7 @@ def make_app(audit_sink=None, home_assistant=None, development_console_enabled=T
         revoke_client=RevokeClient(repository, clock),
         delete_client=DeleteClient(repository),
         rotate_client=RotateClient(repository, tokens),
+        update_client_capabilities=UpdateClientCapabilities(repository, operator_enabled=operator_enabled),
         authenticate_client=AuthenticateClient(repository, tokens),
         authorize_request=AuthorizeRequest(repository, operator_enabled=operator_enabled),
         audit_sink=audit_sink,
@@ -136,6 +138,40 @@ def request(app, method: str, url: str, json=None, headers=None) -> httpx.Respon
 
 def ingress_headers() -> dict[str, str]:
     return {"X-Remote-User-Id": "test-user"}
+
+
+def test_capability_update_keeps_existing_token_valid_during_development() -> None:
+    recorder = AuditRecorder()
+    app = make_app(audit_sink=recorder, home_assistant=FakeHomeAssistant())
+    issued = request(app, "POST", "/api/clients", headers=ingress_headers(), json={
+        "client_id": "capability-client",
+        "display_name": "Capability client",
+        "profile": "observer",
+        "capabilities": ["ha.read.automations"],
+    })
+    assert issued.status_code == 201
+
+    updated = request(app, "PATCH", "/api/clients/capability-client/capabilities", headers={**ingress_headers(), "X-Request-Id": "req-capability-update"}, json={
+        "capabilities": ["ha.read.automations", "ha.read.automation_config"],
+    })
+
+    assert updated.status_code == 200
+    capability_events = [event for event in recorder.events if event.action == "client.capabilities.update"]
+    assert capability_events
+    assert capability_events[0].target == "capability-client"
+    assert capability_events[0].outcome == "updated"
+    assert set(updated.json()["capabilities"]) == {"ha.read.automations", "ha.read.automation_config"}
+    token = issued.json()["token"]
+    discovery = request(app, "GET", "/api/mcp/discovery", headers={**ingress_headers(), "Authorization": f"Bearer {token}"})
+    assert discovery.status_code == 200
+    assert "ha.read.automation_config" in discovery.json()["capabilities"]
+
+
+def test_capability_update_rejects_unknown_client() -> None:
+    app = make_app(home_assistant=FakeHomeAssistant())
+    response = request(app, "PATCH", "/api/clients/missing/capabilities", headers=ingress_headers(), json={"capabilities": []})
+    assert response.status_code == 404
+    assert response.json()["detail"] == "client_not_found"
 
 
 def test_capability_probe_runs_read_and_does_not_execute_writes() -> None:

@@ -31,6 +31,12 @@ class CreateClientRequest(BaseModel):
     operator_services: frozenset[str] = Field(default_factory=frozenset)
 
 
+class UpdateClientCapabilitiesRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    capabilities: frozenset[str] = Field(default_factory=frozenset)
+
+
 class ClientResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

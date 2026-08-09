@@ -20,6 +20,7 @@ export interface GatewayPort {
   loadBootstrap(signal?: AbortSignal, onProgress?: BootstrapProgress): Promise<GatewayBootstrap>;
   loadClients(signal?: AbortSignal): Promise<Client[]>;
   createClient(input: CreateClientInput, signal?: AbortSignal): Promise<Client & { token: string }>;
+  updateClientCapabilities(clientId: string, capabilities: string[], signal?: AbortSignal): Promise<Client>;
   revokeClient(clientId: string, signal?: AbortSignal): Promise<void>;
   deleteClient(clientId: string, signal?: AbortSignal): Promise<void>;
   rotateClient(clientId: string, signal?: AbortSignal): Promise<Client & { token: string }>;

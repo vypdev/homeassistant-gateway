@@ -66,3 +66,18 @@ From the repository root:
 ```
 
 The application tests verify granted reads, denied reads without an upstream call, unsupported configuration writes and approval-only mutation probes. The browser test verifies the desktop/mobile-compatible client action and that the result table does not create horizontal viewport overflow.
+
+## Updating an existing client
+
+An existing active client can update its capability grants through:
+
+```text
+PATCH /api/clients/{client_id}/capabilities
+{"capabilities": ["ha.read.automations", "ha.read.automation_config"]}
+```
+
+The operation is explicit and validates the client profile and global operator policy before persisting the new grant set. During the current development and testing phase, the existing token remains valid and no rotation is required. The client view reflects the updated grants immediately.
+
+This is a temporary compatibility policy because the current deployment does not yet provide a safe way to update the consumer's token in its `.env`. A future security policy will require token rotation for every client-property change, including capability changes. That policy must be enabled only after the consumer update workflow and audit trail are available.
+
+Updating capabilities does not automatically grant `ha.read.automation_config` to every client, does not enable operator services globally, and does not execute Home Assistant mutations. Write capabilities remain subject to the separate operator enablement, allowlist and approval flow.

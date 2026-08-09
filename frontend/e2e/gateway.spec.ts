@@ -50,6 +50,43 @@ test('translates the initial storage readiness status', async ({ page }) => {
   await expect(page.locator('.cards .card').first().locator('.metric')).toHaveText('Listo');
 });
 
+test('updates capabilities for an existing client without rotating its token', async ({ page }) => {
+  await page.unroute('**/*');
+  let capabilities = ['ha.read.automations'];
+  let patchPayload: unknown = null;
+  await page.route('**/*', async (route) => {
+    const url = new URL(route.request().url());
+    const path = url.pathname;
+    if (path !== '/ready' && !path.startsWith('/api/')) return route.continue();
+    if (path === '/api/clients/existing-observer/capabilities' && route.request().method() === 'PATCH') {
+      patchPayload = route.request().postDataJSON();
+      capabilities = (patchPayload as { capabilities: string[] }).capabilities;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ client_id: 'existing-observer', display_name: 'Existing observer', profile: 'observer', capabilities, operator_services: [], created_at: '2026-01-01T00:00:00Z', status: 'active', revoked_at: null }) });
+      return;
+    }
+    const payload: Record<string, unknown> = {
+      '/ready': { status: 'ready', storage: 'ready', mcp: 'ready', home_assistant: 'ready', version: 'test' },
+      '/api/clients': [{ client_id: 'existing-observer', display_name: 'Existing observer', profile: 'observer', capabilities, operator_services: [], created_at: '2026-01-01T00:00:00Z', status: 'active', revoked_at: null }],
+      '/api/audit': [],
+      '/api/development/catalog': { operations: [], packs: [] },
+      '/api/development/reports': [],
+      '/api/ui/context': { locale: 'en', theme: 'dark' },
+      '/api/health/details': { status: 'ok', checks: [] },
+      '/api/operator/status': { operator_enabled: false, execution: 'disabled', registered_mutation_tools: [], capabilities: [], reason: '' },
+      '/api/operator/service-policy': { services: [], selected: [] },
+    };
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(payload[path] ?? {}) });
+  });
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'Clients', exact: true }).click();
+  await page.getByRole('button', { name: 'Edit capabilities' }).first().click();
+  await page.locator('.client-capabilities-edit-card').getByRole('checkbox', { name: 'Automation configuration' }).check();
+  await page.getByRole('button', { name: 'Save capabilities' }).click();
+
+  await expect.poll(() => patchPayload).toEqual({ capabilities: ['ha.read.automations', 'ha.read.automation_config'] });
+  await expect(page.locator('.tag', { hasText: 'ha.read.automation_config' }).first()).toBeVisible();
+});
+
 test('matches the Home Assistant navigation states and uses MDI leading icons', async ({ page }) => {
   await page.unroute('**/*');
   await mockGatewayApi(page, 'light');

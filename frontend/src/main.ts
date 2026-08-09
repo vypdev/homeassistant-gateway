@@ -92,6 +92,7 @@ export class GatewayApp extends LitElement {
   @state() selectedOperatorServices = new Set<string>();
   @state() clientProfile: Profile = 'observer';
   @state() permissionTab: 'capabilities' | 'operator-services' = 'capabilities';
+  @state() editingClientId: string | null = null;
   @state() bootState: 'checking' | 'ready' | 'error' = 'checking';
   @state() bootChecks: BootstrapCheck[] = [];
   @state() operatorEnabled = false;
@@ -255,6 +256,34 @@ export class GatewayApp extends LitElement {
   }
 
   clearCapabilities() { this.selectedCapabilities = new Set(); }
+
+  editClientCapabilities(clientId: string) {
+    const client = this.clients.find((item) => item.client_id === clientId);
+    if (!client || client.status !== 'active') return;
+    this.editingClientId = clientId;
+    this.clientProfile = client.profile;
+    this.selectedCapabilities = new Set(client.capabilities);
+  }
+
+  cancelCapabilityEdit() {
+    this.editingClientId = null;
+    this.selectedCapabilities = new Set(['ha.read.diagnostics']);
+    this.clientProfile = 'observer';
+  }
+
+  async saveClientCapabilities() {
+    if (!this.editingClientId) return;
+    const mutation = this.beginMutation();
+    this.clientsBusy = true; this.error = '';
+    try {
+      const client = await this.gatewayController.updateClientCapabilities(this.editingClientId, [...this.selectedCapabilities], mutation.controller.signal);
+      if (!this.isCurrentMutation(mutation.version, mutation.controller)) return;
+      this.clients = this.clients.map((item) => item.client_id === client.client_id ? client : item);
+      this.cancelCapabilityEdit();
+    } catch (error) {
+      if (this.isCurrentMutation(mutation.version, mutation.controller)) this.error = this.errorMessage(error, 'errorIssueClient');
+    } finally { if (this.isCurrentMutation(mutation.version, mutation.controller)) this.clientsBusy = false; this.finishMutation(mutation.version, mutation.controller); }
+  }
 
   async probeCapabilities(clientId: string) {
     this.capabilityProbeBusy = true;
@@ -477,7 +506,7 @@ export class GatewayApp extends LitElement {
     finally { this.clientsBusy = false; }
   }
 
-  clientsView() { return renderClientsView({ clients: this.clients, busy: this.clientsBusy, t: this.t.bind(this), refresh: () => void this.refreshClients(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), deleteClient: (clientId) => void this.deleteClient(clientId), rotate: (clientId) => void this.rotate(clientId), probe: (clientId) => void this.probeCapabilities(clientId), probeReport: this.capabilityProbe, probeBusy: this.capabilityProbeBusy, capabilitySelector: () => this.capabilitySelector(), operatorEnabled: this.operatorEnabled, operatorServices: getSelectedOperatorServices(this.operatorPolicy), selectedOperatorServices: [...this.selectedOperatorServices], setOperatorServiceSelection: (services) => this.setOperatorServiceSelection(services), navigateToPolicy: () => this.setView('policy'), permissionTab: this.permissionTab, setPermissionTab: (tab) => { this.permissionTab = tab; }, profile: this.clientProfile, setProfile: (profile) => this.setClientProfile(profile) }); }
+  clientsView() { return renderClientsView({ clients: this.clients, busy: this.clientsBusy, t: this.t.bind(this), refresh: () => void this.refreshClients(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), deleteClient: (clientId) => void this.deleteClient(clientId), rotate: (clientId) => void this.rotate(clientId), editCapabilities: (clientId) => this.editClientCapabilities(clientId), saveCapabilities: () => void this.saveClientCapabilities(), cancelCapabilityEdit: () => this.cancelCapabilityEdit(), editingClientId: this.editingClientId, probe: (clientId) => void this.probeCapabilities(clientId), probeReport: this.capabilityProbe, probeBusy: this.capabilityProbeBusy, capabilitySelector: () => this.capabilitySelector(), operatorEnabled: this.operatorEnabled, operatorServices: getSelectedOperatorServices(this.operatorPolicy), selectedOperatorServices: [...this.selectedOperatorServices], setOperatorServiceSelection: (services) => this.setOperatorServiceSelection(services), navigateToPolicy: () => this.setView('policy'), permissionTab: this.permissionTab, setPermissionTab: (tab) => { this.permissionTab = tab; }, profile: this.clientProfile, setProfile: (profile) => this.setClientProfile(profile) }); }
 
   auditView() { return auditView({ audit: this.audit, t: this.t.bind(this), loadAudit: (decision) => void this.loadAudit(decision) }); }
 

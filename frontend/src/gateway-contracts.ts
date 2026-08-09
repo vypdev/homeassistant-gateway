@@ -73,6 +73,10 @@ export function assertOperatorPolicySaveResponse(value: unknown): asserts value 
   if (!isRecord(value) || !isStringArray(value.selected)) invalid('Invalid operator policy save response');
 }
 
+export function assertClient(value: unknown): asserts value is Client {
+  if (!isClient(value)) invalid('Invalid client response');
+}
+
 export function assertIssuedClient(value: unknown): asserts value is Client & { token: string } {
   if (!isRecord(value) || typeof value.token !== 'string' || value.token.length === 0 || typeof value.client_id !== 'string') invalid('Invalid issued client response');
 }
