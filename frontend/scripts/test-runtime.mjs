@@ -19,6 +19,7 @@ try {
     if (name === 'api') output = output.replace("from './gateway-errors'", "from './gateway-errors.mjs'");
     if (name === 'gateway-api') {
       output = output.replace("from './api'", "from './api.mjs'");
+      output = output.replace("from './gateway-errors'", "from './gateway-errors.mjs'");
       output = output.replace("from './gateway-contracts'", "from './gateway-contracts.mjs'");
     }
     if (name === 'gateway-controller') output = output.replace("from './operator-policy-service'", "from './operator-policy-service.mjs'");

@@ -2,7 +2,7 @@ import { LitElement, html } from 'lit';
 import { downloadDiagnostic as downloadDiagnosticFile, copyDiagnostic as copyDiagnosticFile, copyProblemReports as copyProblemReportsFile } from './diagnostics-service';
 import { createGatewayAppDependencies } from './composition-root';
 import type { GatewayController } from './gateway-controller';
-import { GatewayError } from './gateway-errors';
+import { BootstrapError, GatewayError } from './gateway-errors';
 import { CAPABILITY_DEFINITIONS } from './capabilities';
 import { capabilitiesAfterProfileChange, capabilitiesForProfile, toggleCapability as applyCapabilityToggle } from './capability-policy';
 import { selectedOperatorServices as getSelectedOperatorServices, toggleOperatorServiceGroupSelection, toggleOperatorServiceSelection } from './operator-policy';
@@ -32,6 +32,7 @@ import { PERMISSION_TABS_TRANSLATIONS } from './i18n-permission-tabs';
 
 import {
   type AuditEvent,
+  type BootstrapCheck,
   type Client,
   type OperatorServicePolicy,
   type DevelopmentCatalog,
@@ -91,6 +92,7 @@ export class GatewayApp extends LitElement {
   @state() clientProfile: Profile = 'observer';
   @state() permissionTab: 'capabilities' | 'operator-services' = 'capabilities';
   @state() bootState: 'checking' | 'ready' | 'error' = 'checking';
+  @state() bootChecks: BootstrapCheck[] = [];
   @state() operatorEnabled = false;
   @state() operatorStatus: OperatorStatus = { operator_enabled: false, execution: 'disabled', registered_mutation_tools: [], capabilities: [], reason: 'loading' };
   @state() operatorPolicy: OperatorServicePolicy | null = null;
@@ -118,6 +120,11 @@ export class GatewayApp extends LitElement {
   get effectiveTheme() { return resolveTheme(this.uiContext.theme, Boolean(window.matchMedia?.('(prefers-color-scheme: light)').matches)); }
 
   private errorMessage(error: unknown, fallbackKey: string): string {
+    if (error instanceof BootstrapError) {
+      const failed = error.checks.filter((check) => check.status === 'failed');
+      const summary = failed.map((check) => `${check.path} — ${check.error?.http_status ? `HTTP ${check.error.http_status} · ` : ''}${check.error?.code ?? 'unknown_error'}`).join('; ');
+      return `${this.t('errorLoadState')}: ${summary}`;
+    }
     if (error instanceof GatewayError) {
       if (error.code === 'server_error' && error.status) return `Request failed (${error.status})`;
       const keyByCode: Record<string, string> = {
@@ -154,14 +161,20 @@ export class GatewayApp extends LitElement {
     this.refreshController?.abort();
     const controller = new AbortController();
     this.refreshController = controller;
-    this.busy = true; this.bootState = 'checking'; this.error = '';
+    this.busy = true; this.bootState = 'checking'; this.error = ''; this.bootChecks = [];
     try {
-      const snapshot = await this.gatewayController.refresh(controller.signal);
+      const snapshot = await this.gatewayController.refresh(controller.signal, (check) => {
+        if (version !== this.refreshVersion) return;
+        this.bootChecks = this.bootChecks.some((current) => current.id === check.id)
+          ? this.bootChecks.map((current) => current.id === check.id ? check : current)
+          : [...this.bootChecks, check];
+      });
       if (version !== this.refreshVersion) return;
       this.applyBootstrap(snapshot); this.bootState = 'ready';
     }
     catch (error) {
       if (version !== this.refreshVersion || controller.signal.aborted) return;
+      if (error instanceof BootstrapError) this.bootChecks = error.checks;
       this.error = this.errorMessage(error, 'errorLoadState'); this.bootState = 'error';
     }
     finally {
@@ -382,9 +395,35 @@ export class GatewayApp extends LitElement {
     downloadDiagnosticFile(this.healthDetails, this.developmentResults, this.developmentReports);
   }
 
+  private bootstrapCheckLabel(id: BootstrapCheck['id']) {
+    const labels: Record<BootstrapCheck['id'], string> = {
+      readiness: 'bootCheckReadiness', clients: 'bootCheckClients', audit: 'bootCheckAudit', catalog: 'bootCheckCatalog', development_reports: 'bootCheckReports', ui_context: 'bootCheckUiContext', health_details: 'bootCheckHealth', operator_status: 'bootCheckOperatorStatus', operator_policy: 'bootCheckOperatorPolicy',
+    };
+    return this.t(labels[id]);
+  }
+
+  private bootstrapCheckStatus(check: BootstrapCheck) {
+    if (check.status === 'ok') return this.t('bootCheckDone');
+    if (check.status === 'running') return this.t('bootCheckRunning');
+    if (check.status === 'failed') return this.t('bootCheckFailed');
+    return this.t('bootCheckPending');
+  }
+
+  private bootstrapChecksView() {
+    return html`<ul class="boot-checks" aria-label=${this.t('bootChecks')}>
+      ${this.bootChecks.map((check) => html`<li class="boot-check boot-check-${check.status}">
+        <span class="boot-check-icon" aria-hidden="true">${check.status === 'ok' ? '✓' : check.status === 'failed' ? '!' : check.status === 'running' ? '…' : '·'}</span>
+        <span class="boot-check-copy"><strong>${this.bootstrapCheckLabel(check.id)}</strong><small>${check.path}</small>${check.error ? html`<span class="boot-check-error">${check.error.http_status ? `HTTP ${check.error.http_status} · ` : ''}${check.error.code}</span>` : ''}</span>
+        <span class="boot-check-status">${this.bootstrapCheckStatus(check)}${check.duration_ms !== null ? ` · ${check.duration_ms} ms` : ''}</span>
+      </li>`)}
+    </ul>`;
+  }
+
   loadingView() {
     const failed = this.bootState === 'error';
-    return html`<div class="shell ${this.effectiveTheme}"><main class="boot-stage" aria-busy=${failed ? 'false' : 'true'}><section class="boot-card" aria-live="polite"><div class="boot-orbit" aria-hidden="true"><div class="boot-core"></div></div><h1>${failed ? this.t('errorLoadState') : this.t('checkingGateway')}</h1><p>${this.t('healthDescription')}</p>${failed ? html`${gatewayAlert(this.error)}${gatewayButton({ label: this.t('refresh'), variant: 'secondary', className: 'boot-retry', onClick: () => void this.refresh() })}` : html`<div class="boot-status"><span class="dot"></span>${this.t('checkingGateway')}</div><div class="boot-progress" role="progressbar" aria-label=${this.t('checkingGateway')}></div>`}</section></main></div>`;
+    const completed = this.bootChecks.filter((check) => check.status === 'ok' || check.status === 'failed').length;
+    const total = this.bootChecks.length;
+    return html`<div class="shell ${this.effectiveTheme}"><main class="boot-stage" aria-busy=${failed ? 'false' : 'true'}><section class="boot-card" aria-live="polite"><div class="boot-orbit" aria-hidden="true"><div class="boot-core"></div></div><h1>${failed ? this.t('errorLoadState') : this.t('checkingGateway')}</h1><p>${failed ? this.t('bootFailureDescription') : this.t('healthDescription')}</p>${total ? html`<p class="boot-summary">${completed}/${total} ${this.t('bootChecksCompleted')}</p>${this.bootstrapChecksView()}` : ''}${failed ? html`${gatewayAlert(this.error)}${gatewayButton({ label: this.t('refresh'), variant: 'secondary', className: 'boot-retry', onClick: () => void this.refresh() })}` : html`<div class="boot-status"><span class="dot"></span>${this.t('checkingGateway')}</div><div class="boot-progress" role="progressbar" aria-label=${this.t('checkingGateway')}></div>`}</section></main></div>`;
   }
 
   private get anyBusy() { return this.busy || this.clientsBusy || this.auditBusy || this.discoveryBusy || this.policyBusy || this.developmentBusy; }

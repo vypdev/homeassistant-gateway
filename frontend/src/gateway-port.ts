@@ -1,4 +1,4 @@
-import type { AuditEvent, Client, Discovery, GatewayBootstrap, OperatorPolicySaveResponse, OperatorServicePolicy, PolicyDecision } from './models';
+import type { AuditEvent, BootstrapCheck, Client, Discovery, GatewayBootstrap, OperatorPolicySaveResponse, OperatorServicePolicy, PolicyDecision } from './models';
 
 export type CreateClientInput = {
   client_id: string;
@@ -14,8 +14,10 @@ export type PolicyEvaluationInput = {
   mutation: boolean;
 };
 
+export type BootstrapProgress = (check: BootstrapCheck) => void;
+
 export interface GatewayPort {
-  loadBootstrap(signal?: AbortSignal): Promise<GatewayBootstrap>;
+  loadBootstrap(signal?: AbortSignal, onProgress?: BootstrapProgress): Promise<GatewayBootstrap>;
   loadClients(signal?: AbortSignal): Promise<Client[]>;
   createClient(input: CreateClientInput, signal?: AbortSignal): Promise<Client & { token: string }>;
   revokeClient(clientId: string, signal?: AbortSignal): Promise<void>;

@@ -1,5 +1,5 @@
 import type { Client, GatewayBootstrap, PolicyDecision } from './models';
-import type { CreateClientInput, GatewayPort, PolicyEvaluationInput } from './gateway-port';
+import type { BootstrapProgress, CreateClientInput, GatewayPort, PolicyEvaluationInput } from './gateway-port';
 import type { AuditEvent, Discovery } from './models';
 import { createOperatorPolicyService, type OperatorPolicyService } from './operator-policy-service';
 
@@ -8,7 +8,7 @@ export type ClientMutationResult = {
 };
 
 export interface GatewayController {
-  refresh(signal?: AbortSignal): Promise<GatewayBootstrap>;
+  refresh(signal?: AbortSignal, onProgress?: BootstrapProgress): Promise<GatewayBootstrap>;
   refreshClients(signal?: AbortSignal): Promise<Client[]>;
   createClient(input: CreateClientInput, signal?: AbortSignal): Promise<ClientMutationResult>;
   revokeClient(clientId: string, signal?: AbortSignal): Promise<void>;
@@ -21,7 +21,7 @@ export interface GatewayController {
 }
 
 export const createGatewayController = (gatewayPort: GatewayPort, operatorPolicy: OperatorPolicyService = createOperatorPolicyService(async (selected) => { await gatewayPort.saveOperatorPolicy(selected); })): GatewayController => ({
-  refresh: (signal) => gatewayPort.loadBootstrap(signal),
+  refresh: (signal, onProgress) => gatewayPort.loadBootstrap(signal, onProgress),
   refreshClients: (signal) => gatewayPort.loadClients(signal),
   async createClient(input, signal) {
     const client = await gatewayPort.createClient(input, signal);

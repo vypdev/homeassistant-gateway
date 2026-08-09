@@ -19,7 +19,7 @@ workflow. Stable follows `main` and is updated through tagged releases.
 channel. Supervisor consumes the versioned multi-architecture image published
 to GHCR by GitHub Actions from `main`.
 
-- Image: `ghcr.io/vypdev/homeassistant-gateway-edge:0.5.32-edge-11`
+- Image: `ghcr.io/vypdev/homeassistant-gateway-edge:0.5.32-edge-12`
 - Source ref: `main`
 - Supervisor stage: `experimental`
 - Host MCP port: `18100`

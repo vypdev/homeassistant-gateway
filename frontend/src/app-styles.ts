@@ -40,6 +40,19 @@ export const APP_STYLES = css`
     .boot-progress::before { content: ''; display: block; width: 42%; height: 100%; border-radius: inherit; background: var(--ha-primary); animation: boot-progress 1.8s ease-in-out infinite; }
     .shell.light .boot-progress { background: var(--ha-surface-muted); } .shell.light .boot-progress::before { background: var(--ha-primary); }
     .boot-retry { margin-top: 24px; }
+    .boot-summary { font-size: 13px; color: var(--ha-text-secondary); }
+    .boot-checks { display: grid; gap: 8px; list-style: none; padding: 0; margin: 18px 0 0; text-align: left; }
+    .boot-check { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 9px 10px; border: 1px solid var(--ha-border); border-radius: 8px; background: var(--ha-surface-raised); }
+    .boot-check-icon { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: var(--ha-text-secondary); background: var(--ha-surface-muted); font-weight: 700; }
+    .boot-check-ok .boot-check-icon { color: var(--ha-success); background: color-mix(in srgb, var(--ha-success) 14%, transparent); }
+    .boot-check-failed { border-color: color-mix(in srgb, var(--ha-danger) 55%, var(--ha-border)); }
+    .boot-check-failed .boot-check-icon { color: white; background: var(--ha-danger); }
+    .boot-check-copy { min-width: 0; display: grid; gap: 2px; }
+    .boot-check-copy strong, .boot-check-copy small, .boot-check-error { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .boot-check-copy small, .boot-check-error, .boot-check-status { font-size: 11px; color: var(--ha-text-secondary); }
+    .boot-check-error { color: var(--ha-danger); }
+    .boot-check-status { text-align: right; }
+    .shell.light .boot-check { background: var(--ha-surface-raised); }
     .layout { position: relative; width: min(1280px, calc(100% - 32px)); margin: auto; padding: var(--gateway-space-6) 0 var(--gateway-space-8); }
     .tab-navigation { width: 100%; }
     main { min-width: 0; padding: 0 0 42px; }
