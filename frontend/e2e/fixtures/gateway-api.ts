@@ -10,7 +10,7 @@ export const READY_STATE: Record<string, unknown> = {
   '/api/development/reports': [],
   '/api/ui/context': { locale: 'en', theme: 'dark' },
   '/api/health/details': { status: 'ok', checks: [] },
-  '/api/operator/status': { operator_enabled: true, execution: 'disabled', registered_mutation_tools: [], capabilities: [], reason: '' },
+  '/api/operator/status': { operator_enabled: true, execution: 'disabled', registered_mutation_tools: [], capabilities: [], reason: null },
   '/api/operator/service-policy': { services: [{ id: 'light.turn_on', domain: 'light', service: 'turn_on', name: 'Turn on', description: 'Turn on a light.', fields: {} }], selected: [] },
   '/api/discovery': { tools: [], resources: [], prompts: [] },
 };

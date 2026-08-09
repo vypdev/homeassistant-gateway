@@ -29,7 +29,8 @@ const isHealthDetails = (value: unknown): value is HealthDetails => isRecord(val
   && value.checks.every(isHealthCheck);
 const isOperatorStatus = (value: unknown): value is OperatorStatus => isRecord(value)
   && typeof value.operator_enabled === 'boolean'
-  && hasStrings(value, ['execution', 'reason'])
+  && typeof value.execution === 'string'
+  && (value.reason === null || typeof value.reason === 'string')
   && isStringArray(value.registered_mutation_tools)
   && isStringArray(value.capabilities);
 const isOperatorService = (value: unknown): value is OperatorService => isRecord(value)
