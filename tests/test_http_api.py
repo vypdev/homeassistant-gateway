@@ -107,6 +107,7 @@ def make_app(audit_sink=None, home_assistant=None, development_console_enabled=T
     clock = lambda: datetime(2026, 7, 31, tzinfo=UTC)
     return create_app(
         issue_client=IssueClient(repository, tokens, clock, operator_enabled=operator_enabled),
+        client_repository=repository,
         list_clients=ListClients(repository),
         revoke_client=RevokeClient(repository, clock),
         delete_client=DeleteClient(repository),
@@ -135,6 +136,34 @@ def request(app, method: str, url: str, json=None, headers=None) -> httpx.Respon
 
 def ingress_headers() -> dict[str, str]:
     return {"X-Remote-User-Id": "test-user"}
+
+
+def test_capability_probe_runs_read_and_does_not_execute_writes() -> None:
+    app = make_app(home_assistant=FakeHomeAssistant(), operator_enabled=True)
+    issued = request(
+        app,
+        "POST",
+        "/api/clients",
+        json={
+            "client_id": "probe-client",
+            "display_name": "Probe client",
+            "profile": "operator",
+            "capabilities": ["ha.read.automation_config", "ha.write.services", "ha.write.configuration"],
+            "operator_services": [],
+        },
+        headers=ingress_headers(),
+    )
+    assert issued.status_code == 201
+
+    response = request(app, "POST", "/api/clients/probe-client/capability-probe", headers=ingress_headers())
+
+    assert response.status_code == 200
+    results = {item["capability"]: item for item in response.json()["results"]}
+    assert results["ha.read.automation_config"]["status"] == "ok"
+    assert results["ha.read.automation_config"]["sample_entity_id"] == "automation.test"
+    assert results["ha.write.services"]["status"] == "approval_required"
+    assert results["ha.write.services"]["reason"] == "no_mutation_executed"
+    assert results["ha.write.configuration"]["status"] == "unsupported"
 
 
 def test_development_catalog_requires_ingress_and_lists_probes() -> None:

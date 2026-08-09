@@ -142,6 +142,7 @@ def build_app(settings: AppSettings) -> FastAPI:
             clock=clock,
             operator_enabled=settings.operator_enabled,
         ),
+        client_repository=repository,
         list_clients=ListClients(repository),
         revoke_client=RevokeClient(repository, clock),
         delete_client=DeleteClient(repository),

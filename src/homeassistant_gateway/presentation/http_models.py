@@ -74,6 +74,25 @@ class PolicyDecisionResponse(BaseModel):
     reason: str
 
 
+class CapabilityProbeResultResponse(BaseModel):
+    capability: str
+    group: str
+    tool: str | None
+    decision: str
+    status: str
+    reason: str
+    implemented: bool
+    sample_entity_id: str | None = None
+    count: int | None = None
+    details: dict[str, Any] | None = None
+
+
+class CapabilityProbeResponse(BaseModel):
+    client_id: str
+    generated_for: str
+    results: tuple[CapabilityProbeResultResponse, ...]
+
+
 class AuditEventResponse(BaseModel):
     event_id: str
     occurred_at: datetime

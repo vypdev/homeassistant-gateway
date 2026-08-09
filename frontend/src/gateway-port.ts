@@ -1,4 +1,4 @@
-import type { AuditEvent, BootstrapCheck, Client, Discovery, GatewayBootstrap, OperatorPolicySaveResponse, OperatorServicePolicy, PolicyDecision } from './models';
+import type { AuditEvent, BootstrapCheck, CapabilityProbeReport, Client, Discovery, GatewayBootstrap, OperatorPolicySaveResponse, OperatorServicePolicy, PolicyDecision } from './models';
 
 export type CreateClientInput = {
   client_id: string;
@@ -27,6 +27,7 @@ export interface GatewayPort {
   loadAudit(decision: string): Promise<AuditEvent[]>;
   saveOperatorPolicy(selected: string[]): Promise<OperatorPolicySaveResponse>;
   evaluatePolicy(input: PolicyEvaluationInput): Promise<{ decision: PolicyDecision; reason: string }>;
+  probeCapabilities(clientId: string, entityId?: string, signal?: AbortSignal): Promise<CapabilityProbeReport>;
 }
 
 export type { GatewayBootstrap, OperatorServicePolicy };

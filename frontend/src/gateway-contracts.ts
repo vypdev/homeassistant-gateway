@@ -1,5 +1,5 @@
 import { GatewayError } from './gateway-errors';
-import type { AuditEvent, Client, GatewayBootstrap, HealthCheck, HealthDetails, OperatorPolicySaveResponse, OperatorService, OperatorServicePolicy, OperatorStatus, PolicyDecision, Ready } from './models';
+import type { AuditEvent, CapabilityProbeReport, Client, GatewayBootstrap, HealthCheck, HealthDetails, OperatorPolicySaveResponse, OperatorService, OperatorServicePolicy, OperatorStatus, PolicyDecision, Ready } from './models';
 
 const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object';
 const hasStrings = (value: Record<string, unknown>, keys: string[]): boolean => keys.every((key) => typeof value[key] === 'string');
@@ -79,4 +79,23 @@ export function assertIssuedClient(value: unknown): asserts value is Client & { 
 
 export function assertPolicyEvaluation(value: unknown): asserts value is { decision: PolicyDecision; reason: string } {
   if (!isRecord(value) || typeof value.decision !== 'string' || !POLICY_DECISIONS.has(value.decision) || typeof value.reason !== 'string') invalid('Invalid policy evaluation response');
+}
+
+export function assertCapabilityProbeReport(value: unknown): asserts value is CapabilityProbeReport {
+  const record = isRecord(value) ? value : invalid('Invalid capability probe response');
+  if (typeof record.client_id !== 'string' || typeof record.generated_for !== 'string') {
+    invalid('Invalid capability probe response');
+  }
+  const results: unknown[] = Array.isArray(record.results) ? record.results : invalid('Invalid capability probe response');
+  if (!results.every((result: unknown) => isRecord(result)
+    && typeof result.capability === 'string'
+    && (result.group === 'observer' || result.group === 'operator')
+    && (result.tool === null || typeof result.tool === 'string')
+    && typeof result.decision === 'string'
+    && ['ok', 'denied', 'error', 'approval_required', 'unsupported'].includes(String(result.status))
+    && typeof result.reason === 'string'
+    && typeof result.implemented === 'boolean'
+    && (result.sample_entity_id === null || typeof result.sample_entity_id === 'string')
+    && (result.count === null || typeof result.count === 'number')
+    && (result.details === null || isRecord(result.details)))) invalid('Invalid capability probe result');
 }

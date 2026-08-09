@@ -33,6 +33,7 @@ import { PERMISSION_TABS_TRANSLATIONS } from './i18n-permission-tabs';
 import {
   type AuditEvent,
   type BootstrapCheck,
+  type CapabilityProbeReport,
   type Client,
   type OperatorServicePolicy,
   type DevelopmentCatalog,
@@ -96,6 +97,8 @@ export class GatewayApp extends LitElement {
   @state() operatorEnabled = false;
   @state() operatorStatus: OperatorStatus = { operator_enabled: false, execution: 'disabled', registered_mutation_tools: [], capabilities: [], reason: 'loading' };
   @state() operatorPolicy: OperatorServicePolicy | null = null;
+  @state() capabilityProbe: CapabilityProbeReport | null = null;
+  @state() capabilityProbeBusy = false;
   private readonly gatewayController: GatewayController;
   private refreshVersion = 0;
   private policySaveVersion = 0;
@@ -243,8 +246,8 @@ export class GatewayApp extends LitElement {
     this.selectedOperatorServices = new Set(services);
   }
 
-  toggleCapability(name: string, checked: boolean) {
-    this.selectedCapabilities = new Set(applyCapabilityToggle(this.clientProfile, this.selectedCapabilities, name, checked));
+  toggleCapability(name: string, checked: boolean, implemented = true) {
+    this.selectedCapabilities = new Set(applyCapabilityToggle(this.clientProfile, this.selectedCapabilities, name, checked, implemented));
   }
 
   selectObserverCapabilities() {
@@ -252,6 +255,18 @@ export class GatewayApp extends LitElement {
   }
 
   clearCapabilities() { this.selectedCapabilities = new Set(); }
+
+  async probeCapabilities(clientId: string) {
+    this.capabilityProbeBusy = true;
+    this.error = '';
+    try {
+      this.capabilityProbe = await this.gatewayController.probeCapabilities(clientId);
+    } catch (error) {
+      this.error = this.errorMessage(error, 'errorLoadState');
+    } finally {
+      this.capabilityProbeBusy = false;
+    }
+  }
 
   capabilityText(name: string, suffix: 'Label' | 'Description', fallback: string) {
     return resolveCapabilityText(TRANSLATIONS[this.locale], name, suffix, fallback);
@@ -281,11 +296,11 @@ export class GatewayApp extends LitElement {
       items: CAPABILITY_DEFINITIONS.map((item) => ({
         value: item.name,
         label: this.capabilityText(item.name, 'Label', item.label),
-        description: this.capabilityText(item.name, 'Description', item.description),
+        description: `${this.capabilityText(item.name, 'Description', item.description)}${item.implemented === false ? ' · Not implemented' : ''}`,
         checked: this.selectedCapabilities.has(item.name),
-        disabled: item.group === 'operator' && (!this.operatorEnabled || this.clientProfile !== 'operator'),
+        disabled: item.implemented === false || (item.group === 'operator' && (!this.operatorEnabled || this.clientProfile !== 'operator')),
         className: item.group === 'operator' ? 'operator' : '',
-        onChange: (event: Event) => this.toggleCapability(item.name, (event.target as HTMLInputElement).checked),
+        onChange: (event: Event) => this.toggleCapability(item.name, (event.target as HTMLInputElement).checked, item.implemented !== false),
       })),
     });
   }
@@ -462,7 +477,7 @@ export class GatewayApp extends LitElement {
     finally { this.clientsBusy = false; }
   }
 
-  clientsView() { return renderClientsView({ clients: this.clients, busy: this.clientsBusy, t: this.t.bind(this), refresh: () => void this.refreshClients(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), deleteClient: (clientId) => void this.deleteClient(clientId), rotate: (clientId) => void this.rotate(clientId), capabilitySelector: () => this.capabilitySelector(), operatorEnabled: this.operatorEnabled, operatorServices: getSelectedOperatorServices(this.operatorPolicy), selectedOperatorServices: [...this.selectedOperatorServices], setOperatorServiceSelection: (services) => this.setOperatorServiceSelection(services), navigateToPolicy: () => this.setView('policy'), permissionTab: this.permissionTab, setPermissionTab: (tab) => { this.permissionTab = tab; }, profile: this.clientProfile, setProfile: (profile) => this.setClientProfile(profile) }); }
+  clientsView() { return renderClientsView({ clients: this.clients, busy: this.clientsBusy, t: this.t.bind(this), refresh: () => void this.refreshClients(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), deleteClient: (clientId) => void this.deleteClient(clientId), rotate: (clientId) => void this.rotate(clientId), probe: (clientId) => void this.probeCapabilities(clientId), probeReport: this.capabilityProbe, probeBusy: this.capabilityProbeBusy, capabilitySelector: () => this.capabilitySelector(), operatorEnabled: this.operatorEnabled, operatorServices: getSelectedOperatorServices(this.operatorPolicy), selectedOperatorServices: [...this.selectedOperatorServices], setOperatorServiceSelection: (services) => this.setOperatorServiceSelection(services), navigateToPolicy: () => this.setView('policy'), permissionTab: this.permissionTab, setPermissionTab: (tab) => { this.permissionTab = tab; }, profile: this.clientProfile, setProfile: (profile) => this.setClientProfile(profile) }); }
 
   auditView() { return auditView({ audit: this.audit, t: this.t.bind(this), loadAudit: (decision) => void this.loadAudit(decision) }); }
 

@@ -1,8 +1,8 @@
 import { api } from './api';
 import { BootstrapError, GatewayError, gatewayErrorFromUnknown } from './gateway-errors';
-import { assertClients, assertGatewayBootstrap, assertIssuedClient, assertOperatorPolicy, assertOperatorPolicySaveResponse, assertPolicyEvaluation } from './gateway-contracts';
+import { assertCapabilityProbeReport, assertClients, assertGatewayBootstrap, assertIssuedClient, assertOperatorPolicy, assertOperatorPolicySaveResponse, assertPolicyEvaluation } from './gateway-contracts';
 import type { BootstrapProgress, CreateClientInput, GatewayPort, PolicyEvaluationInput } from './gateway-port';
-import type { AuditEvent, BootstrapCheck, BootstrapCheckId, Client, DevelopmentCatalog, DevelopmentReport, Discovery, GatewayBootstrap, HealthDetails, OperatorServicePolicy, OperatorStatus, Ready, UiContext } from './models';
+import type { AuditEvent, BootstrapCheck, BootstrapCheckId, CapabilityProbeReport, Client, DevelopmentCatalog, DevelopmentReport, Discovery, GatewayBootstrap, HealthDetails, OperatorServicePolicy, OperatorStatus, Ready, UiContext } from './models';
 
 type Request = <T>(path: string, init?: RequestInit) => Promise<T>;
 
@@ -105,6 +105,12 @@ export const createGatewayApi = (request: Request = api): GatewayApi => ({
       body: JSON.stringify(input),
     });
     assertPolicyEvaluation(result);
+    return result;
+  },
+  async probeCapabilities(clientId, entityId, signal) {
+    const query = entityId ? `?entity_id=${encodeURIComponent(entityId)}` : '';
+    const result = await request<CapabilityProbeReport>(`/clients/${encodeURIComponent(clientId)}/capability-probe${query}`, { method: 'POST', signal });
+    assertCapabilityProbeReport(result);
     return result;
   },
 });

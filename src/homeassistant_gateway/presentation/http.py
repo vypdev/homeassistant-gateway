@@ -15,7 +15,9 @@ from homeassistant_gateway.application.audit import (
 )
 from homeassistant_gateway.application.authentication import AuthenticateClient
 from homeassistant_gateway.application.authorization import AuthorizeRequest
+from homeassistant_gateway.application.capability_probe import ProbeCapabilities
 from homeassistant_gateway.application.clients import (
+    ClientRepository,
     DeleteClient,
     IssueClient,
     ListClients,
@@ -74,6 +76,7 @@ def create_app(
     operator_service_policy: OperatorServicePolicyPort | None = None,
     operator_services_ceiling: Callable[[], Collection[str]] | None = None,
     lifespan: Any | None = None,
+    client_repository: ClientRepository | None = None,
 ) -> FastAPI:
     """Build the HTTP adapter around already-wired application use cases."""
     app = FastAPI(title="Home Assistant Gateway", version="0.4.14", lifespan=lifespan)
@@ -143,6 +146,7 @@ def create_app(
             home_assistant=home_assistant,
             operator_service_policy=operator_service_policy,
             operator_services_ceiling=operator_services_ceiling,
+            probe_capabilities=ProbeCapabilities(client_repository, authorize_request, home_assistant) if home_assistant is not None and client_repository is not None else None,
         ),
     )
 

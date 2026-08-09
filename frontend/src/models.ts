@@ -34,7 +34,9 @@ export type BootstrapCheck = {
   duration_ms: number | null;
   error: { code: string; http_status: number | null; message: string } | null;
 };
-export type CapabilityDefinition = { name: string; group: 'observer' | 'operator'; label: string; description: string };
+export type CapabilityDefinition = { name: string; group: 'observer' | 'operator'; label: string; description: string; implemented?: boolean };
+export type CapabilityProbeResult = { capability: string; group: 'observer' | 'operator'; tool: string | null; decision: string; status: 'ok' | 'denied' | 'error' | 'approval_required' | 'unsupported'; reason: string; implemented: boolean; sample_entity_id: string | null; count: number | null; details: Record<string, unknown> | null };
+export type CapabilityProbeReport = { client_id: string; generated_for: string; results: CapabilityProbeResult[] };
 export type OperatorService = { id: string; domain: string; service: string; name: string; description: string; fields: Record<string, unknown> };
 export type OperatorServicePolicy = { services: OperatorService[]; selected: string[] };
 export type GatewayBootstrap = {

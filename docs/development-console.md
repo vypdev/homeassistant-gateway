@@ -2,6 +2,8 @@
 
 The Development Console is an Ingress-protected, observer-only verification surface. It uses the same `HomeAssistantReadPort` and Supervisor adapter as the MCP observer. It does not proxy arbitrary Home Assistant routes and it cannot execute mutations.
 
+For per-client capability verification, including the distinction between granted, implemented, reachable and executable permissions, see [Capability verification](capability-verification.md).
+
 ## Endpoints
 
 - `GET /api/development/catalog` — bounded operation and pack catalog.
@@ -130,7 +132,7 @@ Preview operations are allowlisted and capability-matched:
 
 - `ha.call_service` → `ha.write.services`;
 - `ha.update_automation` → `ha.write.automations`;
-- `ha.update_config` → `ha.write.configuration`.
+- `ha.update_config` → `ha.write.configuration` (reserved; no configuration mutation tool is registered).
 
 The preview rejects oversized state maps and fields whose names indicate tokens, passwords, secrets, cookies, authorization or API keys. Every response declares approval, idempotency and rollback as requirements. No service call, configuration write or automation write is performed.
 
