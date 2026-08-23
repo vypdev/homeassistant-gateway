@@ -16,9 +16,9 @@ class SupervisorHistoryReader:
 
     def history(self: Any, entity_id: str | None = None, start_time: str | None = None) -> list[dict[str, Any]]:
         entity = entity_id or self._probe_entity("history")
-        start = start_time or self._timestamp(datetime.now(UTC) - timedelta(days=1))
+        start = start_time or self._timestamp(self._now_utc() - timedelta(days=1))
         try:
-            payload = self._ws_command("history/history_during_period", {"start_time": start, "end_time": self._timestamp(datetime.now(UTC)), "entity_ids": [entity]})
+            payload = self._ws_command("history/history_during_period", {"start_time": start, "end_time": self._timestamp(self._now_utc()), "entity_ids": [entity]})
             if isinstance(payload, dict):
                 return [{"entity_id": key, "states": value[: self._max_items]} for key, value in payload.items() if isinstance(key, str) and isinstance(value, list)]
             return []
@@ -39,9 +39,9 @@ class SupervisorHistoryReader:
         return groups
 
     def logbook(self: Any, entity_id: str | None = None, start_time: str | None = None) -> list[dict[str, Any]]:
-        start = start_time or self._timestamp(datetime.now(UTC) - timedelta(days=1))
+        start = start_time or self._timestamp(self._now_utc() - timedelta(days=1))
         try:
-            end = self._timestamp(datetime.now(UTC))
+            end = self._timestamp(self._now_utc())
             window_start = self._parse_timestamp(start)
             window_end = self._parse_timestamp(end)
             events: list[dict[str, Any]] = []
@@ -67,6 +67,10 @@ class SupervisorHistoryReader:
                 raise
         params = {"entity": entity_id} if entity_id else {}
         return self._bounded_list(self._get_json(f"/logbook/{quote(start, safe='')}", default=[], params=params, diagnostic_path="/logbook"))
+
+    @staticmethod
+    def _now_utc() -> datetime:
+        return datetime.now(UTC)
 
     @staticmethod
     def _deduplicate_events(events: list[dict[str, Any]]) -> list[dict[str, Any]]:

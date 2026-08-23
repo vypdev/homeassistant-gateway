@@ -1,5 +1,6 @@
 import httpx
 import pytest
+from datetime import UTC, datetime
 
 from homeassistant_gateway.application.home_assistant import HomeAssistantUnavailable, redact
 from homeassistant_gateway.infrastructure.supervisor_home_assistant import (
@@ -151,6 +152,7 @@ def test_logbook_websocket_queries_bounded_hour_windows() -> None:
 
 def test_logbook_deduplicates_events_across_windows_and_preserves_order() -> None:
     client = make_client(lambda request: httpx.Response(500))
+    client._now_utc = lambda: datetime(2026, 8, 1, 2, tzinfo=UTC)
     calls = 0
     duplicate = {"when": "2026-08-01T01:00:00Z", "entity_id": "light.kitchen", "state": "on"}
     later = {"when": "2026-08-01T01:30:00Z", "entity_id": "light.kitchen", "state": "off"}
