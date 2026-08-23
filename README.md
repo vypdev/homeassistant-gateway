@@ -88,6 +88,7 @@ The effective list is always verified with `tools/list`; connectivity does not p
 ### Consumer guides
 
 - [Consumer guide](docs/consumer/README.md) — installation, surfaces, tools and minimum verification.
+- [Tasks and shopping lists](docs/consumer/tasks-and-shopping-lists.md) — verified `todo` and `shopping_list` entities, services, permissions and safe operating model.
 - [Configure an MCP client](docs/consumer/configure-mcp-client.md) — endpoint, tokens, capabilities, rotation and revocation.
 - [Troubleshooting](docs/consumer/troubleshooting.md) — symptoms, causes and checks.
 - [OpenClaw and Hermes integration](docs/integration-with-openclaw-and-hermes.md) — agent profiles and connectivity.

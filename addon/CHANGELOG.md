@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.33
+
+- Document the verified Home Assistant `todo` and `shopping_list` entity and service contracts.
+- Document operator service grants, task and shopping-list workflows, UI locations, safe examples and verification boundaries.
+- Record the verified use of multiple Home Assistant task lists as a canonical household task source.
+
 ## 0.5.32
 
 - Align the production frontend with Home Assistant visual tokens, typography, surfaces, tabs and semantic button geometry across the application and shared UI primitives.
