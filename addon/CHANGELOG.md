@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.5.34
+
+- Pin Stable and Edge runtime images to `python:3.12-slim-bookworm` to avoid floating base-image vulnerability drift.
+- Rebuild release images with the corrected Debian base before the Trivy gate.
+
 ## 0.5.33
 
 - Document the verified Home Assistant `todo` and `shopping_list` entity and service contracts.

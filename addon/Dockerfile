@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM python:3.12-slim AS builder
+FROM python:3.12-slim-bookworm AS builder
 ARG GATEWAY_REPOSITORY=https://github.com/vypdev/homeassistant-gateway.git
 ARG GATEWAY_REF=e58ff6ad3ea0c1f7b57e5d9c0766c45d97e776b2
 
@@ -22,7 +22,7 @@ RUN corepack enable \
     && corepack pnpm run check \
     && corepack pnpm run build
 
-FROM python:3.12-slim
+FROM python:3.12-slim-bookworm
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     GATEWAY_DATA_DIR=/data \
