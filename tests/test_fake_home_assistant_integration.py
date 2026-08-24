@@ -7,9 +7,12 @@ import time
 
 import httpx
 
+import pytest
+
 from homeassistant_gateway.infrastructure.home_assistant.client_adapter import HomeAssistantClient
 
 
+@pytest.mark.integration
 def test_standalone_client_against_fake_rest_and_websocket_target() -> None:
     env = {**os.environ, "PYTHONPATH": "src", "FAKE_HA_TOKEN": "fixture-token"}
     process = subprocess.Popen(
