@@ -38,6 +38,10 @@ from homeassistant_gateway.infrastructure.storage.sqlite_operator import (
     SQLiteOperatorAuditAdapter,
     SQLiteOperatorStateRepository,
 )
+from homeassistant_gateway.infrastructure.home_assistant.connection import (
+    HomeAssistantConnectionMode,
+    resolve_home_assistant_connection,
+)
 from homeassistant_gateway.infrastructure.supervisor_home_assistant import (
     SupervisorHomeAssistantClient,
 )
@@ -51,6 +55,9 @@ class AppSettings:
     operator_enabled: bool = False
     supervisor_token: str | None = None
     supervisor_url: str = "http://supervisor/core/api"
+    home_assistant_mode: str = "supervisor"
+    home_assistant_url: str | None = None
+    home_assistant_token: str | None = None
     operator_allowed_services: tuple[str, ...] = ()
     development_console_enabled: bool = True
     mcp_allowed_hosts: tuple[str, ...] = (
@@ -77,11 +84,29 @@ def build_app(settings: AppSettings) -> FastAPI:
     authenticate_client = AuthenticateClient(repository, token_issuer)
     authorize_request = AuthorizeRequest(repository, settings.operator_enabled)
     observer_diagnostics = ObserverDiagnostics(authenticate_client, authorize_request)
-    home_assistant = (
-        SupervisorHomeAssistantClient(settings.supervisor_token, base_url=settings.supervisor_url)
-        if settings.supervisor_token
-        else None
-    )
+    home_assistant = None
+    if settings.home_assistant_mode == HomeAssistantConnectionMode.STANDALONE.value:
+        connection = resolve_home_assistant_connection(
+            HomeAssistantConnectionMode.STANDALONE,
+            settings.home_assistant_url or "",
+            settings.home_assistant_token or "",
+        )
+        home_assistant = SupervisorHomeAssistantClient(
+            connection.token,
+            base_url=connection.rest_api_url,
+        )
+    elif settings.supervisor_token:
+        connection = resolve_home_assistant_connection(
+            HomeAssistantConnectionMode.SUPERVISOR,
+            settings.supervisor_url,
+            settings.supervisor_token,
+        )
+        home_assistant = SupervisorHomeAssistantClient(
+            connection.token,
+            base_url=connection.rest_api_url,
+        )
+    elif settings.home_assistant_mode != HomeAssistantConnectionMode.SUPERVISOR.value:
+        raise ValueError("invalid_home_assistant_mode")
     def operator_services_ceiling() -> tuple[str, ...]:
         return operator_state.get_allowed_services()
 
