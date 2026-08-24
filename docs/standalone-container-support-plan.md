@@ -517,3 +517,30 @@ The feature is complete only when:
 - published image digest is verified;
 - local and remote SHA match;
 - the tree is clean.
+
+## Verified execution evidence
+
+The first real Docker validation was executed on the development host with Docker Engine 29.6.2 and Compose v5.3.1.
+
+The Home Assistant Container image was resolved and executed by immutable manifest digest:
+
+```text
+ghcr.io/home-assistant/home-assistant@sha256:14931c6b13756317849f46da1d01b45937a1150db66c081cfe529d48215943fe
+```
+
+The isolated run used a temporary Docker network and volume, completed the official onboarding flow, exchanged the authorization code, authenticated through the Home Assistant WebSocket API, created a one-day Long-Lived Access Token, and verified `/api/config` through the REST API. The token was generated in memory, written only to a mode-0600 temporary env file, never printed, and removed by cleanup.
+
+The gateway image was built from the pushed source SHA and started on the same temporary Docker network. The observed results were:
+
+```text
+clean Home Assistant Container: PASS
+gateway container started: PASS
+/ready reports Home Assistant ready: PASS
+protected gateway health endpoint rejects anonymous request with 401: PASS
+Home Assistant token absent from gateway logs: PASS
+containers, network, volume, and temporary secret file cleaned: PASS
+```
+
+The test also confirmed that `/api/health/details` is intentionally protected by the gateway's existing client authentication. A 401 response without gateway credentials is expected and is not evidence of an upstream failure.
+
+The complete authenticated test must remain a host smoke test unless the repository later adds a dedicated, audited onboarding fixture. CI must use the fake REST/WebSocket target and must never contain a real Home Assistant credential.
