@@ -1,9 +1,11 @@
+import httpx
 import pytest
 
 from homeassistant_gateway.infrastructure.home_assistant.connection import (
     HomeAssistantConnectionMode,
     resolve_home_assistant_connection,
 )
+from homeassistant_gateway.infrastructure.supervisor_home_assistant import SupervisorHomeAssistantClient
 
 
 def test_resolves_supervisor_rest_and_websocket_endpoints() -> None:
@@ -39,6 +41,30 @@ def test_resolves_standalone_https_endpoints() -> None:
 
     assert connection.rest_api_url == "https://ha.example.test/api"
     assert connection.websocket_url == "wss://ha.example.test/api/websocket"
+
+
+def test_standalone_client_uses_core_api_path_and_bearer_token() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url == "http://homeassistant:8123/api/states"
+        assert request.headers["authorization"] == "Bearer standalone-secret"
+        return httpx.Response(200, json=[{"entity_id": "sensor.test"}])
+
+    client = SupervisorHomeAssistantClient(
+        "standalone-secret",
+        base_url="http://homeassistant:8123/api",
+        transport=httpx.MockTransport(handler),
+    )
+
+    assert client.states() == [{"entity_id": "sensor.test"}]
+
+
+def test_standalone_client_resolves_core_websocket_path() -> None:
+    client = SupervisorHomeAssistantClient(
+        "standalone-secret",
+        base_url="http://homeassistant:8123/api",
+    )
+
+    assert client._websocket_url(client._base_url) == "ws://homeassistant:8123/api/websocket"
 
 
 @pytest.mark.parametrize(
