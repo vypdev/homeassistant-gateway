@@ -2,9 +2,11 @@
 
 ## Status
 
-**Planning complete. Implementation not started.**
+**Implementation complete and validated.**
 
-This plan adds an official standalone Docker deployment for Home Assistant Container while preserving the existing Home Assistant OS/Supervised App deployment.
+The standalone Docker deployment, explicit configuration contract, fake REST/WebSocket integration, reproducible real Home Assistant Container smoke harness, Compose manifest, consumer documentation, and CI gates are implemented. Supervisor/App behavior remains covered by regression tests.
+
+The only release-artifact evidence still to be collected is a real smoke run using the immutable digest of the published GHCR image. This is a release verification activity, not an implementation blocker.
 
 The plan is intentionally separated from the pending DevelopmentJobManager refactor.
 
@@ -42,9 +44,7 @@ Home Assistant Container provides Core REST and WebSocket APIs but not Superviso
 
 ## Current repository findings
 
-The current executable path reads `SUPERVISOR_TOKEN` and builds a Home Assistant client only when that token exists. The existing HTTP/WebSocket transport already accepts a configurable base URL and contains valuable bounded, redacted, timeout, retry, and trace behavior, but its public names and composition remain Supervisor-specific.
-
-There is currently no official standalone Compose deployment, standalone configuration contract, standalone readiness contract, or standalone smoke test.
+The current repository now includes the official standalone Compose deployment, explicit standalone configuration contract, readiness behavior, fake REST/WebSocket integration, and real smoke harness. The original findings below are retained as historical context; the implementation and evidence sections later in this document are authoritative.
 
 Version metadata is currently inconsistent and must be audited separately before release publication:
 
