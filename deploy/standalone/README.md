@@ -86,6 +86,17 @@ The Compose file intentionally does not use:
 
 Operator capabilities remain disabled by default. Enabling them requires the gateway's existing client profile, capability, allowlist, approval, idempotency, and audit policies.
 
+## Real smoke test
+
+The repository includes a host-only smoke test that creates a clean Home Assistant Container, performs onboarding, creates an ephemeral Long-Lived Access Token, starts the gateway, verifies readiness and security, and removes every temporary resource:
+
+```bash
+GATEWAY_SMOKE_IMAGE=homeassistant-gateway:standalone-<sha> \
+  python scripts/standalone_real_smoke.py
+```
+
+Run it from a session with Docker socket access. The script uses an immutable Home Assistant image digest by default; set `HOME_ASSISTANT_IMAGE` explicitly when validating another approved digest. It is intentionally not a CI test: CI must use a fake REST/WebSocket target and must never receive a real Home Assistant credential.
+
 ## Stop and remove
 
 Stop the gateway while preserving its data volume:
