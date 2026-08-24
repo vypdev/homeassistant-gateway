@@ -5,7 +5,7 @@ from homeassistant_gateway.infrastructure.home_assistant.connection import (
     HomeAssistantConnectionMode,
     resolve_home_assistant_connection,
 )
-from homeassistant_gateway.infrastructure.supervisor_home_assistant import SupervisorHomeAssistantClient
+from homeassistant_gateway.infrastructure.home_assistant.client_adapter import HomeAssistantClient
 
 
 def test_resolves_supervisor_rest_and_websocket_endpoints() -> None:
@@ -49,7 +49,7 @@ def test_standalone_client_uses_core_api_path_and_bearer_token() -> None:
         assert request.headers["authorization"] == "Bearer standalone-secret"
         return httpx.Response(200, json=[{"entity_id": "sensor.test"}])
 
-    client = SupervisorHomeAssistantClient(
+    client = HomeAssistantClient(
         "standalone-secret",
         base_url="http://homeassistant:8123/api",
         transport=httpx.MockTransport(handler),
@@ -59,7 +59,7 @@ def test_standalone_client_uses_core_api_path_and_bearer_token() -> None:
 
 
 def test_standalone_client_resolves_core_websocket_path() -> None:
-    client = SupervisorHomeAssistantClient(
+    client = HomeAssistantClient(
         "standalone-secret",
         base_url="http://homeassistant:8123/api",
     )

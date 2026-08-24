@@ -20,7 +20,7 @@ from homeassistant_gateway.infrastructure.home_assistant.registry_reader import 
 )
 
 
-class SupervisorHomeAssistantClient(SupervisorApiClient, SupervisorCoreReader, SupervisorHistoryReader, SupervisorRegistryReader, SupervisorAutomationReader, HomeAssistantReadPort):
+class HomeAssistantClient(SupervisorApiClient, SupervisorCoreReader, SupervisorHistoryReader, SupervisorRegistryReader, SupervisorAutomationReader, HomeAssistantReadPort):
 
     def inventory(self) -> dict[str, Any]:
         states = self.states()

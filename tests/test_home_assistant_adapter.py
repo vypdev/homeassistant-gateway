@@ -3,13 +3,13 @@ import pytest
 from datetime import UTC, datetime
 
 from homeassistant_gateway.application.home_assistant import HomeAssistantUnavailable, redact
-from homeassistant_gateway.infrastructure.supervisor_home_assistant import (
-    SupervisorHomeAssistantClient,
+from homeassistant_gateway.infrastructure.home_assistant.client_adapter import (
+    HomeAssistantClient,
 )
 
 
 def make_client(handler):
-    return SupervisorHomeAssistantClient(
+    return HomeAssistantClient(
         "supervisor-secret",
         base_url="http://supervisor/core/api",
         transport=httpx.MockTransport(handler),
@@ -18,9 +18,9 @@ def make_client(handler):
 
 def test_adapter_rejects_unbounded_max_items() -> None:
     with pytest.raises(ValueError, match="invalid_supervisor_max_items"):
-        SupervisorHomeAssistantClient("token", max_items=0)
+        HomeAssistantClient("token", max_items=0)
     with pytest.raises(ValueError, match="invalid_supervisor_max_items"):
-        SupervisorHomeAssistantClient("token", max_items=10001)
+        HomeAssistantClient("token", max_items=10001)
 
 
 def test_states_uses_supervisor_auth_and_redacts_secret_fields() -> None:

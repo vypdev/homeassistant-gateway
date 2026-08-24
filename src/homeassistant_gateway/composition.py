@@ -42,8 +42,8 @@ from homeassistant_gateway.infrastructure.home_assistant.connection import (
     HomeAssistantConnectionMode,
     resolve_home_assistant_connection,
 )
-from homeassistant_gateway.infrastructure.supervisor_home_assistant import (
-    SupervisorHomeAssistantClient,
+from homeassistant_gateway.infrastructure.home_assistant.client_adapter import (
+    HomeAssistantClient,
 )
 from homeassistant_gateway.presentation.http import create_app
 from homeassistant_gateway.presentation.mcp import create_mcp_app
@@ -91,7 +91,7 @@ def build_app(settings: AppSettings) -> FastAPI:
             settings.home_assistant_url or "",
             settings.home_assistant_token or "",
         )
-        home_assistant = SupervisorHomeAssistantClient(
+        home_assistant = HomeAssistantClient(
             connection.token,
             base_url=connection.rest_api_url,
         )
@@ -101,7 +101,7 @@ def build_app(settings: AppSettings) -> FastAPI:
             settings.supervisor_url,
             settings.supervisor_token,
         )
-        home_assistant = SupervisorHomeAssistantClient(
+        home_assistant = HomeAssistantClient(
             connection.token,
             base_url=connection.rest_api_url,
         )
