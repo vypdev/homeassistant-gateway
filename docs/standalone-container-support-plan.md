@@ -222,6 +222,15 @@ Use a local fake Home Assistant REST/WebSocket target in CI to verify:
 - token absence from logs;
 - volume persistence.
 
+The repository-level fake transport fixture is:
+
+```text
+scripts/fake_home_assistant.py
+tests/test_fake_home_assistant_integration.py
+```
+
+It validates the real HTTP and WebSocket client boundary with a subprocess-launched FastAPI target and fixture Bearer token. It is intentionally distinct from the authorized real-container smoke test and does not use real Home Assistant credentials.
+
 Validate the Compose manifest with:
 
 ```bash
