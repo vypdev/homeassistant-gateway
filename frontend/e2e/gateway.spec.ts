@@ -84,7 +84,7 @@ test('updates capabilities for an existing client without rotating its token', a
   await page.getByRole('button', { name: 'Save capabilities' }).click();
 
   await expect.poll(() => patchPayload).toEqual({ capabilities: ['ha.read.automations', 'ha.read.automation_config'] });
-  await expect(page.locator('.tag', { hasText: 'ha.read.automation_config' }).first()).toBeVisible();
+  await expect(page.locator('[data-testid="client-record"] .tag', { hasText: 'ha.read.automation_config' }).first()).toBeVisible();
 });
 
 test('matches the Home Assistant navigation states and uses MDI leading icons', async ({ page }) => {
