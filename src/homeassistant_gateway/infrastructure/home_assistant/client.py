@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from time import sleep
 from typing import Any
 
@@ -107,11 +108,17 @@ class SupervisorApiClient:
         except ValueError as error:
             raise HomeAssistantUnavailable("home_assistant_invalid_json", path=safe_path, status=response.status_code) from error
 
-    def _request_post(self, path: str, payload: dict[str, Any], diagnostic_path: str | None = None) -> httpx.Response:
+    def _request_post(
+        self,
+        path: str,
+        payload: dict[str, Any],
+        params: Mapping[str, str] | None = None,
+        diagnostic_path: str | None = None,
+    ) -> httpx.Response:
         request_path = diagnostic_path or path
         try:
             with httpx.Client(headers=self._headers, timeout=self._timeout, trust_env=False, transport=self._transport) as client:
-                response = client.post(f"{self._base_url}{path}", json=payload)
+                response = client.post(f"{self._base_url}{path}", params=params, json=payload)
         except httpx.ReadTimeout as error:
             raise HomeAssistantUnavailable("home_assistant_transport_timeout", path=request_path) from error
         except httpx.NetworkError as error:
@@ -122,9 +129,9 @@ class SupervisorApiClient:
             raise HomeAssistantUnavailable(f"home_assistant_http_{response.status_code}", path=request_path, status=response.status_code)
         return response
 
-    def post_json(self, path: str, payload: dict[str, Any]) -> tuple[int, Any]:
+    def post_json(self, path: str, payload: dict[str, Any], params: Mapping[str, str] | None = None) -> tuple[int, Any]:
         """Expose one bounded POST seam for explicitly allowlisted mutation adapters."""
-        response = self._request_post(path, payload, diagnostic_path=path)
+        response = self._request_post(path, payload, params=params, diagnostic_path=path)
         try:
             return response.status_code, redact(response.json())
         except ValueError as error:

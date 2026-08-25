@@ -179,7 +179,8 @@ Do not interpret a missing service in a client UI as proof that Home Assistant l
 ## Known limitations
 
 - The entity state is a count, not a complete item listing.
-- Item retrieval depends on the `todo.get_items` response contract and the client adapter correctly requesting and exposing the service response.
+- `todo.get_items` is a Home Assistant response service; the gateway adapter requests `return_response=true` and exposes the bounded response object after normal operator authorization.
+- Item-list retrieval must still be verified against the installed Stable artifact after an upgrade; local source/tests are not deployment evidence.
 - Service names are English Home Assistant identifiers even when the UI is localized.
 - Operator service grants are deployment policy, not inherent authorization for every user or agent.
 - Removing items and bulk operations are persistent changes and require explicit intent.
@@ -187,6 +188,6 @@ Do not interpret a missing service in a client UI as proof that Home Assistant l
 ## Source and verification metadata
 
 - Source: live Home Assistant instance through the authorized Home Assistant Gateway operator surface.
-- Verification date: 2026-08-23.
-- Scope: entity discovery, service discovery, controlled add-item calls and post-call entity-state verification.
-- Status: verified for the documented entity and service contracts; item-list response behavior remains adapter-dependent.
+- Verification date: 2026-08-23 for the entity/service inventory; response-service adapter fix added for `0.5.35`.
+- Scope: entity discovery, service discovery, controlled add-item calls and post-call entity-state verification; response-service transport regression is covered locally.
+- Status: source contract and tests verified; installed Stable response-service and Memento end-to-end verification remain deployment gates.

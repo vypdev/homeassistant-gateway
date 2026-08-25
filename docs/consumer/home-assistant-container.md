@@ -39,7 +39,7 @@ chmod 600 .env
 Set these values in `.env` without committing or printing the file:
 
 ```env
-GATEWAY_IMAGE=ghcr.io/vypdev/homeassistant-gateway:0.5.34
+GATEWAY_IMAGE=ghcr.io/vypdev/homeassistant-gateway:0.5.35
 GATEWAY_HOME_ASSISTANT_URL=http://homeassistant:8123
 GATEWAY_HOME_ASSISTANT_TOKEN=<long-lived-access-token>
 GATEWAY_HOST_PORT=8099

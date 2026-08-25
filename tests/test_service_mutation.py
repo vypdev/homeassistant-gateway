@@ -12,9 +12,11 @@ class Transport:
         self.status = status
         self.response = response if response is not None else [{"entity_id": "light.test", "token": "secret"}]
         self.calls: list[tuple[str, dict]] = []
+        self.params = None
 
-    def post_json(self, path: str, payload: dict) -> tuple[int, object]:
+    def post_json(self, path: str, payload: dict, params=None) -> tuple[int, object]:
         self.calls.append((path, payload))
+        self.params = params
         return self.status, self.response
 
 
@@ -41,6 +43,32 @@ def test_service_adapter_classifies_upstream_and_shape_failures() -> None:
         SupervisorServiceMutationAdapter(Transport(403), frozenset({"light.turn_on"})).call_service("light", "turn_on", {})
     with pytest.raises(HomeAssistantUnavailable, match="home_assistant_invalid_service_response"):
         SupervisorServiceMutationAdapter(Transport(response={"changed": True}), frozenset({"light.turn_on"})).call_service("light", "turn_on", {})
+
+
+def test_todo_get_items_requests_home_assistant_service_response() -> None:
+    transport = Transport(response={"todo.tareas_ha": {"items": [{"summary": "Call Robert"}]}})
+    adapter = SupervisorServiceMutationAdapter(transport, frozenset({"todo.get_items"}))
+
+    result = adapter.call_service(
+        "todo",
+        "get_items",
+        {"entity_id": "todo.tareas_ha", "status": ["needs_action", "completed"]},
+    )
+
+    assert result == {"todo.tareas_ha": {"items": [{"summary": "Call Robert"}]}}
+    assert transport.params == {"return_response": "true"}
+
+
+def test_shopping_list_service_does_not_require_entity_target() -> None:
+    transport = Transport(response=[])
+    adapter = SupervisorOperatorMutationAdapter(
+        SupervisorServiceMutationAdapter(transport, frozenset({"shopping_list.add_item"})),
+    )
+
+    result = adapter.execute("ha.call_service", "shopping_list.add_item", {"name": "Milk"})
+
+    assert result["status"] == "ok"
+    assert transport.calls == [("/services/shopping_list/add_item", {"name": "Milk"})]
 
 
 def test_operator_adapter_requires_entity_target_and_keeps_other_operations_explicit() -> None:

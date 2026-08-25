@@ -70,6 +70,22 @@ def test_inventory_is_bounded_and_keeps_transport_outside_application() -> None:
     assert make_client(handler).inventory()["counts"] == {"entities": 1, "services": 1}
 
 
+def test_post_json_can_request_home_assistant_service_response_data() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/core/api/services/todo/get_items"
+        assert dict(request.url.params) == {"return_response": "true"}
+        assert request.content == b'{"entity_id":"todo.tareas_ha"}'
+        return httpx.Response(200, json={"todo.tareas_ha": {"items": []}})
+
+    status, response = make_client(handler).post_json(
+        "/services/todo/get_items",
+        {"entity_id": "todo.tareas_ha"},
+        params={"return_response": "true"},
+    )
+    assert status == 200
+    assert response == {"todo.tareas_ha": {"items": []}}
+
+
 def test_missing_optional_configuration_endpoint_is_reported_as_unavailable() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/config"):

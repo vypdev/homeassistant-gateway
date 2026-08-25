@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Callable, Collection
+from collections.abc import Callable, Collection, Mapping
 from typing import Any, Protocol
 
 from homeassistant_gateway.application.home_assistant import (
@@ -12,7 +12,7 @@ from homeassistant_gateway.application.home_assistant import (
 
 
 class ServicePostTransport(Protocol):
-    def post_json(self, path: str, payload: dict[str, Any]) -> tuple[int, Any]: ...
+    def post_json(self, path: str, payload: dict[str, Any], params: Mapping[str, str] | None = None) -> tuple[int, Any]: ...
 
 
 class SupervisorServiceMutationAdapter(HomeAssistantServiceMutationPort):
@@ -25,7 +25,7 @@ class SupervisorServiceMutationAdapter(HomeAssistantServiceMutationPort):
         self._allowed_services = allowed_services
         self._max_payload_keys = max_payload_keys
 
-    def call_service(self, domain: str, service: str, payload: dict[str, Any]) -> list[dict[str, Any]]:
+    def call_service(self, domain: str, service: str, payload: dict[str, Any]) -> list[dict[str, Any]] | dict[str, Any]:
         operation = f"{domain}.{service}"
         if not re.fullmatch(r"[a-z0-9_]+", domain) or not re.fullmatch(r"[a-z0-9_]+", service):
             raise ValueError("invalid_service_name")
@@ -34,10 +34,18 @@ class SupervisorServiceMutationAdapter(HomeAssistantServiceMutationPort):
             raise PermissionError("service_not_allowlisted")
         if not isinstance(payload, dict) or len(payload) > self._max_payload_keys:
             raise ValueError("service_payload_too_large")
-        status, response = self._transport.post_json(f"/services/{domain}/{service}", payload)
+        response_service = operation == "todo.get_items"
+        status, response = self._transport.post_json(
+            f"/services/{domain}/{service}",
+            payload,
+            {"return_response": "true"} if response_service else None,
+        )
         if status >= 400:
             raise HomeAssistantUnavailable(f"home_assistant_http_{status}", path=f"/services/{domain}/{service}", status=status)
-        if not isinstance(response, list) or not all(isinstance(item, dict) for item in response):
+        if response_service:
+            if not isinstance(response, dict):
+                raise HomeAssistantUnavailable("home_assistant_invalid_service_response", path=f"/services/{domain}/{service}", status=status)
+        elif not isinstance(response, list) or not all(isinstance(item, dict) for item in response):
             raise HomeAssistantUnavailable("home_assistant_invalid_service_response", path=f"/services/{domain}/{service}", status=status)
         return redact(response)
 
@@ -52,9 +60,13 @@ class SupervisorOperatorMutationAdapter:
         if operation not in {"ha.call_service", "ha.update_automation"}:
             return {"status": "unsupported", "reason": "operator_operation_not_connected"}
         entity_id = proposed.get("entity_id")
-        if not isinstance(entity_id, str) or not re.fullmatch(r"[a-z0-9_]+\.[a-z0-9_]+", entity_id):
+        service_domain = target.split(".", 1)[0] if "." in target else ""
+        requires_entity = service_domain != "shopping_list"
+        if requires_entity and (not isinstance(entity_id, str) or not re.fullmatch(r"[a-z0-9_]+\.[a-z0-9_]+", entity_id)):
             raise ValueError("service_entity_target_invalid")
         if operation == "ha.update_automation":
+            if not isinstance(entity_id, str) or not re.fullmatch(r"[a-z0-9_]+\.[a-z0-9_]+", entity_id):
+                raise ValueError("automation_entity_target_invalid")
             if not entity_id.startswith("automation."):
                 raise ValueError("automation_entity_target_invalid")
             action = proposed.get("action")

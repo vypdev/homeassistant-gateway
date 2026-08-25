@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.35
+
+- Support Home Assistant response services through the operator service adapter by requesting `return_response` for `todo.get_items`.
+- Verify and expose exact to-do item details without bypassing the gateway approval, allowlist, idempotency and audit flow.
+- Add regression coverage for response-service transport parameters and shopping-list service targets.
+
 ## 0.5.34
 
 - Pin Stable and Edge runtime images to `python:3.12-slim-bookworm` to avoid floating base-image vulnerability drift.
