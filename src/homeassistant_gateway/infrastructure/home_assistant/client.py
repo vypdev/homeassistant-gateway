@@ -144,7 +144,11 @@ class SupervisorApiClient:
             raise ValueError("invalid_response_size_limit")
         response = self._request_post(path, payload, params=params, diagnostic_path=path, response_limit=response_limit)
         try:
-            return response.status_code, redact(response.json())
+            # Response-service adapters must validate the decoded upstream shape
+            # before redaction. Returning the raw decoded value here is safe
+            # because this is an infrastructure seam; the adapter redacts only
+            # after its contract validation succeeds.
+            return response.status_code, response.json()
         except ValueError as error:
             raise HomeAssistantUnavailable("home_assistant_invalid_json", path=path, status=response.status_code) from error
 

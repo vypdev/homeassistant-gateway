@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import math
 import re
 from collections.abc import Callable, Collection, Mapping
 from typing import Any, Protocol
@@ -23,12 +22,12 @@ class ServicePostTransport(Protocol):
     ) -> tuple[int, Any]: ...
 
 
-TODO_RESPONSE_MAX_ITEMS = 500
-TODO_RESPONSE_MAX_BYTES = 256 * 1024
-TODO_RESPONSE_MAX_FIELD_SIZE = 4096
+TODO_RESPONSE_MAX_ITEMS = 10_000
+TODO_RESPONSE_MAX_BYTES = 2 * 1024 * 1024
+TODO_RESPONSE_MAX_FIELD_SIZE = 100_000
 _TODO_ENTITY_RE = re.compile(r"todo\.[a-z0-9_]+")
-_TODO_FIELD_RE = re.compile(r"[a-z0-9_]+")
 _TODO_STATUS_VALUES = frozenset({"needs_action", "completed"})
+_TODO_ITEM_FIELDS = frozenset({"summary", "uid", "status", "due", "description", "completed"})
 
 
 class SupervisorServiceMutationAdapter(HomeAssistantServiceMutationPort):
@@ -45,11 +44,11 @@ class SupervisorServiceMutationAdapter(HomeAssistantServiceMutationPort):
     ) -> None:
         if max_payload_keys < 1 or max_payload_keys > 200:
             raise ValueError("invalid_mutation_payload_limit")
-        if max_response_items < 1 or max_response_items > 5000:
+        if max_response_items < 1 or max_response_items > TODO_RESPONSE_MAX_ITEMS:
             raise ValueError("invalid_service_response_item_limit")
         if max_response_bytes < 1 or max_response_bytes > 2 * 1024 * 1024:
             raise ValueError("invalid_service_response_size_limit")
-        if max_response_field_size < 1 or max_response_field_size > 65536:
+        if max_response_field_size < 1 or max_response_field_size > TODO_RESPONSE_MAX_FIELD_SIZE:
             raise ValueError("invalid_service_response_field_limit")
         self._transport = transport
         self._allowed_services = allowed_services
@@ -138,18 +137,9 @@ class SupervisorServiceMutationAdapter(HomeAssistantServiceMutationPort):
 
     def _valid_todo_item(self, item: Mapping[Any, Any]) -> bool:
         for key, value in item.items():
-            if not isinstance(key, str) or not key or len(key) > self._max_response_field_size or _TODO_FIELD_RE.fullmatch(key) is None:
+            if not isinstance(key, str) or key not in _TODO_ITEM_FIELDS:
                 return False
-            if isinstance(value, str):
-                if len(value) > self._max_response_field_size:
-                    return False
-            elif isinstance(value, bool) or value is None:
-                continue
-            elif isinstance(value, int) and not isinstance(value, bool):
-                continue
-            elif isinstance(value, float) and math.isfinite(value):
-                continue
-            else:
+            if value is not None and (not isinstance(value, str) or len(value) > self._max_response_field_size):
                 return False
         return True
 
