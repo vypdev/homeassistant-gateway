@@ -66,6 +66,30 @@ General task lists use the `todo` service domain:
 
 The exact optional fields depend on the target entity's supported feature flags. The gateway must validate the target entity and service contract before execution.
 
+### `todo.get_items` response contract
+
+`todo.get_items` is the one read-response service in this surface. Its request must contain exactly one `entity_id` target matching `todo.<lowercase_entity_id>`; entity lists, comma-separated targets, other domains and additional target fields are rejected. The optional `status` filter accepts `needs_action`, `completed`, or a list containing those values.
+
+The gateway sends `return_response=true` and accepts only this exact envelope, where the entity key is the requested entity:
+
+```json
+{
+  "todo.tareas": {
+    "items": [
+      {
+        "summary": "Review the household maintenance plan",
+        "status": "needs_action",
+        "uid": "example-id"
+      }
+    ]
+  }
+}
+```
+
+The response contains no extra entity or data keys. Each item must be a mapping whose keys and values use JSON-safe scalar types. The gateway rejects malformed, missing, ambiguous, wrong-entity, wrong-domain and oversized responses rather than truncating them: at most 500 items, 256 KiB serialized response data, and 4096 characters per field name or string value. These failures use the sanitized `home_assistant_invalid_service_response` upstream code and are exposed publicly as `status=unavailable`; authorization denials remain `status=denied`.
+
+The `shopping_list.*` services intentionally retain their no-entity behavior. They use the native shopping-list service payload (for example `{ "name": "Milk" }`) and must still pass the global operator ceiling, the individual credential's service grant, operator capability, approval, idempotency and audit checks.
+
 ## Safe examples
 
 ### Add a shopping-list item
@@ -179,7 +203,7 @@ Do not interpret a missing service in a client UI as proof that Home Assistant l
 ## Known limitations
 
 - The entity state is a count, not a complete item listing.
-- `todo.get_items` is a Home Assistant response service; the gateway adapter requests `return_response=true` and exposes the bounded response object after normal operator authorization.
+- `todo.get_items` is bounded and fail-closed: malformed envelopes and item values are rejected, not filtered or truncated. The configured response limit is enforced by both the service adapter and the Home Assistant transport before data is decoded or exposed.
 - Item-list retrieval must still be verified against the installed Stable artifact after an upgrade; local source/tests are not deployment evidence.
 - Service names are English Home Assistant identifiers even when the UI is localized.
 - Operator service grants are deployment policy, not inherent authorization for every user or agent.

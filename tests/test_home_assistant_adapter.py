@@ -86,6 +86,19 @@ def test_post_json_can_request_home_assistant_service_response_data() -> None:
     assert response == {"todo.tareas_ha": {"items": []}}
 
 
+def test_post_json_enforces_the_caller_response_size_limit_before_decoding() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=b'{"todo.tareas_ha":{"items":[]}}')
+
+    with pytest.raises(HomeAssistantUnavailable, match="home_assistant_response_too_large"):
+        make_client(handler).post_json(
+            "/services/todo/get_items",
+            {"entity_id": "todo.tareas_ha"},
+            params={"return_response": "true"},
+            response_limit=10,
+        )
+
+
 def test_missing_optional_configuration_endpoint_is_reported_as_unavailable() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/config"):

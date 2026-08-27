@@ -3,8 +3,9 @@
 ## 0.5.35
 
 - Support Home Assistant response services through the operator service adapter by requesting `return_response` for `todo.get_items`.
-- Verify and expose exact to-do item details without bypassing the gateway approval, allowlist, idempotency and audit flow.
-- Add regression coverage for response-service transport parameters and shopping-list service targets.
+- Validate exactly one `todo.*` entity target and the exact bounded response envelope, including item value types, 500-item, 256 KiB serialized-response and 4096-character field limits.
+- Map malformed or unavailable Home Assistant service responses to sanitized public `status=unavailable` while preserving distinct authorization denials and the intentional `shopping_list.*` no-entity path.
+- Add regression coverage for response-service transport limits, malformed/wrong-entity responses, authorized MCP retrieval, upstream status mapping and shopping-list authorization.
 
 ## 0.5.34
 
