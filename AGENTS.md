@@ -75,5 +75,5 @@ Run `python scripts/check_package_manager.py` when changing frontend tooling; CI
 .venv/bin/python -m pytest
 .venv/bin/python -m compileall -q .
 git diff --check
-pnpm --dir frontend exec @google/design.md lint DESIGN.md
+pnpm --dir frontend exec design.md lint ../DESIGN.md
 ```

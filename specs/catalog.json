@@ -1,0 +1,73 @@
+{
+  "version": 1,
+  "capabilities": [
+    {
+      "id": "home-assistant-gateway",
+      "title": "Home Assistant MCP gateway",
+      "status": "as-built-baseline",
+      "scope": "Authenticated observation and explicit audited operator execution across Supervisor and standalone deployment",
+      "owner": "Gateway maintainers",
+      "lastVerified": "2026-10-21",
+      "specs": [
+        "specs/gateway-contract.md"
+      ],
+      "workflows": [],
+      "entrypoints": [
+        "src/homeassistant_gateway/main.py"
+      ],
+      "code": [
+        "src/homeassistant_gateway/domain/policy.py",
+        "src/homeassistant_gateway/application/operator_mutations.py",
+        "src/homeassistant_gateway/infrastructure/home_assistant/client_adapter.py",
+        "src/homeassistant_gateway/presentation/mcp.py"
+      ],
+      "tests": [
+        "tests/test_authorization.py",
+        "tests/test_observer.py",
+        "tests/test_operator_security.py",
+        "tests/test_repository_contract.py"
+      ],
+      "documentation": [
+        "README.md",
+        "docs/security-model.md",
+        "docs/operator-profile.md"
+      ]
+    },
+    {
+      "id": "repository-automation",
+      "title": "Managed contributor verification and gateway publication",
+      "status": "proposed",
+      "scope": "Copilot-managed issue branches, reproducible checks, SDD ownership and coordinated stable images",
+      "owner": "Gateway maintainers",
+      "lastVerified": "2026-10-21",
+      "specs": [
+        "specs/repository-automation.md"
+      ],
+      "workflows": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/copilot_issue_comment.yml",
+        ".github/workflows/release_workflow.yml",
+        ".github/workflows/hotfix_workflow.yml",
+        ".github/workflows/release-app.yml"
+      ],
+      "entrypoints": [
+        "scripts/prepare_release.py",
+        "scripts/release_image.py"
+      ],
+      "code": [
+        ".github/actions/setup-verification/action.yml",
+        "scripts/check_specifications.py"
+      ],
+      "tests": [
+        "tests/test_copilot_workflows.py",
+        "tests/test_prepare_release.py",
+        "tests/test_specifications.py",
+        "tests/test_release_image.py"
+      ],
+      "documentation": [
+        "docs/repository-automation.md",
+        "docs/release-channels.md"
+      ]
+    }
+  ]
+}

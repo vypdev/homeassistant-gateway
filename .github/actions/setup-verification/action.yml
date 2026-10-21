@@ -1,0 +1,53 @@
+name: Prepare gateway verification
+description: Prepare isolated Python and project-pinned pnpm tools before repository checks.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v7
+      with:
+        python-version: '3.11'
+    - uses: actions/setup-node@v7
+      with:
+        node-version: '22'
+        package-manager-cache: false
+    - name: Prepare Python test environment
+      shell: bash
+      run: |
+        set -euo pipefail
+        verification_env="$RUNNER_TEMP/gateway-verification-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+        python -m venv "$verification_env"
+        "$verification_env/bin/python" -m pip install --disable-pip-version-check -e '.[test]'
+        tools_dir="$RUNNER_TEMP/gateway-tools-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+        python - "$verification_env" "$tools_dir" <<'TOOLS'
+        from pathlib import Path
+        import shlex
+        import sys
+        target = Path(sys.argv[2])
+        target.mkdir(parents=True, exist_ok=True)
+        for name in ['python', 'python3']:
+            launcher = target / name
+            launcher.write_text('#!/bin/sh\nexec ' + shlex.quote(sys.argv[1] + '/bin/python') + ' "$@"\n')
+            launcher.chmod(0o755)
+        TOOLS
+        echo "$tools_dir" >> "$GITHUB_PATH"
+    - name: Prepare the declared pnpm and frozen dependencies
+      shell: bash
+      working-directory: frontend
+      run: |
+        set -euo pipefail
+        corepack enable
+        corepack install
+        pnpm install --frozen-lockfile
+        pnpm run test:tooling
+        # Export only named verification tools, never dependency-controlled git/gh binaries.
+        tools_dir="$RUNNER_TEMP/gateway-tools-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+        node_executable="$(node -p 'process.execPath')"
+        python - "$tools_dir" "$node_executable" "$PWD/node_modules/pnpm/bin/pnpm.cjs" <<'TOOLS'
+        from pathlib import Path
+        import shlex
+        import sys
+        launcher = Path(sys.argv[1]) / 'pnpm'
+        launcher.write_text('#!/bin/sh\nexec ' + shlex.quote(sys.argv[2]) + ' ' + shlex.quote(sys.argv[3]) + ' "$@"\n')
+        launcher.chmod(0o755)
+        TOOLS
