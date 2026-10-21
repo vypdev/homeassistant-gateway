@@ -19,6 +19,7 @@ try {
     if (name === 'api') output = output.replace("from './gateway-errors'", "from './gateway-errors.mjs'");
     if (name === 'gateway-api') {
       output = output.replace("from './api'", "from './api.mjs'");
+      output = output.replace("from './gateway-errors'", "from './gateway-errors.mjs'");
       output = output.replace("from './gateway-contracts'", "from './gateway-contracts.mjs'");
     }
     if (name === 'gateway-controller') output = output.replace("from './operator-policy-service'", "from './operator-policy-service.mjs'");
@@ -111,7 +112,7 @@ try {
     if (path === '/development/reports') return [];
     if (path === '/ui/context') return { locale: 'en', theme: 'auto' };
     if (path === '/health/details') return { status: 'healthy', checks: [{ name: 'core', status: 'ok', latency_ms: 4, http_status: 200, code: null }] };
-    if (path === '/operator/status') return { operator_enabled: true, execution: 'enabled', registered_mutation_tools: [], capabilities: [], reason: 'ready' };
+    if (path === '/operator/status') return { operator_enabled: true, execution: 'enabled', registered_mutation_tools: [], capabilities: [], reason: null };
     if (path === '/operator/service-policy') return init?.method === 'PUT' ? { selected: JSON.parse(init.body).selected } : { services: [], selected: [] };
     if (path === '/mcp/discovery') return { tools: [] };
     if (path === '/policy/evaluate') return { decision: 'allowed', reason: 'ok' };

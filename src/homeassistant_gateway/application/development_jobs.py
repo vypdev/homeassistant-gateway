@@ -141,10 +141,6 @@ class DevelopmentJobManager:
 
             with self._lock:
                 results = tuple(job.results)
-                job.finished_at = time()
-                job.status = "warning" if any(item.status == "warning" for item in results) else "completed"
-                if any(item.status in {"error", "unavailable"} for item in results):
-                    job.status = "error"
 
             previous = None
             if self._report_store is not None:
@@ -159,6 +155,14 @@ class DevelopmentJobManager:
                         job.status = "error"
                         job.error = "report_persistence_failed"
                         job.finished_at = time()
+                    return
+
+            with self._lock:
+                job.finished_at = time()
+                job.status = "warning" if any(item.status == "warning" for item in results) else "completed"
+                if any(item.status in {"error", "unavailable"} for item in results):
+                    job.status = "error"
+
         except Exception:  # noqa: BLE001 - guarantee a terminal state for worker failures
             with self._lock:
                 job.status = "error"

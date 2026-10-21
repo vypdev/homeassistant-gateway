@@ -80,6 +80,38 @@ class IssueClient:
         return IssuedClient(client=client, token=token)
 
 
+class UpdateClientCapabilities:
+    """Update capability grants without requiring token rotation during development."""
+
+    def __init__(self, repository: ClientRepository, operator_enabled: bool) -> None:
+        self._repository = repository
+        self._operator_enabled = operator_enabled
+
+    def execute(self, client_id: str, capabilities: frozenset[str]) -> Client:
+        client = self._repository.get(client_id)
+        if client is None:
+            raise ValueError("client_not_found")
+        if client.status is ClientStatus.REVOKED:
+            raise ValueError("client_not_active")
+        if client.profile is Profile.OPERATOR and not self._operator_enabled:
+            raise ValueError("operator_disabled")
+        if client.profile is Profile.OBSERVER and any(capability.startswith("ha.write.") for capability in capabilities):
+            raise ValueError("observer_operator_capability_conflict")
+        updated = Client(
+            client_id=client.client_id,
+            display_name=client.display_name,
+            profile=client.profile,
+            capabilities=capabilities,
+            created_at=client.created_at,
+            status=client.status,
+            token_digest=client.token_digest,
+            revoked_at=client.revoked_at,
+            operator_services=client.operator_services,
+        )
+        self._repository.save(updated)
+        return updated
+
+
 class UpdateClientOperatorServices:
     def __init__(self, repository: ClientRepository) -> None:
         self._repository = repository

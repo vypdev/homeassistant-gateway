@@ -57,7 +57,7 @@ def main() -> int:
         errors.append("stable and edge host ports must be distinct")
     edge_dockerfile = (EDGE / "Dockerfile").read_text(encoding="utf-8")
     if "COPY . /src" not in edge_dockerfile:
-        errors.append("edge Dockerfile must build from the checked-out develop source")
+        errors.append("edge Dockerfile must build from the checked-out main source")
     for required_label in ('io.hass.version', 'io.hass.type="app"'):
         if required_label not in edge_dockerfile:
             errors.append(f"edge Dockerfile is missing label {required_label}")
@@ -88,7 +88,7 @@ def main() -> int:
         return 1
 
     print(f"PASS app-channel: stable={stable['slug']}:{port(stable)} edge={edge['slug']}:{port(edge)}")
-    print(f"PASS app-channel: stable=image edge=multi-architecture-image version={edge_version} source=develop")
+    print(f"PASS app-channel: stable=image edge=multi-architecture-image version={edge_version} source=main")
     return 0
 
 

@@ -12,6 +12,7 @@ from homeassistant_gateway.application.clients import (
     ListClients,
     RevokeClient,
     RotateClient,
+    UpdateClientCapabilities,
 )
 from homeassistant_gateway.application.development import DevelopmentToolRunner
 from homeassistant_gateway.application.observer import ObserverDiagnostics
@@ -37,8 +38,12 @@ from homeassistant_gateway.infrastructure.storage.sqlite_operator import (
     SQLiteOperatorAuditAdapter,
     SQLiteOperatorStateRepository,
 )
-from homeassistant_gateway.infrastructure.supervisor_home_assistant import (
-    SupervisorHomeAssistantClient,
+from homeassistant_gateway.infrastructure.home_assistant.connection import (
+    HomeAssistantConnectionMode,
+    resolve_home_assistant_connection,
+)
+from homeassistant_gateway.infrastructure.home_assistant.client_adapter import (
+    HomeAssistantClient,
 )
 from homeassistant_gateway.presentation.http import create_app
 from homeassistant_gateway.presentation.mcp import create_mcp_app
@@ -50,6 +55,9 @@ class AppSettings:
     operator_enabled: bool = False
     supervisor_token: str | None = None
     supervisor_url: str = "http://supervisor/core/api"
+    home_assistant_mode: str = "supervisor"
+    home_assistant_url: str | None = None
+    home_assistant_token: str | None = None
     operator_allowed_services: tuple[str, ...] = ()
     development_console_enabled: bool = True
     mcp_allowed_hosts: tuple[str, ...] = (
@@ -76,11 +84,29 @@ def build_app(settings: AppSettings) -> FastAPI:
     authenticate_client = AuthenticateClient(repository, token_issuer)
     authorize_request = AuthorizeRequest(repository, settings.operator_enabled)
     observer_diagnostics = ObserverDiagnostics(authenticate_client, authorize_request)
-    home_assistant = (
-        SupervisorHomeAssistantClient(settings.supervisor_token, base_url=settings.supervisor_url)
-        if settings.supervisor_token
-        else None
-    )
+    home_assistant = None
+    if settings.home_assistant_mode == HomeAssistantConnectionMode.STANDALONE.value:
+        connection = resolve_home_assistant_connection(
+            HomeAssistantConnectionMode.STANDALONE,
+            settings.home_assistant_url or "",
+            settings.home_assistant_token or "",
+        )
+        home_assistant = HomeAssistantClient(
+            connection.token,
+            base_url=connection.rest_api_url,
+        )
+    elif settings.supervisor_token:
+        connection = resolve_home_assistant_connection(
+            HomeAssistantConnectionMode.SUPERVISOR,
+            settings.supervisor_url,
+            settings.supervisor_token,
+        )
+        home_assistant = HomeAssistantClient(
+            connection.token,
+            base_url=connection.rest_api_url,
+        )
+    elif settings.home_assistant_mode != HomeAssistantConnectionMode.SUPERVISOR.value:
+        raise ValueError("invalid_home_assistant_mode")
     def operator_services_ceiling() -> tuple[str, ...]:
         return operator_state.get_allowed_services()
 
@@ -142,10 +168,12 @@ def build_app(settings: AppSettings) -> FastAPI:
             clock=clock,
             operator_enabled=settings.operator_enabled,
         ),
+        client_repository=repository,
         list_clients=ListClients(repository),
         revoke_client=RevokeClient(repository, clock),
         delete_client=DeleteClient(repository),
         rotate_client=RotateClient(repository, token_issuer),
+        update_client_capabilities=UpdateClientCapabilities(repository, settings.operator_enabled),
         authenticate_client=authenticate_client,
         authorize_request=authorize_request,
         audit_sink=audit_repository,

@@ -2,6 +2,8 @@
 
 The Development Console is an Ingress-protected, observer-only verification surface. It uses the same `HomeAssistantReadPort` and Supervisor adapter as the MCP observer. It does not proxy arbitrary Home Assistant routes and it cannot execute mutations.
 
+For per-client capability verification, including the distinction between granted, implemented, reachable and executable permissions, see [Capability verification](capability-verification.md).
+
 ## Endpoints
 
 - `GET /api/development/catalog` — bounded operation and pack catalog.
@@ -28,7 +30,7 @@ Location: /api/development/jobs/7f...
 
 Poll the `Location` every 250–1000 ms with backoff. Valid states are `queued`, `running`, `completed`, `warning` and `error`. `results` is monotonic: completed operation results remain available in later snapshots. `warning` means the job finished but one or more probes returned an empty or degraded result; `error` means at least one probe or report persistence failed.
 
-Jobs are process-local and non-durable. They are retained for approximately one hour, limited to 32 snapshots, and at most two jobs run concurrently. A restart removes active jobs. Unknown or expired jobs return `404`; a saturated executor returns `429`. Unexpected failures are redacted into stable error codes and cannot leave a job indefinitely in `running`.
+The Ingress bootstrap keeps each check independent and reports incremental progress for readiness, clients, audit, catalog, development reports, UI context, health details, operator status, and operator service policy. A failed bootstrap shows the affected path, sanitized HTTP/error code, duration, and the checks that completed successfully; it does not collapse all failures into an opaque global message. Retry starts a fresh versioned bootstrap and ignores stale progress from the previous attempt.
 
 
 The MCP discovery contract advertises the same observer surface: `gateway_diagnostics`, inventory, states, automations, configuration, services, events, history, logbook, devices, areas, floors, labels, entity registry, scripts, scenes, helpers and integrations. The MCP functions call the same application read port rather than duplicating upstream HTTP logic.
@@ -130,7 +132,7 @@ Preview operations are allowlisted and capability-matched:
 
 - `ha.call_service` → `ha.write.services`;
 - `ha.update_automation` → `ha.write.automations`;
-- `ha.update_config` → `ha.write.configuration`.
+- `ha.update_config` → `ha.write.configuration` (reserved; no configuration mutation tool is registered).
 
 The preview rejects oversized state maps and fields whose names indicate tokens, passwords, secrets, cookies, authorization or API keys. Every response declares approval, idempotency and rollback as requirements. No service call, configuration write or automation write is performed.
 

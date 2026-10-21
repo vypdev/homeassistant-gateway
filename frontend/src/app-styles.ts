@@ -40,6 +40,19 @@ export const APP_STYLES = css`
     .boot-progress::before { content: ''; display: block; width: 42%; height: 100%; border-radius: inherit; background: var(--ha-primary); animation: boot-progress 1.8s ease-in-out infinite; }
     .shell.light .boot-progress { background: var(--ha-surface-muted); } .shell.light .boot-progress::before { background: var(--ha-primary); }
     .boot-retry { margin-top: 24px; }
+    .boot-summary { font-size: 13px; color: var(--ha-text-secondary); }
+    .boot-checks { display: grid; gap: 8px; list-style: none; padding: 0; margin: 18px 0 0; text-align: left; }
+    .boot-check { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 9px 10px; border: 1px solid var(--ha-border); border-radius: 8px; background: var(--ha-surface-raised); }
+    .boot-check-icon { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: var(--ha-text-secondary); background: var(--ha-surface-muted); font-weight: 700; }
+    .boot-check-ok .boot-check-icon { color: var(--ha-success); background: color-mix(in srgb, var(--ha-success) 14%, transparent); }
+    .boot-check-failed { border-color: color-mix(in srgb, var(--ha-danger) 55%, var(--ha-border)); }
+    .boot-check-failed .boot-check-icon { color: white; background: var(--ha-danger); }
+    .boot-check-copy { min-width: 0; display: grid; gap: 2px; }
+    .boot-check-copy strong, .boot-check-copy small, .boot-check-error { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .boot-check-copy small, .boot-check-error, .boot-check-status { font-size: 11px; color: var(--ha-text-secondary); }
+    .boot-check-error { color: var(--ha-danger); }
+    .boot-check-status { text-align: right; }
+    .shell.light .boot-check { background: var(--ha-surface-raised); }
     .layout { position: relative; width: min(1280px, calc(100% - 32px)); margin: auto; padding: var(--gateway-space-6) 0 var(--gateway-space-8); }
     .tab-navigation { width: 100%; }
     main { min-width: 0; padding: 0 0 42px; }
@@ -68,7 +81,7 @@ export const APP_STYLES = css`
     .topology-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
     .overview-actions { justify-content: flex-start; margin-top: 24px; }
     .overview-health, .overview-topology { margin-top: 14px; }
-    .topology-card { text-align: center; }
+    .topology-card { text-align: start; }
     .mcp-endpoint { margin-top: 20px; }
     .mcp-tool { margin-top: 8px; }
     .mcp-subtitle { margin-bottom: 16px; }
@@ -114,6 +127,10 @@ export const APP_STYLES = css`
     .responsive-values { display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
     .responsive-wrap { min-width: 0; overflow-wrap: anywhere; word-break: break-word; white-space: normal; }
     .responsive-actions { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 3px; }
+    .capability-probe-panel { display: grid; gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--ha-border); }
+    .capability-probe-table-wrap { overflow-x: auto; min-width: 0; }
+    .capability-probe-table { min-width: 620px; }
+    .capability-probe-table th, .capability-probe-table td { text-align: start; }
     .shell.light .responsive-record { border-color: #b9cad9; background: #f8fbfe; }
     .shell.light .responsive-field > span:first-child { color: #5d7488; }
     table { width: 100%; border-collapse: collapse; min-width: 0; table-layout: fixed; }
@@ -128,7 +145,7 @@ export const APP_STYLES = css`
     td { color: var(--ha-text); }
     code, .mono { color: #9bdbff; font-family: ui-monospace, monospace; font-size: 12px; }
     .tag { display: inline-flex; align-items: center; min-height: 24px; color: var(--ha-text-secondary); background: var(--ha-surface-raised); border: 1px solid var(--ha-border); border-radius: var(--ha-radius-pill); padding: 3px 9px; margin: 2px 3px 2px 0; font-size: 12px; line-height: 1.2; }
-    .topology-node { display: inline-flex; align-items: center; justify-content: center; gap: 8px; row-gap: 6px; max-width: 100%; flex-wrap: wrap; }
+    .topology-node { display: inline-flex; align-items: center; justify-content: flex-start; gap: 8px; row-gap: 6px; max-width: 100%; flex-wrap: wrap; }
     .topology-node > strong { overflow-wrap: anywhere; }
     .inline-chip { margin: 0 !important; }
     .ok { color: var(--ha-success); } .warn { color: var(--ha-warning); } .bad { color: var(--ha-danger); }
@@ -152,8 +169,8 @@ export const APP_STYLES = css`
     .mutation-card { margin-top: 14px; }
     .mutation-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
     .pack-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 16px 0; }
-    .pack-grid > button.secondary { border-radius: 8px; text-align: left; }
-    .pack-grid button { display: grid; gap: 5px; text-align: left; padding: 12px 13px; min-height: 72px; }
+    .pack-grid > button.secondary { border-radius: 8px; justify-content: flex-start; text-align: start; }
+    .pack-grid button { display: grid; gap: 5px; justify-items: start; text-align: start; padding: 12px 13px; min-height: 72px; }
     .pack-grid small { color: var(--ha-text-secondary); line-height: 1.4; }
     .capability-toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: center; margin-bottom: 14px; }
     .capability-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
@@ -225,7 +242,7 @@ export const APP_STYLES = css`
     @media (max-width: 900px) { .navigation-tabs { height: 56px; } .navigation-tabs .ui-tab { min-height: 56px; } }
     @media (max-width: 1000px) { .cards { grid-template-columns: repeat(2, 1fr); } .topology-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .split, .dev-grid { grid-template-columns: 1fr; } }
     @media (max-width: 900px) { .desktop-only { display: none; } .responsive-records { display: grid; gap: 10px; } }
-    @media (max-width: 720px) { .layout { width: min(100% - 24px, 600px); display: block; padding-top: 12px; } .content-status { justify-content: flex-start; } .navigation-tabs .ui-tab { padding-inline: 14px; font-size: 13px; } .navigation-tabs .ui-tab span { overflow-wrap: anywhere; } .cards, .topology-grid, .split, .dev-grid, .pack-grid { grid-template-columns: 1fr; } .topline { display: block; } .topline > div { min-width: 0; } .status-pill { margin-top: 16px; } .toolbar, .capability-toolbar, .permission-tabs, .operator-service-selection-toolbar { flex-wrap: wrap; align-items: flex-start; } .evidence-toolbar { width: 100%; justify-items: start; } .evidence-metrics, .evidence-actions { justify-content: flex-start; } .capability-actions { width: 100%; justify-content: flex-start; } .capability-actions button { flex: 1 1 140px; } .toolbar > div, .toolbar button { min-width: 0; } .toolbar button, .form-actions button { max-width: 100%; } .form-actions { flex-wrap: wrap; } .operator-policy-header { flex-wrap: wrap; } .operator-policy-header > * { max-width: 100%; } .operator-policy-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .result-row { flex-direction: column; } .result-row > * { max-width: 100%; } .pack-grid button { min-width: 0; } .operator-service-selection-actions { width: 100%; justify-content: flex-start; } .operator-service-selection-actions button { flex: 1 1 140px; } .card { min-width: 0; padding: 16px; } h1 { overflow-wrap: anywhere; } }
+    @media (max-width: 720px) { .layout { width: min(100% - 24px, 600px); display: block; padding-top: 12px; } .content-status { justify-content: flex-start; } .navigation-tabs .ui-tab { padding-inline: 14px; font-size: 13px; } .navigation-tabs .ui-tab span { overflow-wrap: anywhere; } .cards, .topology-grid, .split, .dev-grid, .pack-grid { grid-template-columns: 1fr; } .topline { display: block; } .topline > div { min-width: 0; } .status-pill { margin-top: 16px; } .capability-probe-table { min-width: 560px; } .toolbar, .capability-toolbar, .permission-tabs, .operator-service-selection-toolbar { flex-wrap: wrap; align-items: flex-start; } .evidence-toolbar { width: 100%; justify-items: start; } .evidence-metrics, .evidence-actions { justify-content: flex-start; } .capability-actions { width: 100%; justify-content: flex-start; } .capability-actions button { flex: 1 1 140px; } .toolbar > div, .toolbar button { min-width: 0; } .toolbar button, .form-actions button { max-width: 100%; } .form-actions { flex-wrap: wrap; } .operator-policy-header { flex-wrap: wrap; } .operator-policy-header > * { max-width: 100%; } .operator-policy-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); } .result-row { flex-direction: column; } .result-row > * { max-width: 100%; } .pack-grid button { min-width: 0; } .operator-service-selection-actions { width: 100%; justify-content: flex-start; } .operator-service-selection-actions button { flex: 1 1 140px; } .card { min-width: 0; padding: 16px; } h1 { overflow-wrap: anywhere; } }
     @media (prefers-reduced-motion: reduce) { .boot-progress::before, .button-spinner { animation: none; } *, *::before, *::after { transition-duration: 1ms !important; } }
     @media (prefers-contrast: more) { .card, input, select, textarea, .result-row { border-color: currentColor; } .muted, p, label, th { color: currentColor; } .tag, button.secondary { border-color: currentColor; } }
   `;

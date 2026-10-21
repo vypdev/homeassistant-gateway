@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from time import sleep
 from typing import Any
 
@@ -107,11 +108,18 @@ class SupervisorApiClient:
         except ValueError as error:
             raise HomeAssistantUnavailable("home_assistant_invalid_json", path=safe_path, status=response.status_code) from error
 
-    def _request_post(self, path: str, payload: dict[str, Any], diagnostic_path: str | None = None) -> httpx.Response:
+    def _request_post(
+        self,
+        path: str,
+        payload: dict[str, Any],
+        params: Mapping[str, str] | None = None,
+        diagnostic_path: str | None = None,
+        response_limit: int | None = None,
+    ) -> httpx.Response:
         request_path = diagnostic_path or path
         try:
             with httpx.Client(headers=self._headers, timeout=self._timeout, trust_env=False, transport=self._transport) as client:
-                response = client.post(f"{self._base_url}{path}", json=payload)
+                response = client.post(f"{self._base_url}{path}", params=params, json=payload)
         except httpx.ReadTimeout as error:
             raise HomeAssistantUnavailable("home_assistant_transport_timeout", path=request_path) from error
         except httpx.NetworkError as error:
@@ -120,13 +128,27 @@ class SupervisorApiClient:
             raise HomeAssistantUnavailable("home_assistant_transport_unavailable", path=request_path) from error
         if response.status_code >= 400:
             raise HomeAssistantUnavailable(f"home_assistant_http_{response.status_code}", path=request_path, status=response.status_code)
+        if response_limit is not None and len(response.content) > response_limit:
+            raise HomeAssistantUnavailable("home_assistant_response_too_large", path=request_path, status=response.status_code)
         return response
 
-    def post_json(self, path: str, payload: dict[str, Any]) -> tuple[int, Any]:
+    def post_json(
+        self,
+        path: str,
+        payload: dict[str, Any],
+        params: Mapping[str, str] | None = None,
+        response_limit: int | None = None,
+    ) -> tuple[int, Any]:
         """Expose one bounded POST seam for explicitly allowlisted mutation adapters."""
-        response = self._request_post(path, payload, diagnostic_path=path)
+        if response_limit is not None and (response_limit < 1 or response_limit > 2 * 1024 * 1024):
+            raise ValueError("invalid_response_size_limit")
+        response = self._request_post(path, payload, params=params, diagnostic_path=path, response_limit=response_limit)
         try:
-            return response.status_code, redact(response.json())
+            # Response-service adapters must validate the decoded upstream shape
+            # before redaction. Returning the raw decoded value here is safe
+            # because this is an infrastructure seam; the adapter redacts only
+            # after its contract validation succeeds.
+            return response.status_code, response.json()
         except ValueError as error:
             raise HomeAssistantUnavailable("home_assistant_invalid_json", path=path, status=response.status_code) from error
 

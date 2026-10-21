@@ -1,14 +1,15 @@
 import httpx
 import pytest
+from datetime import UTC, datetime
 
 from homeassistant_gateway.application.home_assistant import HomeAssistantUnavailable, redact
-from homeassistant_gateway.infrastructure.supervisor_home_assistant import (
-    SupervisorHomeAssistantClient,
+from homeassistant_gateway.infrastructure.home_assistant.client_adapter import (
+    HomeAssistantClient,
 )
 
 
 def make_client(handler):
-    return SupervisorHomeAssistantClient(
+    return HomeAssistantClient(
         "supervisor-secret",
         base_url="http://supervisor/core/api",
         transport=httpx.MockTransport(handler),
@@ -17,9 +18,9 @@ def make_client(handler):
 
 def test_adapter_rejects_unbounded_max_items() -> None:
     with pytest.raises(ValueError, match="invalid_supervisor_max_items"):
-        SupervisorHomeAssistantClient("token", max_items=0)
+        HomeAssistantClient("token", max_items=0)
     with pytest.raises(ValueError, match="invalid_supervisor_max_items"):
-        SupervisorHomeAssistantClient("token", max_items=10001)
+        HomeAssistantClient("token", max_items=10001)
 
 
 def test_states_uses_supervisor_auth_and_redacts_secret_fields() -> None:
@@ -67,6 +68,35 @@ def test_inventory_is_bounded_and_keeps_transport_outside_application() -> None:
         raise AssertionError(request.url)
 
     assert make_client(handler).inventory()["counts"] == {"entities": 1, "services": 1}
+
+
+def test_post_json_can_request_home_assistant_service_response_data() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/core/api/services/todo/get_items"
+        assert dict(request.url.params) == {"return_response": "true"}
+        assert request.content == b'{"entity_id":"todo.tareas_ha"}'
+        return httpx.Response(200, json={"todo.tareas_ha": {"items": []}})
+
+    status, response = make_client(handler).post_json(
+        "/services/todo/get_items",
+        {"entity_id": "todo.tareas_ha"},
+        params={"return_response": "true"},
+    )
+    assert status == 200
+    assert response == {"todo.tareas_ha": {"items": []}}
+
+
+def test_post_json_enforces_the_caller_response_size_limit_before_decoding() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=b'{"todo.tareas_ha":{"items":[]}}')
+
+    with pytest.raises(HomeAssistantUnavailable, match="home_assistant_response_too_large"):
+        make_client(handler).post_json(
+            "/services/todo/get_items",
+            {"entity_id": "todo.tareas_ha"},
+            params={"return_response": "true"},
+            response_limit=10,
+        )
 
 
 def test_missing_optional_configuration_endpoint_is_reported_as_unavailable() -> None:
@@ -151,6 +181,7 @@ def test_logbook_websocket_queries_bounded_hour_windows() -> None:
 
 def test_logbook_deduplicates_events_across_windows_and_preserves_order() -> None:
     client = make_client(lambda request: httpx.Response(500))
+    client._now_utc = lambda: datetime(2026, 8, 1, 2, tzinfo=UTC)
     calls = 0
     duplicate = {"when": "2026-08-01T01:00:00Z", "entity_id": "light.kitchen", "state": "on"}
     later = {"when": "2026-08-01T01:30:00Z", "entity_id": "light.kitchen", "state": "off"}

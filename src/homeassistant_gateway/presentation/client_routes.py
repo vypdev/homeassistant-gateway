@@ -2,18 +2,23 @@ from __future__ import annotations
 
 from collections.abc import Callable, Collection
 from dataclasses import dataclass
+from datetime import UTC, datetime
+from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import Response
 
+from homeassistant_gateway.application.audit import AuditEvent, AuditSink
 from homeassistant_gateway.application.authentication import AuthenticateClient
 from homeassistant_gateway.application.authorization import AuthorizeRequest
+from homeassistant_gateway.application.capability_probe import ProbeCapabilities
 from homeassistant_gateway.application.clients import (
     DeleteClient,
     IssueClient,
     ListClients,
     RevokeClient,
     RotateClient,
+    UpdateClientCapabilities,
 )
 from homeassistant_gateway.application.home_assistant import HomeAssistantReadPort
 from homeassistant_gateway.application.operator_policy import (
@@ -22,12 +27,15 @@ from homeassistant_gateway.application.operator_policy import (
 )
 from homeassistant_gateway.presentation.auth_headers import parse_bearer_token
 from homeassistant_gateway.presentation.http_models import (
+    CapabilityProbeResponse,
+    CapabilityProbeResultResponse,
     ClientResponse,
     CreateClientRequest,
     EvaluatePolicyRequest,
     IssuedClientResponse,
     MCPDiscoveryResponse,
     PolicyDecisionResponse,
+    UpdateClientCapabilitiesRequest,
 )
 
 
@@ -40,9 +48,12 @@ class ClientRouteDependencies:
     rotate_client: RotateClient
     authenticate_client: AuthenticateClient
     authorize_request: AuthorizeRequest
+    update_client_capabilities: UpdateClientCapabilities | None = None
     home_assistant: HomeAssistantReadPort | None = None
     operator_service_policy: OperatorServicePolicyPort | None = None
     operator_services_ceiling: Callable[[], Collection[str]] | None = None
+    probe_capabilities: ProbeCapabilities | None = None
+    audit_sink: AuditSink | None = None
 def register_client_routes(app: FastAPI, dependencies: ClientRouteDependencies) -> None:
     @app.get("/api/clients", response_model=list[ClientResponse])
     def list_client_resources() -> list[ClientResponse]:
@@ -108,6 +119,48 @@ def register_client_routes(app: FastAPI, dependencies: ClientRouteDependencies) 
     def evaluate_policy_resource(request: EvaluatePolicyRequest) -> PolicyDecisionResponse:
         decision = dependencies.authorize_request.execute(client_id=request.client_id, capability=request.capability, mutation=request.mutation)
         return PolicyDecisionResponse(decision=decision.decision, reason=decision.reason)
+
+    @app.post("/api/clients/{client_id}/capability-probe", response_model=CapabilityProbeResponse)
+    def probe_client_capabilities(client_id: str, entity_id: str | None = None) -> CapabilityProbeResponse:
+        if dependencies.probe_capabilities is None:
+            raise HTTPException(status_code=503, detail="capability_probe_not_configured")
+        report = dependencies.probe_capabilities.execute(client_id, entity_id)
+        if report.generated_for == "unknown_client":
+            raise HTTPException(status_code=404, detail="client_not_found")
+        return CapabilityProbeResponse(
+            client_id=report.client_id,
+            generated_for=report.generated_for,
+            results=tuple(CapabilityProbeResultResponse.model_validate(result, from_attributes=True) for result in report.results),
+        )
+
+    @app.patch("/api/clients/{client_id}/capabilities", response_model=ClientResponse)
+    def update_client_capabilities_resource(client_id: str, request: UpdateClientCapabilitiesRequest, http_request: Request) -> ClientResponse:
+        if dependencies.update_client_capabilities is None:
+            raise HTTPException(status_code=503, detail="client_capability_update_not_configured")
+        try:
+            client = dependencies.update_client_capabilities.execute(client_id, request.capabilities)
+        except ValueError as error:
+            reason = str(error)
+            if reason == "client_not_found":
+                raise HTTPException(status_code=404, detail=reason) from error
+            if reason == "client_not_active":
+                raise HTTPException(status_code=409, detail=reason) from error
+            if reason in {"operator_disabled", "observer_operator_capability_conflict"}:
+                raise HTTPException(status_code=403, detail=reason) from error
+            raise HTTPException(status_code=400, detail=reason) from error
+        if dependencies.audit_sink is not None:
+            dependencies.audit_sink.record(AuditEvent(
+                event_id=str(uuid4()),
+                occurred_at=datetime.now(UTC),
+                request_id=http_request.headers.get("x-request-id", "capability-update"),
+                remote_user_id=http_request.headers.get("x-remote-user-id"),
+                action="client.capabilities.update",
+                target=client_id,
+                decision="allow",
+                outcome="updated",
+                status_code=200,
+            ))
+        return ClientResponse.from_domain(client)
 
     @app.post("/api/clients", response_model=IssuedClientResponse, status_code=status.HTTP_201_CREATED)
     def issue_client_resource(request: CreateClientRequest) -> IssuedClientResponse:

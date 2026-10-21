@@ -111,7 +111,11 @@ test('boot error exposes a retry action and recovers when readiness returns', as
 
   await page.goto('/');
   await expect(page.getByRole('heading', { name: 'Unable to load gateway state' })).toBeVisible();
-  await expect(page.getByRole('alert')).toContainText('Request failed (503)');
+  await expect(page.getByRole('alert')).toContainText('/ready');
+  await expect(page.getByRole('alert')).toContainText('HTTP 503');
+  await expect(page.locator('.boot-check').filter({ hasText: 'Gateway readiness' })).toContainText('/ready');
+  await expect(page.locator('.boot-check').filter({ hasText: 'Gateway readiness' })).toContainText('HTTP 503');
+  await expect(page.locator('.boot-check').filter({ hasText: 'Client state' })).toContainText('Ready');
   await page.getByRole('button', { name: 'Refresh' }).click();
   await expect(page.getByRole('heading', { name: 'Secure gateway control plane.' })).toBeVisible();
   expect(readinessAttempts).toBeGreaterThanOrEqual(2);

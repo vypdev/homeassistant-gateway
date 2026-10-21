@@ -15,7 +15,7 @@ from homeassistant_gateway.application.development import (
     development_packs,
 )
 from homeassistant_gateway.application.development_jobs import DevelopmentJobManager
-from homeassistant_gateway.application.home_assistant import HomeAssistantReadPort
+from homeassistant_gateway.application.home_assistant import HomeAssistantReadPort, HomeAssistantUnavailable
 from homeassistant_gateway.application.operator_mutations import OperatorMutationService
 from homeassistant_gateway.application.operator_preview import build_operator_preview
 from homeassistant_gateway.presentation.http_models import (
@@ -157,6 +157,8 @@ def register_development_routes(app: FastAPI, dependencies: DevelopmentRouteDepe
             raise HTTPException(status_code=403, detail=str(error)) from error
         except ValueError as error:
             raise HTTPException(status_code=400, detail=str(error)) from error
+        except HomeAssistantUnavailable as error:
+            return {"status": "unavailable", "reason": "home_assistant_unavailable", "code": error.code}
         except RuntimeError as error:
             raise HTTPException(status_code=503, detail=str(error)) from error
 

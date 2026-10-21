@@ -19,3 +19,4 @@ htmlcov/
 !.env.example
 secrets.yaml
 .storage/
+.repowise/

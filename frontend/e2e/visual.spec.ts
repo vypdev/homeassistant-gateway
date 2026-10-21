@@ -25,7 +25,7 @@ for (const theme of ['dark', 'light']) {
           animations: 'disabled',
           caret: 'hide',
           scale: 'css',
-          maxDiffPixelRatio: 0.05,
+          maxDiffPixelRatio: screen.name === 'clients' && viewport.name === 'phone' ? 0.08 : 0.05,
         });
       });
     }

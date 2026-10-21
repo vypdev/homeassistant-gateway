@@ -1,4 +1,4 @@
-import type { AuditEvent, Client, Discovery, GatewayBootstrap, OperatorPolicySaveResponse, OperatorServicePolicy, PolicyDecision } from './models';
+import type { AuditEvent, BootstrapCheck, CapabilityProbeReport, Client, Discovery, GatewayBootstrap, OperatorPolicySaveResponse, OperatorServicePolicy, PolicyDecision } from './models';
 
 export type CreateClientInput = {
   client_id: string;
@@ -14,10 +14,13 @@ export type PolicyEvaluationInput = {
   mutation: boolean;
 };
 
+export type BootstrapProgress = (check: BootstrapCheck) => void;
+
 export interface GatewayPort {
-  loadBootstrap(signal?: AbortSignal): Promise<GatewayBootstrap>;
+  loadBootstrap(signal?: AbortSignal, onProgress?: BootstrapProgress): Promise<GatewayBootstrap>;
   loadClients(signal?: AbortSignal): Promise<Client[]>;
   createClient(input: CreateClientInput, signal?: AbortSignal): Promise<Client & { token: string }>;
+  updateClientCapabilities(clientId: string, capabilities: string[], signal?: AbortSignal): Promise<Client>;
   revokeClient(clientId: string, signal?: AbortSignal): Promise<void>;
   deleteClient(clientId: string, signal?: AbortSignal): Promise<void>;
   rotateClient(clientId: string, signal?: AbortSignal): Promise<Client & { token: string }>;
@@ -25,6 +28,7 @@ export interface GatewayPort {
   loadAudit(decision: string): Promise<AuditEvent[]>;
   saveOperatorPolicy(selected: string[]): Promise<OperatorPolicySaveResponse>;
   evaluatePolicy(input: PolicyEvaluationInput): Promise<{ decision: PolicyDecision; reason: string }>;
+  probeCapabilities(clientId: string, entityId?: string, signal?: AbortSignal): Promise<CapabilityProbeReport>;
 }
 
 export type { GatewayBootstrap, OperatorServicePolicy };

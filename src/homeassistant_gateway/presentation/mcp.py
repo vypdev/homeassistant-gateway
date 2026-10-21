@@ -131,6 +131,9 @@ def create_mcp_app(
                 result["http_status"] = error.status
             return result
 
+    def unavailable_result(error: HomeAssistantUnavailable) -> dict[str, Any]:
+        return {"status": "unavailable", "reason": "home_assistant_unavailable", "code": error.code}
+
     def require_operator_mutation(capability: str, target: str | None = None, proposed: dict[str, Any] | None = None) -> tuple[dict[str, Any] | None, str | None]:
         token = _current_token.get()
         if token is None:
@@ -243,6 +246,8 @@ def create_mcp_app(
             return denied
         try:
             return operator_mutations.execute("ha.call_service", target, "ha.write.services", proposed, approval_id, approval_token, idempotency_key)  # type: ignore[union-attr]
+        except HomeAssistantUnavailable as error:
+            return unavailable_result(error)
         except (PermissionError, RuntimeError, ValueError) as error:
             return {"status": "denied", "reason": str(error)}
 

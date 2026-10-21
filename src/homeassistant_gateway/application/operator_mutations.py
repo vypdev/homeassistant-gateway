@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+from homeassistant_gateway.application.home_assistant import HomeAssistantUnavailable
 from homeassistant_gateway.application.operator_security import (
     OPERATOR_CAPABILITIES,
     OPERATOR_OPERATIONS,
@@ -103,7 +104,11 @@ class OperatorMutationService:
         if self._mutation_port is None:
             self._record(operation, target, "unsupported", "mutation_adapter_not_configured")
             return {"status": "unsupported", "reason": "mutation_adapter_not_configured", "execution": "disabled"}
-        result = self._mutation_port.execute(operation, target, proposed)
+        try:
+            result = self._mutation_port.execute(operation, target, proposed)
+        except HomeAssistantUnavailable:
+            self._record(operation, target, "allowed", "unavailable")
+            raise
         self._record(operation, target, "allowed", str(result.get("status", "unknown")))
         return result
 

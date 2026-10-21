@@ -61,7 +61,7 @@ class HomeAssistantCatalogPort(Protocol):
 
 
 class HomeAssistantServiceMutationPort(Protocol):
-    def call_service(self, domain: str, service: str, payload: dict[str, Any]) -> list[dict[str, Any]]: ...
+    def call_service(self, domain: str, service: str, payload: dict[str, Any]) -> list[dict[str, Any]] | dict[str, Any]: ...
 
 
 class HomeAssistantActivityPort(Protocol):

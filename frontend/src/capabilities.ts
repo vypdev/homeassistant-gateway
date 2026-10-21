@@ -5,6 +5,7 @@ export const CAPABILITY_DEFINITIONS: CapabilityDefinition[] = [
   { name: 'ha.read.entities', group: 'observer', label: 'Entity inventory', description: 'Read bounded entity and service inventory metadata.' },
   { name: 'ha.read.states', group: 'observer', label: 'Entity states', description: 'Read current states, optionally for one entity.' },
   { name: 'ha.read.automations', group: 'observer', label: 'Automations', description: 'Read automation entities and their current state.' },
+  { name: 'ha.read.automation_config', group: 'observer', label: 'Automation configuration', description: 'Read one bounded automation configuration and sanitized YAML.' },
   { name: 'ha.read.config_entries', group: 'observer', label: 'Configuration metadata', description: 'Read safe configuration and registry metadata without secrets.' },
   { name: 'ha.read.history', group: 'observer', label: 'History', description: 'Read bounded state history with optional filters.' },
   { name: 'ha.read.logbook', group: 'observer', label: 'Logbook', description: 'Read bounded logbook records with optional filters.' },
@@ -13,5 +14,5 @@ export const CAPABILITY_DEFINITIONS: CapabilityDefinition[] = [
   { name: 'ha.read.events', group: 'observer', label: 'Event catalog', description: 'Read the bounded event catalog; this does not fire events.' },
   { name: 'ha.write.services', group: 'operator', label: 'Service execution', description: 'Write capability; requires an explicit allowlist and approval.' },
   { name: 'ha.write.automations', group: 'operator', label: 'Automation changes', description: 'Write capability; requires an explicit allowlist and approval.' },
-  { name: 'ha.write.configuration', group: 'operator', label: 'Configuration changes', description: 'Write capability; requires an explicit allowlist and approval.' },
+  { name: 'ha.write.configuration', group: 'operator', label: 'Configuration changes', description: 'Reserved capability; no configuration mutation tool is registered yet.', implemented: false },
 ];

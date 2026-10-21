@@ -14,6 +14,7 @@ from homeassistant_gateway.application.clients import (
     ListClients,
     RevokeClient,
     RotateClient,
+    UpdateClientCapabilities,
 )
 from homeassistant_gateway.application.development import DevelopmentToolRunner
 from homeassistant_gateway.infrastructure.security.tokens import SecureTokenIssuer
@@ -107,10 +108,12 @@ def make_app(audit_sink=None, home_assistant=None, development_console_enabled=T
     clock = lambda: datetime(2026, 7, 31, tzinfo=UTC)
     return create_app(
         issue_client=IssueClient(repository, tokens, clock, operator_enabled=operator_enabled),
+        client_repository=repository,
         list_clients=ListClients(repository),
         revoke_client=RevokeClient(repository, clock),
         delete_client=DeleteClient(repository),
         rotate_client=RotateClient(repository, tokens),
+        update_client_capabilities=UpdateClientCapabilities(repository, operator_enabled=operator_enabled),
         authenticate_client=AuthenticateClient(repository, tokens),
         authorize_request=AuthorizeRequest(repository, operator_enabled=operator_enabled),
         audit_sink=audit_sink,
@@ -135,6 +138,68 @@ def request(app, method: str, url: str, json=None, headers=None) -> httpx.Respon
 
 def ingress_headers() -> dict[str, str]:
     return {"X-Remote-User-Id": "test-user"}
+
+
+def test_capability_update_keeps_existing_token_valid_during_development() -> None:
+    recorder = AuditRecorder()
+    app = make_app(audit_sink=recorder, home_assistant=FakeHomeAssistant())
+    issued = request(app, "POST", "/api/clients", headers=ingress_headers(), json={
+        "client_id": "capability-client",
+        "display_name": "Capability client",
+        "profile": "observer",
+        "capabilities": ["ha.read.automations"],
+    })
+    assert issued.status_code == 201
+
+    updated = request(app, "PATCH", "/api/clients/capability-client/capabilities", headers={**ingress_headers(), "X-Request-Id": "req-capability-update"}, json={
+        "capabilities": ["ha.read.automations", "ha.read.automation_config"],
+    })
+
+    assert updated.status_code == 200
+    capability_events = [event for event in recorder.events if event.action == "client.capabilities.update"]
+    assert capability_events
+    assert capability_events[0].target == "capability-client"
+    assert capability_events[0].outcome == "updated"
+    assert set(updated.json()["capabilities"]) == {"ha.read.automations", "ha.read.automation_config"}
+    token = issued.json()["token"]
+    discovery = request(app, "GET", "/api/mcp/discovery", headers={**ingress_headers(), "Authorization": f"Bearer {token}"})
+    assert discovery.status_code == 200
+    assert "ha.read.automation_config" in discovery.json()["capabilities"]
+
+
+def test_capability_update_rejects_unknown_client() -> None:
+    app = make_app(home_assistant=FakeHomeAssistant())
+    response = request(app, "PATCH", "/api/clients/missing/capabilities", headers=ingress_headers(), json={"capabilities": []})
+    assert response.status_code == 404
+    assert response.json()["detail"] == "client_not_found"
+
+
+def test_capability_probe_runs_read_and_does_not_execute_writes() -> None:
+    app = make_app(home_assistant=FakeHomeAssistant(), operator_enabled=True)
+    issued = request(
+        app,
+        "POST",
+        "/api/clients",
+        json={
+            "client_id": "probe-client",
+            "display_name": "Probe client",
+            "profile": "operator",
+            "capabilities": ["ha.read.automation_config", "ha.write.services", "ha.write.configuration"],
+            "operator_services": [],
+        },
+        headers=ingress_headers(),
+    )
+    assert issued.status_code == 201
+
+    response = request(app, "POST", "/api/clients/probe-client/capability-probe", headers=ingress_headers())
+
+    assert response.status_code == 200
+    results = {item["capability"]: item for item in response.json()["results"]}
+    assert results["ha.read.automation_config"]["status"] == "ok"
+    assert results["ha.read.automation_config"]["sample_entity_id"] == "automation.test"
+    assert results["ha.write.services"]["status"] == "approval_required"
+    assert results["ha.write.services"]["reason"] == "no_mutation_executed"
+    assert results["ha.write.configuration"]["status"] == "unsupported"
 
 
 def test_development_catalog_requires_ingress_and_lists_probes() -> None:

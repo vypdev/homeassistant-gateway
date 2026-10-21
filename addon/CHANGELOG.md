@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.5.35
+
+- Support Home Assistant response services through the operator service adapter by requesting `return_response` for `todo.get_items`.
+- Validate exactly one `todo.*` entity target and the exact bounded response envelope, including the known nullable-string item fields (`summary`, `uid`, `status`, `due`, `description` and `completed`), a 10,000-item limit, a 2 MiB serialized-response limit and a 100,000-character string-field limit.
+- Map malformed or unavailable Home Assistant service responses to sanitized public `status=unavailable` while preserving distinct authorization denials and the intentional `shopping_list.*` no-entity path.
+- Add regression coverage for response-service transport limits, malformed/wrong-entity responses, authorized MCP retrieval, upstream status mapping and shopping-list authorization.
+
+## 0.5.34
+
+- Pin Stable and Edge runtime images to `python:3.12-slim-bookworm` to avoid floating base-image vulnerability drift.
+- Rebuild release images with the corrected Debian base before the Trivy gate.
+
+## 0.5.33
+
+- Document the verified Home Assistant `todo` and `shopping_list` entity and service contracts.
+- Document operator service grants, task and shopping-list workflows, UI locations, safe examples and verification boundaries.
+- Record the verified use of multiple Home Assistant task lists as a canonical household task source.
+
+## 0.5.32
+
+- Align the production frontend with Home Assistant visual tokens, typography, surfaces, tabs and semantic button geometry across the application and shared UI primitives.
+- Add the embedded Edge-only Storybook catalog with reusable production primitives, responsive stories and visual/UX contracts.
+- Harden the embedded catalog security boundary with same-origin framing and narrowly scoped Storybook CSP while retaining strict headers for normal routes.
+- Add explicit operator service and automation controls with global policy ceilings, per-client grants, approval gates, idempotency and audit-safe execution.
+- Publish Stable and Edge from `main`, with Stable on host port `18099` and Edge on host port `18100`.
+
 ## 0.5.31
 
 - Align the frontend shell with the documented Home Assistant visual line: remove decorative dot-field/gradient/glassmorphism effects, use solid surfaces, moderate card elevation, medium-radius controls, and semantic spacing tokens.

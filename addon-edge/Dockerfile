@@ -2,7 +2,7 @@
 
 # Edge images are built by GitHub Actions from the develop checkout.
 # Supervisor consumes one published multi-architecture manifest from config.yaml.
-FROM python:3.12-slim AS builder
+FROM python:3.12-slim-bookworm AS builder
 WORKDIR /src
 COPY . /src
 
@@ -24,7 +24,7 @@ RUN corepack enable \
     && VITE_EDGE_CHANNEL=true corepack pnpm run build \
     && corepack pnpm run storybook:build
 
-FROM python:3.12-slim
+FROM python:3.12-slim-bookworm
 ARG BUILD_VERSION=edge
 LABEL io.hass.version="${BUILD_VERSION}" \
       io.hass.type="app"
