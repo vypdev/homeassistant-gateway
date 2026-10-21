@@ -59,9 +59,8 @@ original HOME is insufficient. The declaration fails closed; it installs nothing
 and [upstream #620](https://github.com/vypdev/copilot/issues/620) document this
 operator prerequisite. Provision and verify the runner environment before
 retrying branch-sync or autofix; do not weaken checks or change generated YAML.
-Set the non-secret Repository Variable `COPILOT_BOT_LOGIN` to the PAT bot's actual
-login (`vypbot` in the observed installation) to reject its own events before
-allocating a runner.
+The non-secret Repository Variable `COPILOT_BOT_LOGIN=vypbot` is configured to
+reject the PAT bot's own events before allocating a runner.
 
 ## Stable publication
 
@@ -107,12 +106,14 @@ reconciliation/maintainer PR from `master` into `develop` before starting new
 feature work; retain all production changes and the installation. Do not reset
 or force-push `develop`. Complete these deployment prerequisites before the first launch:
 
-- Enable repository auto-merge and keep merge commits enabled. At inspection,
-  merge commits were enabled and auto-merge was disabled; without auto-merge,
-  pending promotion PRs can require a maintainer to merge them.
-- Require the intended `test`, `frontend`, and `app-packaging` checks from GitHub
-  Actions on `develop` as well as `master`, through normal maintainer policy
-  review. At inspection, only `master` had an active required-check ruleset.
+- Repository auto-merge and merge commits are enabled. This setting permits
+  Copilot to request native auto-merge for its authorized operations; it does not
+  itself merge the maintenance PR or launch a release.
+- Active rulesets on both `master` and `develop` require `test`, `frontend`, and
+  `app-packaging`, bound to GitHub Actions (integration 15368), with strict
+  up-to-date validation. The development ruleset also requires a PR, prevents
+  deletion/force pushes and has no bypass actors. It preserves production
+  review requirements rather than introducing an extra approval gate.
 - Verify the PAT bot is distinct from the launcher's identity and has Contents,
   Issues, Pull requests and Actions write access. Secret metadata alone is not
   proof of those runtime grants.
@@ -121,7 +122,10 @@ or force-push `develop`. Complete these deployment prerequisites before the firs
 
 The expected configuration in `.copilot/setup.yml` explicitly retains the
 inherited automatic mode and production-lineage reconciliation. No required
-check is bypassed and this PR does not launch or merge a deployment.
+check is bypassed and this PR does not launch or merge a deployment. Repository
+settings were applied on 2026-10-21 under explicit maintainer authorization; the
+`Develop` ruleset is 25537542. Runtime provisioning still requires access to and verification on the actual
+self-hosted pool; it is not certified by these repository settings.
 
 For hotfixes originating at a tag older than this installation, backport the
 reviewed tooling commit onto the exact Action-managed hotfix branch before its
