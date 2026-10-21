@@ -4,11 +4,13 @@ on:
   pull_request:
     branches:
       - develop
-      - main
+      - master
+  merge_group:
+    types: [checks_requested]
   push:
     branches:
       - develop
-      - main
+      - master
 
 concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
@@ -19,7 +21,7 @@ permissions:
 
 jobs:
   test:
-    runs-on: [self-hosted, X64, Linux, coolify]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -33,10 +35,12 @@ jobs:
         run: python -m pytest -m integration tests/test_fake_home_assistant_integration.py
       - name: Audit Python dependencies
         run: python -m pip install --quiet --upgrade 'setuptools>=83.0.0' pip-audit && python -m pip_audit --skip-editable
+      - name: Validate specification contracts
+        run: python -m scripts.check_specifications
       - name: Run live smoke harness (no live target in CI)
         run: python scripts/live_smoke.py
   app-packaging:
-    runs-on: [self-hosted, X64, Linux, coolify]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -50,7 +54,7 @@ jobs:
         run: docker build --file addon-edge/Dockerfile --tag homeassistant-gateway-edge:ci .
 
   frontend:
-    runs-on: [self-hosted, X64, Linux, coolify]
+    runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: frontend
@@ -69,6 +73,10 @@ jobs:
         run: python scripts/check_package_manager.py
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
+      - name: Verify isolated pnpm tooling
+        run: pnpm run test:tooling
+      - name: Lint design contract
+        run: pnpm exec design.md lint ../DESIGN.md
       - name: Test frontend runtime helpers
         run: pnpm run test:runtime
       - name: Check frontend architecture boundaries

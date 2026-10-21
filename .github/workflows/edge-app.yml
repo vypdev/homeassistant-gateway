@@ -3,7 +3,8 @@ name: Edge App
 on:
   push:
     branches:
-      - main
+      - master
+      - develop
     paths:
       - addon-edge/**
       - frontend/**
@@ -26,13 +27,12 @@ permissions:
 jobs:
   build-and-publish:
     name: Build Edge (multi-architecture)
-    runs-on: [self-hosted, X64, Linux, coolify]
+    runs-on: ubuntu-latest
 
     steps:
-      - name: Check out main source
+      - name: Check out the triggering source
         uses: actions/checkout@v7
         with:
-          ref: main
           fetch-depth: 1
 
       - name: Read Edge development version
