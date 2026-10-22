@@ -1,13 +1,50 @@
-# Created once by Copilot setup. This action and its assets belong to your project.
-# Replace the placeholder with reviewed runtime/dependency setup, then merge onto MAIN_BRANCH.
-name: Prepare project verification
-description: Configure project dependencies before enabling VERIFICATION_SETUP.
+name: Prepare Gateway verification
+description: Install Python tests and the pnpm frontend for the candidate checkout.
 runs:
   using: composite
   steps:
-    - name: Configure project verification dependencies
+    - name: Set up Python 3.11
+      id: python
+      uses: actions/setup-python@v7
+      with:
+        python-version: '3.11'
+        update-environment: false
+    - name: Install candidate Python test dependencies in the private profile
       shell: bash
+      working-directory: ${{ github.workspace }}
+      env:
+        PYTHON_EXECUTABLE: ${{ steps.python.outputs.python-path }}
       run: |
-        printf '%s\n' 'Configure .github/actions/copilot-verification-setup/action.yml with your project dependencies before enabling VERIFICATION_SETUP.'
-        printf '%s\n' 'Replace this failing placeholder, review and merge it onto the configured MAIN_BRANCH, then run a real verification.'
-        exit 1
+        "$PYTHON_EXECUTABLE" - <<'PY'
+        import os
+        from pathlib import Path
+        import subprocess
+        import venv
+
+        destination = Path(os.environ['HOME']) / 'verification-venv'
+        venv.create(destination, with_pip=True)
+        tools = destination / ('Scripts' if os.name == 'nt' else 'bin')
+        python = tools / ('python.exe' if os.name == 'nt' else 'python')
+        subprocess.check_call([
+            str(python), '-m', 'pip', 'install', '--no-cache-dir',
+            '--disable-pip-version-check', '.[test]',
+        ])
+        with open(os.environ['GITHUB_PATH'], 'a', encoding='utf-8') as paths:
+            print(tools, file=paths)
+        PY
+    - name: Set up Node 22
+      uses: actions/setup-node@v7
+      with:
+        node-version: '22'
+        package-manager-cache: false
+    - name: Set up pnpm in the private profile
+      uses: pnpm/action-setup@v5
+      with:
+        version: 11.15.1
+        package_json_file: frontend/package.json
+        dest: ${{ env.HOME }}/pnpm
+        standalone: false
+    - name: Install frontend dependencies from the candidate lockfile
+      shell: bash
+      working-directory: ${{ github.workspace }}/frontend
+      run: pnpm install --frozen-lockfile
