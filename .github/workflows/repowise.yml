@@ -15,7 +15,9 @@ permissions:
 jobs:
   code-health:
     name: RepoWise code health
-    runs-on: [self-hosted, X64, Linux, coolify]
+    runs-on:
+      group: vypdev
+      labels: [self-hosted, codex, Linux]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5

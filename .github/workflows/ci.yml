@@ -50,7 +50,9 @@ jobs:
           pnpm --dir frontend run build
           git diff --check
   test:
-    runs-on: [self-hosted, X64, Linux, coolify]
+    runs-on:
+      group: vypdev
+      labels: [self-hosted, codex, Linux]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -67,7 +69,9 @@ jobs:
       - name: Run live smoke harness (no live target in CI)
         run: python scripts/live_smoke.py
   app-packaging:
-    runs-on: [self-hosted, X64, Linux, coolify]
+    runs-on:
+      group: vypdev
+      labels: [self-hosted, codex, Linux]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -81,7 +85,9 @@ jobs:
         run: docker build --file addon-edge/Dockerfile --tag homeassistant-gateway-edge:ci .
 
   frontend:
-    runs-on: [self-hosted, X64, Linux, coolify]
+    runs-on:
+      group: vypdev
+      labels: [self-hosted, codex, Linux]
     defaults:
       run:
         working-directory: frontend
