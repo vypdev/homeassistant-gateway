@@ -1,12 +1,13 @@
 # Gateway verification dependencies
 
-This project-owned composite prepares Python 3.11, an isolated virtual environment
+This project-owned composite prepares a managed Python 3.11 with uv 0.13.5, an isolated virtual environment
 with the candidate's test dependencies, Node 22 and pnpm 11.15.1. Frontend packages
 come from `frontend/pnpm-lock.yaml` with `--frozen-lockfile`.
 
 Copilot 3.10.0 runs the action from trusted `master` before each configured real
 verification command. Every command has a fresh private HOME; the Python environment
-and pnpm installation stay inside it. The setup exports tools through `GITHUB_PATH`;
+and pnpm installation stay inside it. The managed interpreter does not depend on
+the runner's `LD_LIBRARY_PATH`. The setup exports tools through `GITHUB_PATH`;
 it does not need the bot PAT, model credentials, live Home Assistant, or production
 configuration. Keep the action and `.copilot/verification-prerequisites.json` aligned
 with the runtimes used by CI. External native libraries and Docker remain runner

@@ -3,35 +3,23 @@ description: Install Python tests and the pnpm frontend for the candidate checko
 runs:
   using: composite
   steps:
-    - name: Set up Python 3.11
-      id: python
-      uses: actions/setup-python@v7
+    - name: Set up uv for a self-contained Python installation
+      uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       with:
-        python-version: '3.11'
-        update-environment: false
+        version: 0.13.5
+        enable-cache: false
     - name: Install candidate Python test dependencies in the private profile
       shell: bash
       working-directory: ${{ github.workspace }}
       env:
-        PYTHON_EXECUTABLE: ${{ steps.python.outputs.python-path }}
+        UV_PYTHON_INSTALL_DIR: ${{ env.HOME }}/verification-python
+        UV_CACHE_DIR: ${{ env.HOME }}/uv-cache
       run: |
-        "$PYTHON_EXECUTABLE" - <<'PY'
-        import os
-        from pathlib import Path
-        import subprocess
-        import venv
-
-        destination = Path(os.environ['HOME']) / 'verification-venv'
-        venv.create(destination, with_pip=True)
-        tools = destination / ('Scripts' if os.name == 'nt' else 'bin')
-        python = tools / ('python.exe' if os.name == 'nt' else 'python')
-        subprocess.check_call([
-            str(python), '-m', 'pip', 'install', '--no-cache-dir',
-            '--disable-pip-version-check', '.[test]',
-        ])
-        with open(os.environ['GITHUB_PATH'], 'a', encoding='utf-8') as paths:
-            print(tools, file=paths)
-        PY
+        uv python install 3.11
+        uv venv --managed-python --python 3.11 "$HOME/verification-venv"
+        uv pip install --no-cache --python "$HOME/verification-venv/bin/python" '.[test]'
+        "$HOME/verification-venv/bin/python" --version
+        printf '%s\n' "$HOME/verification-venv/bin" >> "$GITHUB_PATH"
     - name: Set up Node 22
       uses: actions/setup-node@v7
       with:
