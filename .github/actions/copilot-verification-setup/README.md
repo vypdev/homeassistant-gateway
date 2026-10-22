@@ -5,8 +5,10 @@ with the candidate's test dependencies, Node 22 and pnpm 11.15.1. Frontend packa
 come from `frontend/pnpm-lock.yaml` with `--frozen-lockfile`.
 
 Copilot 3.10.0 runs the action from trusted `master` before each configured real
-verification command. Every command has a fresh private HOME; the Python environment
-and pnpm installation stay inside it. The managed interpreter does not depend on
+verification command. The native step's `env` supplies a fresh private HOME for
+every command. Other callers must set a private HOME in the step environment or
+via `GITHUB_ENV` in a preceding step, as this CI does. The Python environment and
+pnpm installation stay inside it. The managed interpreter does not depend on
 the runner's `LD_LIBRARY_PATH`. The setup exports tools through `GITHUB_PATH`;
 it does not need the bot PAT, model credentials, live Home Assistant, or production
 configuration. Keep the action and `.copilot/verification-prerequisites.json` aligned
