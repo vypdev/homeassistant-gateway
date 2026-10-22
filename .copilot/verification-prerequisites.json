@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "runtimes": {
+    "python": "3.11",
+    "node": "22",
+    "pnpm": "11.15.1"
+  }
+}
