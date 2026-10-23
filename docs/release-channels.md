@@ -127,3 +127,5 @@ The ARM64 check runs the same dependency installation and pytest command as the
 stable release job before exercising Docker/QEMU/Buildx. A Docker-only smoke is
 therefore insufficient to declare release prerequisites ready. These checks do
 not publish an image or create a release.
+
+Edge SHA tags and the OCI revision label identify the checked-out `main` commit, including manual runs dispatched from another branch. For fork contributions, maintainers bring reviewed changes into a same-repository branch and run full CI there; skipped fork jobs are not validation evidence.
