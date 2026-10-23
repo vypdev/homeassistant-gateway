@@ -30,8 +30,8 @@ Create a private deployment directory and copy the example configuration:
 ```bash
 mkdir -p ~/homeassistant-gateway-standalone
 cd ~/homeassistant-gateway-standalone
-curl -fsSLO https://raw.githubusercontent.com/vypdev/homeassistant-gateway/main/deploy/standalone/compose.yaml
-curl -fsSLO https://raw.githubusercontent.com/vypdev/homeassistant-gateway/main/deploy/standalone/.env.example
+curl -fsSLO https://raw.githubusercontent.com/vypdev/homeassistant-gateway/master/deploy/standalone/compose.yaml
+curl -fsSLO https://raw.githubusercontent.com/vypdev/homeassistant-gateway/master/deploy/standalone/.env.example
 cp .env.example .env
 chmod 600 .env
 ```
@@ -61,7 +61,7 @@ curl --fail http://127.0.0.1:8099/ready
 
 ## MCP and administrative access
 
-Standalone deployment has no Home Assistant Ingress. Protect both the MCP endpoint and the administrative UI with a private network, VPN, firewall, or a TLS/authenticated reverse proxy before exposing them outside a trusted LAN.
+Standalone deployment has no Home Assistant Ingress. The current Compose file binds the gateway only to host loopback. For remote administrative access, including from the LAN, keep this binding and use a TLS/authenticated reverse proxy. Authenticate UI and `/api/*` requests, strip caller-supplied `X-Remote-User-ID` headers, and derive that identity from the authenticated proxy session. A caller-supplied identity header is not a credential. MCP still requires its separate gateway bearer tokens and capability policy.
 
 Use a separately issued gateway client token for MCP authentication. Do not use the Home Assistant token as a gateway client credential.
 
@@ -83,19 +83,31 @@ Attach the Home Assistant and gateway services to that network in their respecti
 
 ## Persistence, backup, and restore
 
-The gateway stores client, audit, and development report state in the named `gateway-data` volume. Stop the gateway before taking a consistent archive:
+The gateway stores client, audit, and development report state in the Compose-managed `gateway-data` volume. Its actual Docker name includes the Compose project name unless explicitly overridden. Use the existing service container's mounts so the backup targets the correct volume without creating an unrelated empty one.
+
+Run this from the same deployment directory and with the same Compose project settings used to start the gateway. The subshell stops the gateway for a consistent archive and restarts it on exit only if it was running beforehand:
 
 ```bash
-docker compose -f compose.yaml stop homeassistant-gateway
-docker run --rm \
-  -v gateway-data:/source:ro \
-  -v "$PWD":/backup \
-  alpine:3.22 \
-  tar czf /backup/gateway-data-$(date -u +%Y%m%dT%H%M%SZ).tar.gz -C /source .
-docker compose -f compose.yaml start homeassistant-gateway
+(
+  set -eu
+  umask 077
+  container_id="$(docker compose -f compose.yaml ps --all --quiet homeassistant-gateway)"
+  [ -n "$container_id" ] || { echo 'Create the gateway service before backing it up.' >&2; exit 1; }
+  was_running="$(docker inspect --format '{{.State.Running}}' "$container_id")"
+  backup_dir="$(mktemp -d "$HOME/homeassistant-gateway-backup.XXXXXX")"
+  trap 'if [ "$was_running" = true ]; then docker compose -f compose.yaml start homeassistant-gateway; fi' EXIT
+  docker compose -f compose.yaml stop homeassistant-gateway
+  docker run --rm --network none \
+    --volumes-from "$container_id:ro" \
+    alpine:3.22 \
+    tar czf - -C /data . > "$backup_dir/gateway-data.tar.gz.partial"
+  tar tzf "$backup_dir/gateway-data.tar.gz.partial" >/dev/null
+  mv "$backup_dir/gateway-data.tar.gz.partial" "$backup_dir/gateway-data.tar.gz"
+  printf 'Backup saved: %s\n' "$backup_dir/gateway-data.tar.gz"
+)
 ```
 
-Store the archive outside the repository with restricted permissions. Restore only after stopping the gateway and verifying the archive source and destination. Do not overwrite an existing volume without a backup and an explicit recovery decision.
+The backup directory is private (0700), and the archive is created with private permissions (0600), outside the repository. A failed archive keeps the `.partial` suffix and is not reported as successful. Confirm the archive contains the expected gateway state, then copy it to your protected backup storage. Restore only after stopping the gateway and verifying the archive source and destination. Do not overwrite an existing volume without a backup and an explicit recovery decision.
 
 ## Updates and rollback
 
