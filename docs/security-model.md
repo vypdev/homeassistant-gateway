@@ -100,3 +100,5 @@ Before enabling any operator capability:
 Standalone Compose publishes administrative HTTP only on host loopback. Remote UI and `/api/*` access requires a TLS/authenticated reverse proxy that strips incoming identity headers and sets them from its authenticated session. `X-Remote-User-ID` is trusted proxy metadata, not a credential supplied by a remote caller. MCP bearer authentication and capability checks remain required.
 
 Credential-health checks send authentication through curl's stdin configuration, remove that credential from the curl environment, and discard response bodies. Keys do not enter command arguments or Google query URLs. Probes ignore host curlrc configuration, reject redirects, enforce a 20-second request limit, and report sanitized failures. OpenRouter checks the authenticated current-key endpoint instead of the public model catalog.
+
+MCP service execution and automation execution return the same sanitized `unavailable` response for an upstream transport failure. Transport failures are not represented as authorization denials; raw upstream paths and response bodies are omitted.

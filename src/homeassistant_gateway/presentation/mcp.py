@@ -276,6 +276,8 @@ def create_mcp_app(
         try:
             proposed = {"entity_id": entity_id, "action": action}
             return operator_mutations.execute("ha.update_automation", entity_id, "ha.write.automations", proposed, approval_id, approval_token, idempotency_key)  # type: ignore[union-attr]
+        except HomeAssistantUnavailable as error:
+            return unavailable_result(error)
         except (PermissionError, RuntimeError, ValueError) as error:
             return {"status": "denied", "reason": str(error)}
 

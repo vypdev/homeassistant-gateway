@@ -60,7 +60,9 @@ jobs:
         run: |
           version="$(sed -n 's/^version: *"\([^"]*\)"$/\1/p' addon-edge/config.yaml)"
           test -n "$version"
+          source_sha="$(git rev-parse HEAD)"
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "source_sha=$source_sha" >> "$GITHUB_OUTPUT"
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v4
@@ -87,10 +89,10 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository }}-edge:edge
             ghcr.io/${{ github.repository }}-edge:${{ steps.edge-version.outputs.version }}
-            ghcr.io/${{ github.repository }}-edge:edge-${{ github.sha }}
+            ghcr.io/${{ github.repository }}-edge:edge-${{ steps.edge-version.outputs.source_sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ steps.edge-version.outputs.version }}
-            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.revision=${{ steps.edge-version.outputs.source_sha }}
           cache-from: type=gha,scope=edge
           cache-to: type=gha,mode=max,scope=edge
