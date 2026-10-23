@@ -43,9 +43,15 @@ def published_local_url(container: str, container_port: int) -> str:
     return f"http://127.0.0.1:{parsed.port}"
 
 
+class _RejectRedirects(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
 def require_protected_health_details(base: str) -> None:
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _RejectRedirects())
     try:
-        with urllib.request.urlopen(base + "/api/health/details", timeout=10) as response:
+        with opener.open(base + "/api/health/details", timeout=10) as response:
             status = response.status
     except urllib.error.HTTPError as error:
         status = error.code
