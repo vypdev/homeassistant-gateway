@@ -69,21 +69,48 @@ jobs:
       - name: Run live smoke harness (no live target in CI)
         run: python scripts/live_smoke.py
   app-packaging:
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on:
+      group: vypdev
+      labels: [self-hosted, macOS, ARM64]
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.11"
+      - name: Prepare private Docker client
+        uses: ./.github/actions/prepare-docker
+        timeout-minutes: 2
+      - name: Set up packaging Python
+        uses: ./.github/actions/setup-release-python
+        timeout-minutes: 5
       - name: Install packaging validation dependency
         run: python -m pip install --quiet 'PyYAML>=6.0,<7.0' 'Pillow>=13.0.0,<14.0'
       - name: Validate stable and Edge app contracts
         run: python scripts/check_app_channels.py
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
       - name: Build Edge app image from the checked-out develop source
-        run: docker build --file addon-edge/Dockerfile --tag homeassistant-gateway-edge:ci .
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: addon-edge/Dockerfile
+          platforms: linux/amd64
+          tags: homeassistant-gateway-edge:ci
+          push: false
+          outputs: type=oci,dest=${{ runner.temp }}/gateway-edge-ci.oci.tar
 
   frontend:
-    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on:
+      group: vypdev
+      labels: [self-hosted, codex, Linux]
+    timeout-minutes: 30
+    # The browser suites use fixed ports; queue runs instead of sharing servers.
+    concurrency:
+      group: gateway-frontend-browsers-${{ github.repository }}
+      cancel-in-progress: false
+      queue: max
     defaults:
       run:
         working-directory: frontend
@@ -95,8 +122,15 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
-      - name: Enable pnpm with Corepack
-        run: corepack enable && corepack install
+      - name: Set up pnpm in the job directory
+        uses: pnpm/action-setup@v5
+        with:
+          version: 11.15.1
+          package_json_file: frontend/package.json
+          dest: ${{ runner.temp }}/gateway-pnpm
+          standalone: false
+      - name: Isolate browser downloads in the job directory
+        run: printf 'PLAYWRIGHT_BROWSERS_PATH=%s/gateway-playwright\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
       - name: Enforce pnpm package-manager policy
         working-directory: .
         run: python scripts/check_package_manager.py
@@ -117,13 +151,6 @@ jobs:
         run: pnpm run check:storybook
       - name: Build Storybook component catalog
         run: pnpm run storybook:build
-      - name: Configure bounded Ubuntu package downloads
-        run: |
-          # Prefer Ubuntu's primary archive while the Azure mirror is degraded.
-          printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' 'http://azure.archive.ubuntu.com/ubuntu/' \
-            | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
-          printf '%s\n' 'Acquire::Retries "1";' 'Acquire::http::Timeout "15";' 'Acquire::https::Timeout "15";' \
-            | sudo tee /etc/apt/apt.conf.d/zz-gateway-network >/dev/null
       - name: Install Playwright browsers
         timeout-minutes: 10
         run: pnpm exec playwright install --with-deps chromium firefox webkit
@@ -133,13 +160,19 @@ jobs:
         run: pnpm run build
       - name: Run browser smoke against the development server
         run: pnpm run test:e2e
-      - name: Start production preview
-        run: |
-          pnpm exec vite preview --host 127.0.0.1 --port 4174 > /tmp/gateway-vite-preview.log 2>&1 &
-          for attempt in $(seq 1 30); do curl --fail --silent http://127.0.0.1:4174/ >/dev/null && exit 0; sleep 1; done
-          cat /tmp/gateway-vite-preview.log
-          exit 1
       - name: Run browser smoke against the production bundle
-        env:
-          PW_BASE_URL: http://127.0.0.1:4174
-        run: pnpm run test:e2e
+        run: |
+          preview_log="$RUNNER_TEMP/gateway-vite-preview.log"
+          node node_modules/vite/bin/vite.js preview --host 127.0.0.1 --port 4174 > "$preview_log" 2>&1 &
+          preview_pid=$!
+          trap 'kill "$preview_pid" 2>/dev/null || true' EXIT
+          preview_ready=false
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --max-time 2 http://127.0.0.1:4174/ >/dev/null; then
+              preview_ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$preview_ready" != true ]; then cat "$preview_log"; exit 1; fi
+          PW_BASE_URL=http://127.0.0.1:4174 pnpm run test:e2e
