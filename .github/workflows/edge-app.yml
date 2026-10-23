@@ -26,7 +26,7 @@ permissions:
 jobs:
   build-and-publish:
     name: Build Edge (multi-architecture)
-    runs-on: [self-hosted, X64, Linux, coolify]
+    runs-on: [self-hosted, codex, Linux]
 
     steps:
       - name: Check out main source

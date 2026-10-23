@@ -27,7 +27,7 @@ permissions:
 
 jobs:
   release:
-    runs-on: [self-hosted, X64, Linux, coolify]
+    runs-on: [self-hosted, codex, Linux]
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
