@@ -1,3 +1,5 @@
+import type { BootstrapCheck } from './models';
+
 export type GatewayErrorCode =
   | 'network_error'
   | 'unauthorized'
@@ -30,6 +32,14 @@ export class GatewayError extends Error {
   ) {
     super(message);
     this.name = 'GatewayError';
+  }
+}
+
+export class BootstrapError extends GatewayError {
+  constructor(readonly checks: BootstrapCheck[]) {
+    const failed = checks.filter((check) => check.status === 'failed');
+    super('server_error', `${failed.length} bootstrap check${failed.length === 1 ? '' : 's'} failed`);
+    this.name = 'BootstrapError';
   }
 }
 

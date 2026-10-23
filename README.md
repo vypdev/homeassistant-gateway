@@ -7,7 +7,7 @@
 
 The default surface is **observer/read-only**: inventory, states, registries, history, logbook, diagnostics and metadata. Administration is served through Home Assistant Ingress, while direct MCP transport is protected by a host allowlist, Bearer token, client identity and capabilities.
 
-> **Current status:** `v0.5.13`. Operator provisioning follows the effective add-on flag, but **no operator mutation is enabled yet**. No MCP write tools are registered.
+> **Current status:** `v0.5.35`. Stable defaults to observer/read-only operation. Operator service and automation controls are available only when explicitly enabled, allowlisted, granted to an operator client and approved per operation.
 
 ## How to use it
 
@@ -88,6 +88,9 @@ The effective list is always verified with `tools/list`; connectivity does not p
 ### Consumer guides
 
 - [Consumer guide](docs/consumer/README.md) — installation, surfaces, tools and minimum verification.
+- [Home Assistant Container deployment](docs/consumer/home-assistant-container.md) — independent Docker/Compose deployment, networking, backups, updates, rollback and token rotation.
+- [Deployment targets](docs/deployment-targets.md) — Supervisor/App versus standalone Container behavior and security boundaries.
+- [Tasks and shopping lists](docs/consumer/tasks-and-shopping-lists.md) — verified `todo` and `shopping_list` entities, services, permissions and safe operating model.
 - [Configure an MCP client](docs/consumer/configure-mcp-client.md) — endpoint, tokens, capabilities, rotation and revocation.
 - [Troubleshooting](docs/consumer/troubleshooting.md) — symptoms, causes and checks.
 - [OpenClaw and Hermes integration](docs/integration-with-openclaw-and-hermes.md) — agent profiles and connectivity.

@@ -1,5 +1,5 @@
-import type { Client, GatewayBootstrap, PolicyDecision } from './models';
-import type { CreateClientInput, GatewayPort, PolicyEvaluationInput } from './gateway-port';
+import type { CapabilityProbeReport, Client, GatewayBootstrap, PolicyDecision } from './models';
+import type { BootstrapProgress, CreateClientInput, GatewayPort, PolicyEvaluationInput } from './gateway-port';
 import type { AuditEvent, Discovery } from './models';
 import { createOperatorPolicyService, type OperatorPolicyService } from './operator-policy-service';
 
@@ -8,9 +8,10 @@ export type ClientMutationResult = {
 };
 
 export interface GatewayController {
-  refresh(signal?: AbortSignal): Promise<GatewayBootstrap>;
+  refresh(signal?: AbortSignal, onProgress?: BootstrapProgress): Promise<GatewayBootstrap>;
   refreshClients(signal?: AbortSignal): Promise<Client[]>;
   createClient(input: CreateClientInput, signal?: AbortSignal): Promise<ClientMutationResult>;
+  updateClientCapabilities(clientId: string, capabilities: string[], signal?: AbortSignal): Promise<Client>;
   revokeClient(clientId: string, signal?: AbortSignal): Promise<void>;
   deleteClient(clientId: string, signal?: AbortSignal): Promise<void>;
   rotateClient(clientId: string, signal?: AbortSignal): Promise<ClientMutationResult>;
@@ -18,15 +19,17 @@ export interface GatewayController {
   loadAudit(decision: string): Promise<AuditEvent[]>;
   saveOperatorPolicy(selected: string[]): Promise<void>;
   evaluatePolicy(input: PolicyEvaluationInput): Promise<{ decision: PolicyDecision; reason: string }>;
+  probeCapabilities(clientId: string, entityId?: string, signal?: AbortSignal): Promise<CapabilityProbeReport>;
 }
 
 export const createGatewayController = (gatewayPort: GatewayPort, operatorPolicy: OperatorPolicyService = createOperatorPolicyService(async (selected) => { await gatewayPort.saveOperatorPolicy(selected); })): GatewayController => ({
-  refresh: (signal) => gatewayPort.loadBootstrap(signal),
+  refresh: (signal, onProgress) => gatewayPort.loadBootstrap(signal, onProgress),
   refreshClients: (signal) => gatewayPort.loadClients(signal),
   async createClient(input, signal) {
     const client = await gatewayPort.createClient(input, signal);
     return { client };
   },
+  updateClientCapabilities: (clientId, capabilities, signal) => gatewayPort.updateClientCapabilities(clientId, capabilities, signal),
   revokeClient: (clientId, signal) => gatewayPort.revokeClient(clientId, signal),
   deleteClient: (clientId, signal) => gatewayPort.deleteClient(clientId, signal),
   async rotateClient(clientId, signal) {
@@ -37,4 +40,5 @@ export const createGatewayController = (gatewayPort: GatewayPort, operatorPolicy
   loadAudit: (decision) => gatewayPort.loadAudit(decision),
   saveOperatorPolicy: (selected) => operatorPolicy.save(selected),
   evaluatePolicy: (input) => gatewayPort.evaluatePolicy(input),
+  probeCapabilities: (clientId, entityId, signal) => gatewayPort.probeCapabilities(clientId, entityId, signal),
 });

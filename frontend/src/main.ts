@@ -2,7 +2,7 @@ import { LitElement, html } from 'lit';
 import { downloadDiagnostic as downloadDiagnosticFile, copyDiagnostic as copyDiagnosticFile, copyProblemReports as copyProblemReportsFile } from './diagnostics-service';
 import { createGatewayAppDependencies } from './composition-root';
 import type { GatewayController } from './gateway-controller';
-import { GatewayError } from './gateway-errors';
+import { BootstrapError, GatewayError } from './gateway-errors';
 import { CAPABILITY_DEFINITIONS } from './capabilities';
 import { capabilitiesAfterProfileChange, capabilitiesForProfile, toggleCapability as applyCapabilityToggle } from './capability-policy';
 import { selectedOperatorServices as getSelectedOperatorServices, toggleOperatorServiceGroupSelection, toggleOperatorServiceSelection } from './operator-policy';
@@ -32,6 +32,8 @@ import { PERMISSION_TABS_TRANSLATIONS } from './i18n-permission-tabs';
 
 import {
   type AuditEvent,
+  type BootstrapCheck,
+  type CapabilityProbeReport,
   type Client,
   type OperatorServicePolicy,
   type DevelopmentCatalog,
@@ -90,10 +92,16 @@ export class GatewayApp extends LitElement {
   @state() selectedOperatorServices = new Set<string>();
   @state() clientProfile: Profile = 'observer';
   @state() permissionTab: 'capabilities' | 'operator-services' = 'capabilities';
+  @state() editingClientId: string | null = null;
+  @state() editingCapabilities = new Set<string>();
+  @state() editingClientProfile: Profile = 'observer';
   @state() bootState: 'checking' | 'ready' | 'error' = 'checking';
+  @state() bootChecks: BootstrapCheck[] = [];
   @state() operatorEnabled = false;
   @state() operatorStatus: OperatorStatus = { operator_enabled: false, execution: 'disabled', registered_mutation_tools: [], capabilities: [], reason: 'loading' };
   @state() operatorPolicy: OperatorServicePolicy | null = null;
+  @state() capabilityProbe: CapabilityProbeReport | null = null;
+  @state() capabilityProbeBusy = false;
   private readonly gatewayController: GatewayController;
   private refreshVersion = 0;
   private policySaveVersion = 0;
@@ -118,6 +126,11 @@ export class GatewayApp extends LitElement {
   get effectiveTheme() { return resolveTheme(this.uiContext.theme, Boolean(window.matchMedia?.('(prefers-color-scheme: light)').matches)); }
 
   private errorMessage(error: unknown, fallbackKey: string): string {
+    if (error instanceof BootstrapError) {
+      const failed = error.checks.filter((check) => check.status === 'failed');
+      const summary = failed.map((check) => `${check.path} — ${check.error?.http_status ? `HTTP ${check.error.http_status} · ` : ''}${check.error?.code ?? 'unknown_error'}`).join('; ');
+      return `${this.t('errorLoadState')}: ${summary}`;
+    }
     if (error instanceof GatewayError) {
       if (error.code === 'server_error' && error.status) return `Request failed (${error.status})`;
       const keyByCode: Record<string, string> = {
@@ -154,14 +167,20 @@ export class GatewayApp extends LitElement {
     this.refreshController?.abort();
     const controller = new AbortController();
     this.refreshController = controller;
-    this.busy = true; this.bootState = 'checking'; this.error = '';
+    this.busy = true; this.bootState = 'checking'; this.error = ''; this.bootChecks = [];
     try {
-      const snapshot = await this.gatewayController.refresh(controller.signal);
+      const snapshot = await this.gatewayController.refresh(controller.signal, (check) => {
+        if (version !== this.refreshVersion) return;
+        this.bootChecks = this.bootChecks.some((current) => current.id === check.id)
+          ? this.bootChecks.map((current) => current.id === check.id ? check : current)
+          : [...this.bootChecks, check];
+      });
       if (version !== this.refreshVersion) return;
       this.applyBootstrap(snapshot); this.bootState = 'ready';
     }
     catch (error) {
       if (version !== this.refreshVersion || controller.signal.aborted) return;
+      if (error instanceof BootstrapError) this.bootChecks = error.checks;
       this.error = this.errorMessage(error, 'errorLoadState'); this.bootState = 'error';
     }
     finally {
@@ -230,8 +249,8 @@ export class GatewayApp extends LitElement {
     this.selectedOperatorServices = new Set(services);
   }
 
-  toggleCapability(name: string, checked: boolean) {
-    this.selectedCapabilities = new Set(applyCapabilityToggle(this.clientProfile, this.selectedCapabilities, name, checked));
+  toggleCapability(name: string, checked: boolean, implemented = true) {
+    this.selectedCapabilities = new Set(applyCapabilityToggle(this.clientProfile, this.selectedCapabilities, name, checked, implemented));
   }
 
   selectObserverCapabilities() {
@@ -239,6 +258,46 @@ export class GatewayApp extends LitElement {
   }
 
   clearCapabilities() { this.selectedCapabilities = new Set(); }
+
+  editClientCapabilities(clientId: string) {
+    const client = this.clients.find((item) => item.client_id === clientId);
+    if (!client || client.status !== 'active') return;
+    this.editingClientId = clientId;
+    this.editingClientProfile = client.profile;
+    this.editingCapabilities = new Set(client.capabilities);
+  }
+
+  cancelCapabilityEdit() {
+    this.editingClientId = null;
+    this.editingCapabilities = new Set();
+    this.editingClientProfile = 'observer';
+  }
+
+  async saveClientCapabilities() {
+    if (!this.editingClientId) return;
+    const mutation = this.beginMutation();
+    this.clientsBusy = true; this.error = '';
+    try {
+      const client = await this.gatewayController.updateClientCapabilities(this.editingClientId, [...this.editingCapabilities], mutation.controller.signal);
+      if (!this.isCurrentMutation(mutation.version, mutation.controller)) return;
+      this.clients = this.clients.map((item) => item.client_id === client.client_id ? client : item);
+      this.cancelCapabilityEdit();
+    } catch (error) {
+      if (this.isCurrentMutation(mutation.version, mutation.controller)) this.error = this.errorMessage(error, 'errorIssueClient');
+    } finally { if (this.isCurrentMutation(mutation.version, mutation.controller)) this.clientsBusy = false; this.finishMutation(mutation.version, mutation.controller); }
+  }
+
+  async probeCapabilities(clientId: string) {
+    this.capabilityProbeBusy = true;
+    this.error = '';
+    try {
+      this.capabilityProbe = await this.gatewayController.probeCapabilities(clientId);
+    } catch (error) {
+      this.error = this.errorMessage(error, 'errorLoadState');
+    } finally {
+      this.capabilityProbeBusy = false;
+    }
+  }
 
   capabilityText(name: string, suffix: 'Label' | 'Description', fallback: string) {
     return resolveCapabilityText(TRANSLATIONS[this.locale], name, suffix, fallback);
@@ -254,25 +313,29 @@ export class GatewayApp extends LitElement {
     return resolvePackText(this.t.bind(this), pack, field, fallback);
   }
 
-  capabilitySelector() {
-    const selectAll = this.clientProfile === 'operator'
-      ? () => { this.selectedCapabilities = new Set(capabilitiesForProfile('operator', CAPABILITY_DEFINITIONS)); }
-      : () => this.selectObserverCapabilities();
+  capabilitySelector(editing = false) {
+    const selected = () => editing ? this.editingCapabilities : this.selectedCapabilities;
+    const profile = () => editing ? this.editingClientProfile : this.clientProfile;
+    const canGrant = (item: (typeof CAPABILITY_DEFINITIONS)[number]) => item.implemented !== false
+      && (item.group !== 'operator' || (this.operatorEnabled && profile() === 'operator'));
+    const update = (next: Iterable<string>) => {
+      if (editing) this.editingCapabilities = new Set(next); else this.selectedCapabilities = new Set(next);
+    };
     return gatewayCheckboxGroup({
-      selectedCount: this.selectedCapabilities.size,
+      selectedCount: selected().size,
       selectedLabel: this.t('selectedCapabilities'),
       selectAllLabel: this.t('selectAllObserver'),
       clearLabel: this.t('clearSelection'),
-      onSelectAll: selectAll,
-      onClear: () => this.clearCapabilities(),
+      onSelectAll: () => update(CAPABILITY_DEFINITIONS.filter(canGrant).map((item) => item.name)),
+      onClear: () => update([]),
       items: CAPABILITY_DEFINITIONS.map((item) => ({
         value: item.name,
         label: this.capabilityText(item.name, 'Label', item.label),
-        description: this.capabilityText(item.name, 'Description', item.description),
-        checked: this.selectedCapabilities.has(item.name),
-        disabled: item.group === 'operator' && (!this.operatorEnabled || this.clientProfile !== 'operator'),
+        description: `${this.capabilityText(item.name, 'Description', item.description)}${item.implemented === false ? ' · Not implemented' : ''}`,
+        checked: selected().has(item.name),
+        disabled: !canGrant(item) && !(editing && selected().has(item.name)),
         className: item.group === 'operator' ? 'operator' : '',
-        onChange: (event: Event) => this.toggleCapability(item.name, (event.target as HTMLInputElement).checked),
+        onChange: (event: Event) => update(applyCapabilityToggle(profile(), selected(), item.name, (event.target as HTMLInputElement).checked, canGrant(item))),
       })),
     });
   }
@@ -382,9 +445,35 @@ export class GatewayApp extends LitElement {
     downloadDiagnosticFile(this.healthDetails, this.developmentResults, this.developmentReports);
   }
 
+  private bootstrapCheckLabel(id: BootstrapCheck['id']) {
+    const labels: Record<BootstrapCheck['id'], string> = {
+      readiness: 'bootCheckReadiness', clients: 'bootCheckClients', audit: 'bootCheckAudit', catalog: 'bootCheckCatalog', development_reports: 'bootCheckReports', ui_context: 'bootCheckUiContext', health_details: 'bootCheckHealth', operator_status: 'bootCheckOperatorStatus', operator_policy: 'bootCheckOperatorPolicy',
+    };
+    return this.t(labels[id]);
+  }
+
+  private bootstrapCheckStatus(check: BootstrapCheck) {
+    if (check.status === 'ok') return this.t('bootCheckDone');
+    if (check.status === 'running') return this.t('bootCheckRunning');
+    if (check.status === 'failed') return this.t('bootCheckFailed');
+    return this.t('bootCheckPending');
+  }
+
+  private bootstrapChecksView() {
+    return html`<ul class="boot-checks" aria-label=${this.t('bootChecks')}>
+      ${this.bootChecks.map((check) => html`<li class="boot-check boot-check-${check.status}">
+        <span class="boot-check-icon" aria-hidden="true">${check.status === 'ok' ? '✓' : check.status === 'failed' ? '!' : check.status === 'running' ? '…' : '·'}</span>
+        <span class="boot-check-copy"><strong>${this.bootstrapCheckLabel(check.id)}</strong><small>${check.path}</small>${check.error ? html`<span class="boot-check-error">${check.error.http_status ? `HTTP ${check.error.http_status} · ` : ''}${check.error.code}</span>` : ''}</span>
+        <span class="boot-check-status">${this.bootstrapCheckStatus(check)}${check.duration_ms !== null ? ` · ${check.duration_ms} ms` : ''}</span>
+      </li>`)}
+    </ul>`;
+  }
+
   loadingView() {
     const failed = this.bootState === 'error';
-    return html`<div class="shell ${this.effectiveTheme}"><main class="boot-stage" aria-busy=${failed ? 'false' : 'true'}><section class="boot-card" aria-live="polite"><div class="boot-orbit" aria-hidden="true"><div class="boot-core"></div></div><h1>${failed ? this.t('errorLoadState') : this.t('checkingGateway')}</h1><p>${this.t('healthDescription')}</p>${failed ? html`${gatewayAlert(this.error)}${gatewayButton({ label: this.t('refresh'), variant: 'secondary', className: 'boot-retry', onClick: () => void this.refresh() })}` : html`<div class="boot-status"><span class="dot"></span>${this.t('checkingGateway')}</div><div class="boot-progress" role="progressbar" aria-label=${this.t('checkingGateway')}></div>`}</section></main></div>`;
+    const completed = this.bootChecks.filter((check) => check.status === 'ok' || check.status === 'failed').length;
+    const total = this.bootChecks.length;
+    return html`<div class="shell ${this.effectiveTheme}"><main class="boot-stage" aria-busy=${failed ? 'false' : 'true'}><section class="boot-card" aria-live="polite"><div class="boot-orbit" aria-hidden="true"><div class="boot-core"></div></div><h1>${failed ? this.t('errorLoadState') : this.t('checkingGateway')}</h1><p>${failed ? this.t('bootFailureDescription') : this.t('healthDescription')}</p>${total ? html`<p class="boot-summary">${completed}/${total} ${this.t('bootChecksCompleted')}</p>${this.bootstrapChecksView()}` : ''}${failed ? html`${gatewayAlert(this.error)}${gatewayButton({ label: this.t('refresh'), variant: 'secondary', className: 'boot-retry', onClick: () => void this.refresh() })}` : html`<div class="boot-status"><span class="dot"></span>${this.t('checkingGateway')}</div><div class="boot-progress" role="progressbar" aria-label=${this.t('checkingGateway')}></div>`}</section></main></div>`;
   }
 
   private get anyBusy() { return this.busy || this.clientsBusy || this.auditBusy || this.discoveryBusy || this.policyBusy || this.developmentBusy; }
@@ -423,7 +512,7 @@ export class GatewayApp extends LitElement {
     finally { this.clientsBusy = false; }
   }
 
-  clientsView() { return renderClientsView({ clients: this.clients, busy: this.clientsBusy, t: this.t.bind(this), refresh: () => void this.refreshClients(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), deleteClient: (clientId) => void this.deleteClient(clientId), rotate: (clientId) => void this.rotate(clientId), capabilitySelector: () => this.capabilitySelector(), operatorEnabled: this.operatorEnabled, operatorServices: getSelectedOperatorServices(this.operatorPolicy), selectedOperatorServices: [...this.selectedOperatorServices], setOperatorServiceSelection: (services) => this.setOperatorServiceSelection(services), navigateToPolicy: () => this.setView('policy'), permissionTab: this.permissionTab, setPermissionTab: (tab) => { this.permissionTab = tab; }, profile: this.clientProfile, setProfile: (profile) => this.setClientProfile(profile) }); }
+  clientsView() { return renderClientsView({ clients: this.clients, busy: this.clientsBusy, t: this.t.bind(this), refresh: () => void this.refreshClients(), createClient: this.createClient.bind(this), revoke: (clientId) => void this.revoke(clientId), deleteClient: (clientId) => void this.deleteClient(clientId), rotate: (clientId) => void this.rotate(clientId), editCapabilities: (clientId) => this.editClientCapabilities(clientId), saveCapabilities: () => void this.saveClientCapabilities(), cancelCapabilityEdit: () => this.cancelCapabilityEdit(), editingClientId: this.editingClientId, probe: (clientId) => void this.probeCapabilities(clientId), probeReport: this.capabilityProbe, probeBusy: this.capabilityProbeBusy, capabilitySelector: () => this.capabilitySelector(), editCapabilitySelector: () => this.capabilitySelector(true), operatorEnabled: this.operatorEnabled, operatorServices: getSelectedOperatorServices(this.operatorPolicy), selectedOperatorServices: [...this.selectedOperatorServices], setOperatorServiceSelection: (services) => this.setOperatorServiceSelection(services), navigateToPolicy: () => this.setView('policy'), permissionTab: this.permissionTab, setPermissionTab: (tab) => { this.permissionTab = tab; }, profile: this.clientProfile, setProfile: (profile) => this.setClientProfile(profile) }); }
 
   auditView() { return auditView({ audit: this.audit, t: this.t.bind(this), loadAudit: (decision) => void this.loadAudit(decision) }); }
 

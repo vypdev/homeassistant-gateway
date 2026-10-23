@@ -1,0 +1,24 @@
+name: Copilot - Issue Comment
+'on':
+  issue_comment:
+    types:
+      - created
+      - edited
+jobs:
+  copilot-issues:
+    if: ${{ vars.COPILOT_BOT_LOGIN == '' || github.actor != vars.COPILOT_BOT_LOGIN }}
+    uses: vypdev/copilot/.github/workflows/copilot_comment_runtime.yml@v3
+    permissions:
+      checks: write
+      contents: read
+    with:
+      runs-on: '{"group":"vypdev","labels":["self-hosted","codex","Linux"]}'
+    secrets:
+      PAT: ${{ secrets.PAT }}
+      OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      CURSOR_API_KEY: ${{ (vars.AGENT_PROVIDER == 'cursor' || vars.FINDINGS_PROVIDER == 'cursor' || vars.FIXER_PROVIDER == 'cursor' || vars.PLANNER_PROVIDER == 'cursor' || vars.REVIEWER_PROVIDER == 'cursor' || vars.TESTER_PROVIDER == 'cursor') && secrets.CURSOR_API_KEY || '' }}
+      CODEX_API_KEY: ${{ secrets.CODEX_API_KEY }}

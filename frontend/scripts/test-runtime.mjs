@@ -19,6 +19,7 @@ try {
     if (name === 'api') output = output.replace("from './gateway-errors'", "from './gateway-errors.mjs'");
     if (name === 'gateway-api') {
       output = output.replace("from './api'", "from './api.mjs'");
+      output = output.replace("from './gateway-errors'", "from './gateway-errors.mjs'");
       output = output.replace("from './gateway-contracts'", "from './gateway-contracts.mjs'");
     }
     if (name === 'gateway-controller') output = output.replace("from './operator-policy-service'", "from './operator-policy-service.mjs'");
@@ -57,6 +58,9 @@ try {
   assert.deepEqual(policy.toggleCapability('observer', ['ha.read.states'], 'ha.write.services', true), ['ha.read.states']);
   assert.deepEqual(policy.toggleCapability('operator', ['ha.read.states'], 'ha.write.services', true), ['ha.read.states', 'ha.write.services']);
   assert.deepEqual(policy.toggleCapability('operator', ['ha.read.states', 'ha.write.services'], 'ha.write.services', false), ['ha.read.states']);
+  assert.deepEqual(policy.toggleCapability('operator', ['ha.read.states', 'ha.write.configuration'], 'ha.write.configuration', false, false), ['ha.read.states']);
+  assert.deepEqual(policy.toggleCapability('operator', ['ha.read.states'], 'ha.write.configuration', true, false), ['ha.read.states']);
+  assert.deepEqual(policy.toggleCapability('observer', ['ha.read.states', 'ha.write.services'], 'ha.write.services', false), ['ha.read.states']);
 
   const operatorPolicy = await import(pathToFileURL(join(tempDir, 'operator-policy.mjs')));
   assert.deepEqual(operatorPolicy.toggleOperatorServiceSelection(['light.turn_on'], 'switch.turn_on', true), ['light.turn_on', 'switch.turn_on']);
@@ -111,7 +115,7 @@ try {
     if (path === '/development/reports') return [];
     if (path === '/ui/context') return { locale: 'en', theme: 'auto' };
     if (path === '/health/details') return { status: 'healthy', checks: [{ name: 'core', status: 'ok', latency_ms: 4, http_status: 200, code: null }] };
-    if (path === '/operator/status') return { operator_enabled: true, execution: 'enabled', registered_mutation_tools: [], capabilities: [], reason: 'ready' };
+    if (path === '/operator/status') return { operator_enabled: true, execution: 'enabled', registered_mutation_tools: [], capabilities: [], reason: null };
     if (path === '/operator/service-policy') return init?.method === 'PUT' ? { selected: JSON.parse(init.body).selected } : { services: [], selected: [] };
     if (path === '/mcp/discovery') return { tools: [] };
     if (path === '/policy/evaluate') return { decision: 'allowed', reason: 'ok' };
@@ -119,6 +123,25 @@ try {
   };
   const gatewayApi = gatewayApiModule.createGatewayApi(fakeRequest);
   const bootstrap = await gatewayApi.loadBootstrap();
+  for (const [id, path, malformed] of [
+    ['readiness', '/../ready', {}], ['clients', '/clients', {}], ['audit', '/audit', {}],
+    ['catalog', '/development/catalog', {}], ['development_reports', '/development/reports', {}],
+    ['ui_context', '/ui/context', { locale: 'en', theme: 'invalid' }],
+    ['health_details', '/health/details', {}], ['operator_status', '/operator/status', {}],
+    ['operator_policy', '/operator/service-policy', {}],
+  ]) {
+    const updates = [];
+    const invalidApi = gatewayApiModule.createGatewayApi(async (url, init) => url === path ? malformed : fakeRequest(url, init));
+    await assert.rejects(() => invalidApi.loadBootstrap(undefined, (check) => updates.push(check)), (error) => {
+      assert.ok(error instanceof errors.BootstrapError);
+      assert.deepEqual(error.checks.filter((check) => check.status === 'failed').map((check) => check.id), [id]);
+      assert.equal(error.checks.find((check) => check.id === id).error.code, 'invalid_response');
+      return true;
+    });
+    assert.ok(!updates.some((check) => check.id === id && check.status === 'ok'));
+  }
+  calls.length = 0;
+  await gatewayApi.loadBootstrap();
   assert.equal(bootstrap.operatorStatus.operator_enabled, true);
   assert.equal(calls.length, 9);
   calls.length = 0;

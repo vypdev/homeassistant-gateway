@@ -9,6 +9,7 @@ from homeassistant_gateway.application.clients import (
     ListClients,
     RevokeClient,
     RotateClient,
+    UpdateClientCapabilities,
     UpdateClientOperatorServices,
 )
 from homeassistant_gateway.domain.clients import Client, ClientStatus
@@ -127,6 +128,34 @@ def test_delete_client_rejects_active_client_until_token_is_revoked() -> None:
 
     with pytest.raises(ValueError, match="client_must_be_revoked"):
         DeleteClient(repository).execute("client")
+
+
+def test_capabilities_can_be_updated_without_rotating_token_during_development() -> None:
+    repository = InMemoryClientRepository()
+    result = IssueClient(repository, FakeTokenIssuer(), lambda: datetime.now(UTC), operator_enabled=False).execute(
+        client_id="hermes",
+        display_name="Hermes",
+        profile=Profile.OBSERVER,
+        capabilities=frozenset({"ha.read.automations"}),
+    )
+
+    updated = UpdateClientCapabilities(repository, operator_enabled=False).execute(
+        result.client.client_id,
+        frozenset({"ha.read.automations", "ha.read.automation_config"}),
+    )
+
+    assert updated.capabilities == frozenset({"ha.read.automations", "ha.read.automation_config"})
+    assert updated.token_digest == "digest-1"
+
+
+def test_capability_update_rejects_write_grant_for_observer() -> None:
+    repository = InMemoryClientRepository()
+    result = IssueClient(repository, FakeTokenIssuer(), lambda: datetime.now(UTC), operator_enabled=False).execute(
+        "observer", "Observer", Profile.OBSERVER, frozenset({"ha.read.states"})
+    )
+
+    with pytest.raises(ValueError, match="observer_operator_capability_conflict"):
+        UpdateClientCapabilities(repository, operator_enabled=False).execute(result.client.client_id, frozenset({"ha.write.services"}))
 
 
 def test_operator_grants_are_explicit_and_can_be_updated() -> None:

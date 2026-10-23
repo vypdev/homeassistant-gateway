@@ -1,10 +1,17 @@
+import json
+
+import httpx
 import pytest
 
 from homeassistant_gateway.application.home_assistant import HomeAssistantUnavailable
 from homeassistant_gateway.infrastructure.home_assistant.service_mutation import (
+    TODO_RESPONSE_MAX_BYTES,
+    TODO_RESPONSE_MAX_FIELD_SIZE,
+    TODO_RESPONSE_MAX_ITEMS,
     SupervisorOperatorMutationAdapter,
     SupervisorServiceMutationAdapter,
 )
+from homeassistant_gateway.infrastructure.home_assistant.client import SupervisorApiClient
 
 
 class Transport:
@@ -12,9 +19,13 @@ class Transport:
         self.status = status
         self.response = response if response is not None else [{"entity_id": "light.test", "token": "secret"}]
         self.calls: list[tuple[str, dict]] = []
+        self.params = None
+        self.response_limit = None
 
-    def post_json(self, path: str, payload: dict) -> tuple[int, object]:
+    def post_json(self, path: str, payload: dict, params=None, response_limit=None) -> tuple[int, object]:
         self.calls.append((path, payload))
+        self.params = params
+        self.response_limit = response_limit
         return self.status, self.response
 
 
@@ -41,6 +52,197 @@ def test_service_adapter_classifies_upstream_and_shape_failures() -> None:
         SupervisorServiceMutationAdapter(Transport(403), frozenset({"light.turn_on"})).call_service("light", "turn_on", {})
     with pytest.raises(HomeAssistantUnavailable, match="home_assistant_invalid_service_response"):
         SupervisorServiceMutationAdapter(Transport(response={"changed": True}), frozenset({"light.turn_on"})).call_service("light", "turn_on", {})
+
+
+def test_todo_get_items_requests_home_assistant_service_response() -> None:
+    transport = Transport(response={"todo.tareas_ha": {"items": [{"summary": "Call Robert"}]}})
+    adapter = SupervisorServiceMutationAdapter(transport, frozenset({"todo.get_items"}))
+
+    result = adapter.call_service(
+        "todo",
+        "get_items",
+        {"entity_id": "todo.tareas_ha", "status": ["needs_action", "completed"]},
+    )
+
+    assert result == {"todo.tareas_ha": {"items": [{"summary": "Call Robert"}]}}
+    assert transport.params == {"return_response": "true"}
+    assert transport.response_limit is not None
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"entity_id": "light.test"},
+        {"entity_id": "todo.first,todo.second"},
+        {"entity_id": ["todo.first", "todo.second"]},
+        {"entity_id": "todo.first", "target": {"entity_id": "todo.second"}},
+    ],
+)
+def test_todo_get_items_requires_exactly_one_todo_entity_target(payload: dict) -> None:
+    transport = Transport(response={"todo.first": {"items": []}})
+    adapter = SupervisorServiceMutationAdapter(transport, frozenset({"todo.get_items"}))
+
+    with pytest.raises(ValueError, match="todo_entity_target_invalid"):
+        adapter.call_service("todo", "get_items", payload)
+    assert transport.calls == []
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        {},
+        {"todo.first": {"items": []}, "todo.second": {"items": []}},
+        {"todo.other": {"items": []}},
+        {"todo.first": []},
+        {"todo.first": {"items": {}}},
+        {"todo.first": {"items": [{"summary": object()}]}},
+        {"todo.first": {"items": [{"summary": "x"}], "extra": True}},
+    ],
+)
+def test_todo_get_items_rejects_noncanonical_upstream_response(response: object) -> None:
+    transport = Transport(response=response)
+    adapter = SupervisorServiceMutationAdapter(transport, frozenset({"todo.get_items"}))
+
+    with pytest.raises(HomeAssistantUnavailable) as raised:
+        adapter.call_service("todo", "get_items", {"entity_id": "todo.first"})
+
+    assert raised.value.code == "home_assistant_invalid_service_response"
+    assert "todo.first" not in str(raised.value) or response == {"todo.first": {"items": {}}}
+
+
+def test_todo_get_items_rejects_response_item_and_serialized_size_boundaries() -> None:
+    too_many = {"todo.first": {"items": [{"summary": "x"}] * 3}}
+    adapter = SupervisorServiceMutationAdapter(
+        Transport(response=too_many),
+        frozenset({"todo.get_items"}),
+        max_response_items=2,
+    )
+    with pytest.raises(HomeAssistantUnavailable, match="home_assistant_invalid_service_response"):
+        adapter.call_service("todo", "get_items", {"entity_id": "todo.first"})
+
+    too_large = {"todo.first": {"items": [{"summary": "x" * 11}]}}
+    adapter = SupervisorServiceMutationAdapter(
+        Transport(response=too_large),
+        frozenset({"todo.get_items"}),
+        max_response_field_size=10,
+    )
+    with pytest.raises(HomeAssistantUnavailable, match="home_assistant_invalid_service_response"):
+        adapter.call_service("todo", "get_items", {"entity_id": "todo.first"})
+
+    adapter = SupervisorServiceMutationAdapter(
+        Transport(response={"todo.first": {"items": [{"summary": "12345"}]}}),
+        frozenset({"todo.get_items"}),
+        max_response_bytes=40,
+    )
+    with pytest.raises(HomeAssistantUnavailable, match="home_assistant_invalid_service_response"):
+        adapter.call_service("todo", "get_items", {"entity_id": "todo.first"})
+
+
+def test_todo_get_items_validates_raw_transport_response_before_redaction() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "todo.first": {
+                    "items": [{"token": {"nested": "invalid"}, "password": "x" * 100001}]
+                }
+            },
+        )
+
+    adapter = SupervisorServiceMutationAdapter(
+        SupervisorApiClient("supervisor-token", transport=httpx.MockTransport(handler)),
+        frozenset({"todo.get_items"}),
+    )
+
+    with pytest.raises(HomeAssistantUnavailable, match="home_assistant_invalid_service_response"):
+        adapter.call_service("todo", "get_items", {"entity_id": "todo.first"})
+
+
+def test_todo_get_items_accepts_only_known_nullable_string_fields() -> None:
+    valid_response = {
+        "todo.first": {
+            "items": [
+                {
+                    "summary": "Task",
+                    "uid": "item-1",
+                    "status": "needs_action",
+                    "due": "2026-08-27",
+                    "description": None,
+                    "completed": None,
+                }
+            ]
+        }
+    }
+    result = SupervisorServiceMutationAdapter(
+        Transport(response=valid_response), frozenset({"todo.get_items"})
+    ).call_service("todo", "get_items", {"entity_id": "todo.first"})
+    assert result == valid_response
+
+    for invalid_item in ({"unexpected": "value"}, {"summary": 1}):
+        with pytest.raises(HomeAssistantUnavailable, match="home_assistant_invalid_service_response"):
+            SupervisorServiceMutationAdapter(
+                Transport(response={"todo.first": {"items": [invalid_item]}}),
+                frozenset({"todo.get_items"}),
+            ).call_service("todo", "get_items", {"entity_id": "todo.first"})
+
+
+def test_todo_get_items_accepts_item_count_at_default_and_rejects_default_plus_one() -> None:
+    at_limit = {"todo.first": {"items": [{"summary": "x"}] * TODO_RESPONSE_MAX_ITEMS}}
+    adapter = SupervisorServiceMutationAdapter(Transport(response=at_limit), frozenset({"todo.get_items"}))
+    result = adapter.call_service("todo", "get_items", {"entity_id": "todo.first"})
+    assert len(result["todo.first"]["items"]) == TODO_RESPONSE_MAX_ITEMS
+
+    over_limit = {"todo.first": {"items": [{"summary": "x"}] * (TODO_RESPONSE_MAX_ITEMS + 1)}}
+    with pytest.raises(HomeAssistantUnavailable, match="home_assistant_invalid_service_response"):
+        SupervisorServiceMutationAdapter(
+            Transport(response=over_limit), frozenset({"todo.get_items"})
+        ).call_service("todo", "get_items", {"entity_id": "todo.first"})
+
+
+def test_todo_get_items_accepts_field_length_at_default_and_rejects_default_plus_one() -> None:
+    at_limit = {"todo.first": {"items": [{"summary": "x" * TODO_RESPONSE_MAX_FIELD_SIZE}]}}
+    result = SupervisorServiceMutationAdapter(
+        Transport(response=at_limit), frozenset({"todo.get_items"})
+    ).call_service("todo", "get_items", {"entity_id": "todo.first"})
+    assert len(result["todo.first"]["items"][0]["summary"]) == TODO_RESPONSE_MAX_FIELD_SIZE
+
+    over_limit = {"todo.first": {"items": [{"summary": "x" * (TODO_RESPONSE_MAX_FIELD_SIZE + 1)}]}}
+    with pytest.raises(HomeAssistantUnavailable, match="home_assistant_invalid_service_response"):
+        SupervisorServiceMutationAdapter(
+            Transport(response=over_limit), frozenset({"todo.get_items"})
+        ).call_service("todo", "get_items", {"entity_id": "todo.first"})
+
+
+def test_todo_get_items_accepts_serialized_response_at_default_and_rejects_default_plus_one() -> None:
+    items = [{"summary": "x" * 190} for _ in range(TODO_RESPONSE_MAX_ITEMS)]
+    response = {"todo.first": {"items": items}}
+    current_size = len(json.dumps(response, separators=(",", ":"), ensure_ascii=False).encode("utf-8"))
+    items[0]["summary"] += "x" * (TODO_RESPONSE_MAX_BYTES - current_size)
+    assert len(json.dumps(response, separators=(",", ":"), ensure_ascii=False).encode("utf-8")) == TODO_RESPONSE_MAX_BYTES
+
+    adapter = SupervisorServiceMutationAdapter(Transport(response=response), frozenset({"todo.get_items"}))
+    result = adapter.call_service("todo", "get_items", {"entity_id": "todo.first"})
+    assert len(result["todo.first"]["items"]) == TODO_RESPONSE_MAX_ITEMS
+
+    over_limit = {"todo.first": {"items": [dict(item) for item in items]}}
+    over_limit["todo.first"]["items"][0]["summary"] += "x"
+    with pytest.raises(HomeAssistantUnavailable, match="home_assistant_invalid_service_response"):
+        SupervisorServiceMutationAdapter(
+            Transport(response=over_limit), frozenset({"todo.get_items"})
+        ).call_service("todo", "get_items", {"entity_id": "todo.first"})
+
+
+def test_shopping_list_service_does_not_require_entity_target() -> None:
+    transport = Transport(response=[])
+    adapter = SupervisorOperatorMutationAdapter(
+        SupervisorServiceMutationAdapter(transport, frozenset({"shopping_list.add_item"})),
+    )
+
+    result = adapter.execute("ha.call_service", "shopping_list.add_item", {"name": "Milk"})
+
+    assert result["status"] == "ok"
+    assert transport.calls == [("/services/shopping_list/add_item", {"name": "Milk"})]
 
 
 def test_operator_adapter_requires_entity_target_and_keeps_other_operations_explicit() -> None:

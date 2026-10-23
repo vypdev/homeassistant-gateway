@@ -50,6 +50,48 @@ test('translates the initial storage readiness status', async ({ page }) => {
   await expect(page.locator('.cards .card').first().locator('.metric')).toHaveText('Listo');
 });
 
+test('updates capabilities for an existing client without rotating its token', async ({ page }) => {
+  await page.unroute('**/*');
+  let capabilities = ['ha.read.automations'];
+  let patchPayload: unknown = null;
+  await page.route('**/*', async (route) => {
+    const url = new URL(route.request().url());
+    const path = url.pathname;
+    if (path !== '/ready' && !path.startsWith('/api/')) return route.continue();
+    if (path === '/api/clients/existing-observer/capabilities' && route.request().method() === 'PATCH') {
+      patchPayload = route.request().postDataJSON();
+      capabilities = (patchPayload as { capabilities: string[] }).capabilities;
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ client_id: 'existing-observer', display_name: 'Existing observer', profile: 'observer', capabilities, operator_services: [], created_at: '2026-01-01T00:00:00Z', status: 'active', revoked_at: null }) });
+      return;
+    }
+    const payload: Record<string, unknown> = {
+      '/ready': { status: 'ready', storage: 'ready', mcp: 'ready', home_assistant: 'ready', version: 'test' },
+      '/api/clients': [{ client_id: 'existing-observer', display_name: 'Existing observer', profile: 'observer', capabilities, operator_services: [], created_at: '2026-01-01T00:00:00Z', status: 'active', revoked_at: null }],
+      '/api/audit': [],
+      '/api/development/catalog': { operations: [], packs: [] },
+      '/api/development/reports': [],
+      '/api/ui/context': { locale: 'en', theme: 'dark' },
+      '/api/health/details': { status: 'ok', checks: [] },
+      '/api/operator/status': { operator_enabled: false, execution: 'disabled', registered_mutation_tools: [], capabilities: [], reason: '' },
+      '/api/operator/service-policy': { services: [], selected: [] },
+    };
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(payload[path] ?? {}) });
+  });
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'Clients', exact: true }).click();
+  const creation = page.locator('.client-form-card');
+  await expect(creation.locator('input[value="ha.read.diagnostics"]')).toBeChecked();
+  await page.getByRole('button', { name: 'Edit capabilities' }).first().click();
+  await expect(creation.locator('input[value="ha.read.diagnostics"]')).toBeChecked();
+  await page.locator('.client-capabilities-edit-card').getByRole('checkbox', { name: 'Automation configuration' }).check();
+  await expect(creation.locator('input[value="ha.read.automation_config"]')).not.toBeChecked();
+  await page.getByRole('button', { name: 'Save capabilities' }).click();
+
+  await expect.poll(() => patchPayload).toEqual({ capabilities: ['ha.read.automations', 'ha.read.automation_config'] });
+  await expect(page.locator('.tag', { hasText: 'ha.read.automation_config' }).filter({ visible: true }).first()).toBeVisible();
+  await expect(creation.locator('input[value="ha.read.diagnostics"]')).toBeChecked();
+});
+
 test('matches the Home Assistant navigation states and uses MDI leading icons', async ({ page }) => {
   await page.unroute('**/*');
   await mockGatewayApi(page, 'light');
@@ -132,6 +174,31 @@ test('keeps topology status chips separated from their labels', async ({ page })
   expect(spacing.every(({ horizontal, vertical }) => horizontal >= 7.5 || vertical >= 5.5), JSON.stringify(spacing)).toBe(true);
 });
 
+test('aligns topology items to the logical reading edge on a phone', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await expect(page.getByRole('heading', { name: /system topology|topología del sistema/i })).toBeVisible();
+
+  const measure = () => page.locator('.topology-grid > .topology-card').evaluateAll((cards) => cards.map((card) => {
+    const node = card.querySelector('.topology-node');
+    if (!node) return null;
+    const cardRect = card.getBoundingClientRect();
+    const nodeRect = node.getBoundingClientRect();
+    return {
+      textAlign: getComputedStyle(card).textAlign,
+      leftInset: nodeRect.left - cardRect.left,
+      rightInset: cardRect.right - nodeRect.right,
+    };
+  }));
+
+  const ltr = await measure();
+  expect(ltr.every((item) => item && item.textAlign === 'start' && item.leftInset < item.rightInset), JSON.stringify(ltr)).toBe(true);
+
+  await page.evaluate(() => document.documentElement.setAttribute('dir', 'rtl'));
+  const rtl = await measure();
+  expect(rtl.every((item) => item && item.textAlign === 'start' && item.rightInset < item.leftInset), JSON.stringify(rtl)).toBe(true);
+});
+
 test('keeps the Clients view contained and links to the global service policy', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
@@ -151,6 +218,41 @@ test('keeps the Clients view contained and links to the global service policy', 
   }));
   expect(offenders).toEqual([]);
 });
+
+test('runs a non-mutating capability probe from the responsive client card', async ({ page }) => {
+  await page.unroute('**/*');
+  await mockGatewayApi(page);
+  await page.route('**/api/clients', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([
+        { client_id: 'probe-client', display_name: 'Probe client', profile: 'observer', capabilities: ['ha.read.automations', 'ha.read.automation_config'], operator_services: [], created_at: '2026-08-09T00:00:00Z', status: 'active', revoked_at: null },
+      ]) });
+      return;
+    }
+    await route.fulfill({ status: 204, body: '' });
+  });
+  let method = '';
+  await page.route('**/api/clients/probe-client/capability-probe*', async (route) => {
+    method = route.request().method();
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({
+      client_id: 'probe-client',
+      generated_for: 'Probe client',
+      results: [
+        { capability: 'ha.read.automations', group: 'observer', tool: 'ha_automations', decision: 'allow', status: 'ok', reason: 'read_succeeded', implemented: true, sample_entity_id: 'automation.test', count: 1, details: { shape: 'list' } },
+        { capability: 'ha.read.automation_config', group: 'observer', tool: 'ha_automation_config', decision: 'allow', status: 'ok', reason: 'read_succeeded', implemented: true, sample_entity_id: 'automation.test', count: 1, details: { shape: 'object' } },
+      ],
+    }) });
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.getByRole('tab', { name: 'Clients', exact: true }).click();
+  await page.getByRole('button', { name: 'Test capabilities', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Capability test results', exact: true })).toBeVisible();
+  await expect(page.locator('.capability-probe-panel').getByText('ha.read.automation_config', { exact: true })).toBeVisible();
+  expect(method).toBe('POST');
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test('separates token revocation from permanent client deletion', async ({ page }) => {
   await page.unroute('**/*');
   await mockGatewayApi(page);

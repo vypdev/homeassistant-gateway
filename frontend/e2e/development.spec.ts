@@ -48,6 +48,32 @@ test.describe('development console flows', () => {
     await assertResponsivePage(page);
   });
 
+  test('aligns observer probe packs to the logical reading edge', async ({ page }) => {
+    await installGatewayMock(page, developmentState);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Dev Console', exact: true }).click();
+
+    const measure = () => page.locator('.pack-grid > button').evaluateAll((buttons) => buttons.map((button) => {
+      const label = button.querySelector('strong');
+      if (!label) return null;
+      const buttonRect = button.getBoundingClientRect();
+      const labelRect = label.getBoundingClientRect();
+      return {
+        textAlign: getComputedStyle(button).textAlign,
+        leftInset: labelRect.left - buttonRect.left,
+        rightInset: buttonRect.right - labelRect.right,
+      };
+    }));
+
+    const ltr = await measure();
+    expect(ltr.every((item) => item && item.textAlign === 'start' && item.leftInset < item.rightInset), JSON.stringify(ltr)).toBe(true);
+
+    await page.evaluate(() => document.documentElement.setAttribute('dir', 'rtl'));
+    const rtl = await measure();
+    expect(rtl.every((item) => item && item.textAlign === 'start' && item.rightInset < item.leftInset), JSON.stringify(rtl)).toBe(true);
+  });
+
   test('running an operation displays completed evidence and traceability', async ({ page }) => {
     await installGatewayMock(page, developmentState);
     await page.goto('/');

@@ -12,7 +12,7 @@ export type Client = {
   revoked_at: string | null;
 };
 export type Ready = { status: string; storage: string; mcp: string; home_assistant: string };
-export type OperatorStatus = { operator_enabled: boolean; execution: string; registered_mutation_tools: string[]; capabilities: string[]; reason: string };
+export type OperatorStatus = { operator_enabled: boolean; execution: string; registered_mutation_tools: string[]; capabilities: string[]; reason: string | null };
 export type HealthCheck = { name: string; status: string; latency_ms: number; http_status: number | null; code: string | null };
 export type HealthDetails = { status: string; checks: HealthCheck[] };
 export type AuditEvent = { event_id: string; occurred_at: string; request_id: string; remote_user_id: string | null; action: string; target: string; decision: string; outcome: string; status_code: number };
@@ -25,7 +25,18 @@ export type DevelopmentReport = { report_id: string; occurred_at: string; operat
 export type DevelopmentCatalog = { enabled: boolean; upstream: string; operations: DevelopmentOperation[]; packs: DevelopmentPack[]; mutations: { status: string; reason: string; approval_required: boolean } };
 export type UiContext = { locale: string; theme: 'light' | 'dark' | 'auto' };
 export type View = 'overview' | 'clients' | 'policy' | 'mcp' | 'audit' | 'development' | 'catalog';
-export type CapabilityDefinition = { name: string; group: 'observer' | 'operator'; label: string; description: string };
+export type BootstrapCheckId = 'readiness' | 'clients' | 'audit' | 'catalog' | 'development_reports' | 'ui_context' | 'health_details' | 'operator_status' | 'operator_policy';
+export type BootstrapCheckStatus = 'pending' | 'running' | 'ok' | 'failed';
+export type BootstrapCheck = {
+  id: BootstrapCheckId;
+  path: string;
+  status: BootstrapCheckStatus;
+  duration_ms: number | null;
+  error: { code: string; http_status: number | null; message: string } | null;
+};
+export type CapabilityDefinition = { name: string; group: 'observer' | 'operator'; label: string; description: string; implemented?: boolean };
+export type CapabilityProbeResult = { capability: string; group: 'observer' | 'operator'; tool: string | null; decision: string; status: 'ok' | 'denied' | 'error' | 'approval_required' | 'unsupported'; reason: string; implemented: boolean; sample_entity_id: string | null; count: number | null; details: Record<string, unknown> | null };
+export type CapabilityProbeReport = { client_id: string; generated_for: string; results: CapabilityProbeResult[] };
 export type OperatorService = { id: string; domain: string; service: string; name: string; description: string; fields: Record<string, unknown> };
 export type OperatorServicePolicy = { services: OperatorService[]; selected: string[] };
 export type GatewayBootstrap = {

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from time import sleep
 from typing import Any
 
@@ -107,11 +108,38 @@ class SupervisorApiClient:
         except ValueError as error:
             raise HomeAssistantUnavailable("home_assistant_invalid_json", path=safe_path, status=response.status_code) from error
 
-    def _request_post(self, path: str, payload: dict[str, Any], diagnostic_path: str | None = None) -> httpx.Response:
+    def _request_post(
+        self,
+        path: str,
+        payload: dict[str, Any],
+        params: Mapping[str, str] | None = None,
+        diagnostic_path: str | None = None,
+        response_limit: int | None = None,
+    ) -> httpx.Response:
         request_path = diagnostic_path or path
         try:
             with httpx.Client(headers=self._headers, timeout=self._timeout, trust_env=False, transport=self._transport) as client:
-                response = client.post(f"{self._base_url}{path}", json=payload)
+                if response_limit is None:
+                    response = client.post(f"{self._base_url}{path}", params=params, json=payload)
+                else:
+                    # Read raw identity bytes so decoding cannot inflate a bounded response.
+                    with client.stream("POST", f"{self._base_url}{path}", params=params,
+                                       json=payload, headers={"Accept-Encoding": "identity"}) as upstream:
+                        if upstream.status_code >= 400:
+                            raise HomeAssistantUnavailable(f"home_assistant_http_{upstream.status_code}", path=request_path, status=upstream.status_code)
+                        if upstream.headers.get("content-encoding", "identity").strip().lower() not in {"", "identity"}:
+                            raise HomeAssistantUnavailable("home_assistant_unsupported_response_encoding", path=request_path, status=upstream.status_code)
+                        body = bytearray()
+                        # Mock transports may supply an already buffered response.
+                        chunks = (upstream.content,) if upstream.is_stream_consumed else upstream.iter_raw(chunk_size=min(65536, response_limit + 1))
+                        for chunk in chunks:
+                            if len(body) + len(chunk) > response_limit:
+                                raise HomeAssistantUnavailable("home_assistant_response_too_large", path=request_path, status=upstream.status_code)
+                            body.extend(chunk)
+                        headers = {name: value for name, value in upstream.headers.items()
+                                   if name.lower() not in {"content-encoding", "content-length"}}
+                        response = httpx.Response(upstream.status_code, headers=headers,
+                                                  content=bytes(body), request=upstream.request)
         except httpx.ReadTimeout as error:
             raise HomeAssistantUnavailable("home_assistant_transport_timeout", path=request_path) from error
         except httpx.NetworkError as error:
@@ -122,11 +150,23 @@ class SupervisorApiClient:
             raise HomeAssistantUnavailable(f"home_assistant_http_{response.status_code}", path=request_path, status=response.status_code)
         return response
 
-    def post_json(self, path: str, payload: dict[str, Any]) -> tuple[int, Any]:
+    def post_json(
+        self,
+        path: str,
+        payload: dict[str, Any],
+        params: Mapping[str, str] | None = None,
+        response_limit: int | None = None,
+    ) -> tuple[int, Any]:
         """Expose one bounded POST seam for explicitly allowlisted mutation adapters."""
-        response = self._request_post(path, payload, diagnostic_path=path)
+        if response_limit is not None and (response_limit < 1 or response_limit > 2 * 1024 * 1024):
+            raise ValueError("invalid_response_size_limit")
+        response = self._request_post(path, payload, params=params, diagnostic_path=path, response_limit=response_limit)
         try:
-            return response.status_code, redact(response.json())
+            # Response-service adapters must validate the decoded upstream shape
+            # before redaction. Returning the raw decoded value here is safe
+            # because this is an infrastructure seam; the adapter redacts only
+            # after its contract validation succeeds.
+            return response.status_code, response.json()
         except ValueError as error:
             raise HomeAssistantUnavailable("home_assistant_invalid_json", path=path, status=response.status_code) from error
 

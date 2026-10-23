@@ -15,6 +15,7 @@ on:
       - scripts/release_metadata.py
       - scripts/artifact_smoke.py
       - .github/workflows/release-app.yml
+      - .github/actions/setup-release-python/**
   workflow_dispatch:
 
 concurrency:
@@ -27,17 +28,22 @@ permissions:
 
 jobs:
   release:
-    runs-on: [self-hosted, X64, Linux, coolify]
+    runs-on:
+      group: vypdev
+      labels: [self-hosted, macOS, ARM64]
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v7
-        with:
-          python-version: "3.11"
+      - name: Prepare private Docker client
+        uses: ./.github/actions/prepare-docker
+        timeout-minutes: 2
+
+      - name: Set up release Python
+        uses: ./.github/actions/setup-release-python
+        timeout-minutes: 5
 
       - name: Install test dependencies
         run: python -m pip install --upgrade pip && python -m pip install ".[test]"

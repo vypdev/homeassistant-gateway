@@ -1,5 +1,6 @@
 import pytest
 
+from homeassistant_gateway.application.home_assistant import HomeAssistantUnavailable
 from homeassistant_gateway.application.operator_mutations import OperatorMutationService
 from homeassistant_gateway.application.operator_security import (
     ApprovalService,
@@ -14,6 +15,11 @@ class AuditCollector:
 
     def record(self, operation: str, target: str, decision: str, outcome: str) -> None:
         self.events.append((operation, target, decision, outcome))
+
+
+class UnavailableMutation:
+    def execute(self, operation, target, proposed):
+        raise HomeAssistantUnavailable("home_assistant_invalid_service_response")
 
 
 def service(enabled: bool = False) -> OperatorMutationService:
@@ -70,3 +76,27 @@ def test_enabled_service_rejects_replayed_idempotency_after_first_attempt() -> N
     operator.execute("ha.call_service", "light.test", "ha.write.services", {"state": "on"}, grant.approval_id, grant.token, "request-1")
     with pytest.raises(ValueError, match="approval_not_found_or_expired|approval_invalid_or_replayed"):
         operator.execute("ha.call_service", "light.test", "ha.write.services", {"state": "on"}, grant.approval_id, grant.token, "request-2")
+
+
+def test_upstream_unavailability_is_audited_and_propagates_to_public_mapping() -> None:
+    audit = AuditCollector()
+    operator = OperatorMutationService(
+        OperatorControl(True),
+        ApprovalService(),
+        IdempotencyRegistry(),
+        mutation_port=UnavailableMutation(),
+        audit=audit,
+    )
+    grant = operator.request_approval("ha.call_service", "todo.get_items", "ha.write.services", {"entity_id": "todo.tasks"})
+
+    with pytest.raises(HomeAssistantUnavailable, match="home_assistant_invalid_service_response"):
+        operator.execute(
+            "ha.call_service",
+            "todo.get_items",
+            "ha.write.services",
+            {"entity_id": "todo.tasks"},
+            grant.approval_id,
+            grant.token,
+            "request-unavailable",
+        )
+    assert audit.events == [("ha.call_service", "todo.get_items", "allowed", "unavailable")]

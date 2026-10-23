@@ -47,13 +47,20 @@ def extra_locale_keys(source: str, language: str) -> set[str]:
     return keys_in_object(source[start:end])
 
 
+def fragment4_locale_keys(source: str, language: str) -> set[str]:
+    start = source.index("const fragment4")
+    end = source.index("};", start)
+    match = re.search(rf"\b{language}: \{{(?P<body>.*?)\n  \}},", source[start:end], re.DOTALL)
+    return keys_in_object(match.group("body")) if match else set()
+
+
 def main() -> int:
     main_source = MAIN.read_text(encoding="utf-8")
     extra_source = EXTRA.read_text(encoding="utf-8")
     sources = [UI.read_text(encoding="utf-8")]
     keys = {language: main_locale_keys(main_source, language) for language in LANGUAGES}
     for language in LANGUAGES:
-        keys[language].update(extra_locale_keys(extra_source, language))
+        keys[language].update(extra_locale_keys(extra_source, language) | fragment4_locale_keys(extra_source, language))
     for language in ("en", "es", "fr"):
         keys[language].update({key for source in sources for key in keys_in_object(source)})
     development_keys = {

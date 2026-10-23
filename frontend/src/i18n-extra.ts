@@ -1063,16 +1063,49 @@ const fragment3: Record<string, string> = {
   viewAudit: 'عرض التدقيق',
 };
 
+const fragment4: Record<string, Record<string, string>> = {
+  es: {
+    bootCheckAudit: 'Estado de auditoría', bootCheckCatalog: 'Catálogo de desarrollo', bootCheckClients: 'Estado de clientes', bootCheckDone: 'Listo', bootCheckFailed: 'Fallida', bootCheckHealth: 'Detalles de salud', bootCheckOperatorPolicy: 'Política de servicios operator', bootCheckOperatorStatus: 'Estado de operator', bootCheckPending: 'Pendiente', bootCheckReadiness: 'Disponibilidad del gateway', bootCheckReports: 'Informes de desarrollo', bootCheckRunning: 'Comprobando', bootCheckUiContext: 'Contexto de interfaz', bootChecks: 'Comprobaciones del gateway', bootChecksCompleted: 'comprobaciones completadas', bootFailureDescription: 'El arranque del gateway no ha podido completarse. Estas comprobaciones muestran qué ha funcionado y qué necesita atención.', capabilityProbeDescription: 'Las capabilities de lectura se prueban contra Home Assistant; las de escritura se comprueban sin ejecutar mutaciones.', capabilityProbeTitle: 'Resultados de prueba de capabilities', probeCapabilities: 'Probar capabilities', probeCount: 'Cantidad', probeReason: 'Motivo', probeStatus: 'Resultado',
+  },
+  fr: {
+    bootCheckAudit: 'État de l’audit', bootCheckCatalog: 'Catalogue de développement', bootCheckClients: 'État des clients', bootCheckDone: 'Prêt', bootCheckFailed: 'Échec', bootCheckHealth: 'Détails de santé', bootCheckOperatorPolicy: 'Politique des services operator', bootCheckOperatorStatus: 'État de operator', bootCheckPending: 'En attente', bootCheckReadiness: 'Disponibilité du gateway', bootCheckReports: 'Rapports de développement', bootCheckRunning: 'Vérification en cours', bootCheckUiContext: 'Contexte de l’interface', bootChecks: 'Vérifications du gateway', bootChecksCompleted: 'vérifications terminées', bootFailureDescription: 'Le démarrage du gateway n’a pas pu aboutir. Les vérifications ci-dessous indiquent ce qui a réussi et ce qui nécessite une attention.', capabilityProbeDescription: 'Les capabilities de lecture sont exercées contre Home Assistant ; les capabilities d’écriture sont vérifiées sans exécuter de mutations.', capabilityProbeTitle: 'Résultats des tests de capabilities', probeCapabilities: 'Tester les capabilities', probeCount: 'Nombre', probeReason: 'Motif', probeStatus: 'Résultat',
+  },
+  it: {
+    bootCheckAudit: 'Stato dell’audit', bootCheckCatalog: 'Catalogo di sviluppo', bootCheckClients: 'Stato dei client', bootCheckDone: 'Pronto', bootCheckFailed: 'Non riuscito', bootCheckHealth: 'Dettagli dello stato', bootCheckOperatorPolicy: 'Policy dei servizi operator', bootCheckOperatorStatus: 'Stato di operator', bootCheckPending: 'In attesa', bootCheckReadiness: 'Prontezza del gateway', bootCheckReports: 'Report di sviluppo', bootCheckRunning: 'Verifica in corso', bootCheckUiContext: 'Contesto UI', bootChecks: 'Controlli del gateway', bootChecksCompleted: 'controlli completati', bootFailureDescription: 'L’avvio del gateway non è riuscito. I controlli seguenti mostrano cosa è riuscito e cosa richiede attenzione.', capabilityProbeDescription: 'Le capability di lettura vengono provate contro Home Assistant; quelle di scrittura vengono verificate senza eseguire mutazioni.', capabilityProbeTitle: 'Risultati dei test delle capability', probeCapabilities: 'Testa le capability', probeCount: 'Conteggio', probeReason: 'Motivo', probeStatus: 'Risultato',
+  },
+  de: {
+    bootCheckAudit: 'Auditstatus', bootCheckCatalog: 'Entwicklungskatalog', bootCheckClients: 'Clientstatus', bootCheckDone: 'Bereit', bootCheckFailed: 'Fehlgeschlagen', bootCheckHealth: 'Gesundheitsdetails', bootCheckOperatorPolicy: 'Richtlinie für Operator-Dienste', bootCheckOperatorStatus: 'Operatorstatus', bootCheckPending: 'Ausstehend', bootCheckReadiness: 'Gateway-Bereitschaft', bootCheckReports: 'Entwicklungsberichte', bootCheckRunning: 'Wird geprüft', bootCheckUiContext: 'UI-Kontext', bootChecks: 'Gateway-Prüfungen', bootChecksCompleted: 'Prüfungen abgeschlossen', bootFailureDescription: 'Der Gateway-Start konnte nicht abgeschlossen werden. Die folgenden Prüfungen zeigen genau, was erfolgreich war und wo Aufmerksamkeit erforderlich ist.', capabilityProbeDescription: 'Lesefähigkeiten werden gegen Home Assistant ausgeführt; Schreibfähigkeiten werden ohne Mutationen geprüft.', capabilityProbeTitle: 'Ergebnisse der Capability-Prüfungen', probeCapabilities: 'Capabilities prüfen', probeCount: 'Anzahl', probeReason: 'Grund', probeStatus: 'Ergebnis',
+  },
+  pt: {
+    bootCheckAudit: 'Estado da auditoria', bootCheckCatalog: 'Catálogo de desenvolvimento', bootCheckClients: 'Estado dos clientes', bootCheckDone: 'Pronto', bootCheckFailed: 'Falhou', bootCheckHealth: 'Detalhes de saúde', bootCheckOperatorPolicy: 'Política de serviços operator', bootCheckOperatorStatus: 'Estado do operator', bootCheckPending: 'Pendente', bootCheckReadiness: 'Prontidão do gateway', bootCheckReports: 'Relatórios de desenvolvimento', bootCheckRunning: 'A verificar', bootCheckUiContext: 'Contexto da interface', bootChecks: 'Verificações do gateway', bootChecksCompleted: 'verificações concluídas', bootFailureDescription: 'O arranque do gateway não foi concluído. As verificações abaixo mostram exatamente o que funcionou e o que requer atenção.', capabilityProbeDescription: 'As capabilities de leitura são testadas contra o Home Assistant; as de escrita são verificadas sem executar mutações.', capabilityProbeTitle: 'Resultados dos testes de capabilities', probeCapabilities: 'Testar capabilities', probeCount: 'Contagem', probeReason: 'Motivo', probeStatus: 'Resultado',
+  },
+  zh: {
+    bootCheckAudit: '审计状态', bootCheckCatalog: '开发目录', bootCheckClients: '客户端状态', bootCheckDone: '就绪', bootCheckFailed: '失败', bootCheckHealth: '健康详情', bootCheckOperatorPolicy: 'Operator 服务策略', bootCheckOperatorStatus: 'Operator 状态', bootCheckPending: '待处理', bootCheckReadiness: '网关就绪状态', bootCheckReports: '开发报告', bootCheckRunning: '检查中', bootCheckUiContext: '界面上下文', bootChecks: '网关检查', bootChecksCompleted: '项检查已完成', bootFailureDescription: '网关启动未能完成。以下检查准确显示了哪些步骤成功，以及哪些步骤需要关注。', capabilityProbeDescription: '读取能力会针对 Home Assistant 执行；写入能力只进行检查，不执行修改。', capabilityProbeTitle: '能力测试结果', probeCapabilities: '测试能力', probeCount: '数量', probeReason: '原因', probeStatus: '结果',
+  },
+  ja: {
+    bootCheckAudit: '監査状態', bootCheckCatalog: '開発カタログ', bootCheckClients: 'クライアント状態', bootCheckDone: '準備完了', bootCheckFailed: '失敗', bootCheckHealth: 'ヘルス詳細', bootCheckOperatorPolicy: 'Operator サービスポリシー', bootCheckOperatorStatus: 'Operator 状態', bootCheckPending: '保留中', bootCheckReadiness: 'ゲートウェイの準備状態', bootCheckReports: '開発レポート', bootCheckRunning: '確認中', bootCheckUiContext: 'UI コンテキスト', bootChecks: 'ゲートウェイチェック', bootChecksCompleted: '件のチェックが完了', bootFailureDescription: 'ゲートウェイの起動を完了できませんでした。以下のチェックで成功した項目と対応が必要な項目を確認できます。', capabilityProbeDescription: '読み取り capability は Home Assistant に対して実行し、書き込み capability は変更を実行せずに確認します。', capabilityProbeTitle: 'Capability テスト結果', probeCapabilities: 'Capability をテスト', probeCount: '件数', probeReason: '理由', probeStatus: '結果',
+  },
+  ru: {
+    bootCheckAudit: 'Состояние аудита', bootCheckCatalog: 'Каталог разработки', bootCheckClients: 'Состояние клиентов', bootCheckDone: 'Готово', bootCheckFailed: 'Ошибка', bootCheckHealth: 'Сведения о состоянии', bootCheckOperatorPolicy: 'Политика сервисов operator', bootCheckOperatorStatus: 'Состояние operator', bootCheckPending: 'Ожидание', bootCheckReadiness: 'Готовность шлюза', bootCheckReports: 'Отчёты разработки', bootCheckRunning: 'Проверка', bootCheckUiContext: 'Контекст интерфейса', bootChecks: 'Проверки шлюза', bootChecksCompleted: 'проверок завершено', bootFailureDescription: 'Не удалось завершить запуск шлюза. Проверки ниже показывают, что прошло успешно и где требуется внимание.', capabilityProbeDescription: 'Возможности чтения выполняются через Home Assistant; возможности записи проверяются без выполнения изменений.', capabilityProbeTitle: 'Результаты проверки возможностей', probeCapabilities: 'Проверить возможности', probeCount: 'Количество', probeReason: 'Причина', probeStatus: 'Результат',
+  },
+  hi: {
+    bootCheckAudit: 'ऑडिट स्थिति', bootCheckCatalog: 'डेवलपमेंट कैटलॉग', bootCheckClients: 'क्लाइंट स्थिति', bootCheckDone: 'तैयार', bootCheckFailed: 'विफल', bootCheckHealth: 'स्वास्थ्य विवरण', bootCheckOperatorPolicy: 'Operator सेवा नीति', bootCheckOperatorStatus: 'Operator स्थिति', bootCheckPending: 'लंबित', bootCheckReadiness: 'गेटवे की तैयारी', bootCheckReports: 'डेवलपमेंट रिपोर्ट', bootCheckRunning: 'जाँच जारी', bootCheckUiContext: 'UI संदर्भ', bootChecks: 'गेटवे जाँच', bootChecksCompleted: 'जाँच पूरी हुई', bootFailureDescription: 'गेटवे स्टार्टअप पूरा नहीं हो सका। नीचे की जाँचें दिखाती हैं कि क्या सफल हुआ और कहाँ ध्यान आवश्यक है।', capabilityProbeDescription: 'रीड capabilities को Home Assistant के विरुद्ध चलाया जाता है; राइट capabilities को mutation किए बिना जाँचा जाता है।', capabilityProbeTitle: 'Capability परीक्षण परिणाम', probeCapabilities: 'Capabilities जाँचें', probeCount: 'गिनती', probeReason: 'कारण', probeStatus: 'परिणाम',
+  },
+  ar: {
+    bootCheckAudit: 'حالة التدقيق', bootCheckCatalog: 'فهرس التطوير', bootCheckClients: 'حالة العملاء', bootCheckDone: 'جاهز', bootCheckFailed: 'فشل', bootCheckHealth: 'تفاصيل الصحة', bootCheckOperatorPolicy: 'سياسة خدمات المشغّل', bootCheckOperatorStatus: 'حالة المشغّل', bootCheckPending: 'معلّق', bootCheckReadiness: 'جاهزية البوابة', bootCheckReports: 'تقارير التطوير', bootCheckRunning: 'جارٍ الفحص', bootCheckUiContext: 'سياق الواجهة', bootChecks: 'فحوصات البوابة', bootChecksCompleted: 'اكتملت الفحوصات', bootFailureDescription: 'تعذّر إكمال بدء تشغيل البوابة. توضّح الفحوصات أدناه ما نجح وما يحتاج إلى اهتمام.', capabilityProbeDescription: 'تُختبر قدرات القراءة مقابل Home Assistant؛ وتُفحص قدرات الكتابة من دون تنفيذ تغييرات.', capabilityProbeTitle: 'نتائج اختبار القدرات', probeCapabilities: 'اختبار القدرات', probeCount: 'العدد', probeReason: 'السبب', probeStatus: 'النتيجة',
+  },
+};
+
 export const EXTRA_TRANSLATIONS: Record<string, Record<string, string>> = {
-  en: {},
-  es: { ...(fragment1.es ?? {}) },
-  zh: { ...(fragment1.zh ?? {}) },
-  ja: { ...(fragment1.ja ?? {}) },
-  ru: { ...(fragment1.ru ?? {}) },
-  de: { ...(fragment0.de ?? {}) },
-  pt: { ...(fragment0.pt ?? {}) },
-  it: { ...(fragment0.it ?? {}) },
-  fr: { ...(fragment0.fr ?? {}) },
-  hi: { ...fragment2 },
-  ar: { ...fragment3 },
+  en: { ...(fragment4.en ?? {}) },
+  es: { ...(fragment1.es ?? {}), ...(fragment4.es ?? {}) },
+  zh: { ...(fragment1.zh ?? {}), ...(fragment4.zh ?? {}) },
+  ja: { ...(fragment1.ja ?? {}), ...(fragment4.ja ?? {}) },
+  ru: { ...(fragment1.ru ?? {}), ...(fragment4.ru ?? {}) },
+  de: { ...(fragment0.de ?? {}), ...(fragment4.de ?? {}) },
+  pt: { ...(fragment0.pt ?? {}), ...(fragment4.pt ?? {}) },
+  it: { ...(fragment0.it ?? {}), ...(fragment4.it ?? {}) },
+  fr: { ...(fragment0.fr ?? {}), ...(fragment4.fr ?? {}) },
+  hi: { ...fragment2, ...(fragment4.hi ?? {}) },
+  ar: { ...fragment3, ...(fragment4.ar ?? {}) },
 };

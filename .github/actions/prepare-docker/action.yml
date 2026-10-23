@@ -1,0 +1,18 @@
+name: Prepare private Docker client
+description: Preserve the host daemon while isolating registry credentials between runners.
+runs:
+  using: composite
+  steps:
+    - name: Verify Docker and isolate client configuration
+      shell: bash
+      run: |
+        set -euo pipefail
+        docker version --format 'Docker server: {{.Server.Os}}/{{.Server.Arch}}'
+        docker_host="$(docker context inspect --format '{{.Endpoints.docker.Host}}')"
+        docker_config="$(mktemp -d "$RUNNER_TEMP/docker-client.XXXXXX")"
+        chmod 700 "$docker_config"
+        {
+          printf 'DOCKER_HOST=%s\n' "$docker_host"
+          printf 'DOCKER_CONFIG=%s\n' "$docker_config"
+          printf 'DOCKER_CONTEXT=\n'
+        } >> "$GITHUB_ENV"

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from threading import Barrier, Event
-from time import monotonic, sleep
+from time import monotonic, sleep, time
 
 from homeassistant_gateway.application.development import (
     DevelopmentReport,
@@ -60,12 +60,36 @@ class ConcurrentTraceHomeAssistant:
         return empty
 
 
+class RecordingReportStore:
+    def __init__(self) -> None:
+        self.reports: list[DevelopmentReport] = []
+
+    def list(self, limit: int = 1) -> list[DevelopmentReport]:
+        return self.reports[:limit]
+
+    def save(self, report: DevelopmentReport) -> None:
+        self.reports.append(report)
+
+
 class FailingReportStore:
     def list(self, limit: int = 1) -> list[DevelopmentReport]:
         return []
 
     def save(self, report: DevelopmentReport) -> None:
         raise RuntimeError("storage unavailable")
+
+
+class WarningRunner:
+    def run(self, operation: str, parameters: dict[str, object]) -> DevelopmentResult:
+        return DevelopmentResult("warning", operation, 1, 1, reason="fixture_warning")
+
+
+class ExplodingReportStore:
+    def list(self, limit: int = 1) -> list[DevelopmentReport]:
+        raise RuntimeError("report listing unavailable")
+
+    def save(self, report: DevelopmentReport) -> None:
+        raise AssertionError("save must not be reached")
 
 
 def wait_for_terminal(manager: DevelopmentJobManager, job_id: str) -> dict[str, object]:
@@ -94,6 +118,38 @@ def test_report_store_failure_reaches_terminal_error() -> None:
         snapshot = wait_for_terminal(manager, manager.start("states"))
         assert snapshot["status"] == "error"
         assert snapshot["error"] == "report_persistence_failed"
+    finally:
+        manager.shutdown()
+
+
+def test_report_store_success_reaches_completed_and_persists_report() -> None:
+    store = RecordingReportStore()
+    manager = DevelopmentJobManager(FakeRunner(), store)
+    try:
+        snapshot = wait_for_terminal(manager, manager.start("states"))
+        assert snapshot["status"] == "completed"
+        assert snapshot["error"] is None
+        assert len(store.reports) == 1
+        assert store.reports[0].operation == "states"
+    finally:
+        manager.shutdown()
+
+
+def test_report_listing_failure_reaches_terminal_error() -> None:
+    manager = DevelopmentJobManager(FakeRunner(), ExplodingReportStore())
+    try:
+        snapshot = wait_for_terminal(manager, manager.start("states"))
+        assert snapshot["status"] == "error"
+        assert snapshot["error"] == "development_job_failed"
+    finally:
+        manager.shutdown()
+
+
+def test_warning_result_reaches_warning_terminal_state() -> None:
+    manager = DevelopmentJobManager(WarningRunner())
+    try:
+        snapshot = wait_for_terminal(manager, manager.start("states"))
+        assert snapshot["status"] == "warning"
     finally:
         manager.shutdown()
 
@@ -151,6 +207,26 @@ def test_queued_job_can_be_cancelled_without_running() -> None:
         assert wait_for_terminal(manager, second_id)["status"] == "completed"
     finally:
         runner.release.set()
+        manager.shutdown()
+
+
+def test_cleanup_prunes_finished_jobs_above_retention_limit() -> None:
+    manager = DevelopmentJobManager(FakeRunner())
+    try:
+        now = time()
+        with manager._lock:
+            for index in range(32):
+                job_id = f"finished-{index}"
+                manager._jobs[job_id] = _Job(
+                    job_id=job_id,
+                    operation="states",
+                    operations=("states",),
+                    status="completed",
+                    finished_at=now + index,
+                )
+        manager.cleanup()
+        assert len(manager._jobs) == 31
+    finally:
         manager.shutdown()
 
 
