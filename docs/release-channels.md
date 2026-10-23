@@ -38,18 +38,25 @@ Development work is performed on `develop`. Every pull request targeting
 `develop` or `main` runs the required CI checks,
 including backend, frontend, browser and packaging validation.
 
-Backend CI and Copilot dependency verification use the `vypdev` group with
-`[self-hosted, codex, Linux]`. Frontend and app-packaging CI use GitHub-hosted
-Ubuntu; publication and its ARM64 prerequisite verification use the Docker-capable
-Mac described below. Because this is a public repository, pull requests must be
-restricted to collaborators before executing on persistent private runners.
+Backend CI, Copilot dependency verification, and auxiliary Copilot jobs
+(approval, merge queue, credential health, release/hotfix orchestration) use the
+`vypdev` group with `[self-hosted, codex, Linux]`. Frontend and app-packaging CI,
+publication, and ARM64 prerequisite verification use `[self-hosted, macOS, ARM64]` in the same
+group. No Gateway workflow requests a GitHub-hosted runner.
 
-Frontend CI prefers Ubuntu's primary package archive, with the Azure mirror as a
-fallback, before installing Playwright's system dependencies. APT uses one retry
-and a 15-second connection/inactivity timeout, and browser installation has a
-10-minute step limit. A degraded mirror therefore cannot hold the job for hours.
-Chromium, Firefox, WebKit, and all browser tests remain required. This changes only
-the disposable GitHub-hosted runner's package-download configuration.
+Frontend CI runs inside the official Playwright Ubuntu image on the Docker-capable
+Mac, retaining Linux visual snapshots and all Chromium, Firefox, and WebKit tests.
+The image supplies browser libraries; no VM sudo permission or host APT change is
+needed. Its digest and Playwright 1.62.1 version are pinned in
+`.github/docker/frontend-ci.Dockerfile` and must be updated together with the
+frontend lockfile. The container retains Node 22 and pnpm 11.15.1.
+
+Browser containers have private networks (no published host ports), two CPUs,
+4 GiB of memory, and 1 GiB of shared memory. Each suite uses two workers. The
+production preview, container, and job-specific image are cleaned up after use.
+Failed browser diagnostics are uploaded for seven days. Same-repository PR guards
+protect the newly migrated persistent-runner CI jobs; public fork code does not
+run in those jobs.
 
 Stable `main` is release-only. A release is prepared by opening a pull request
 from `develop` to `main` with the version, changelog and release metadata
@@ -107,8 +114,9 @@ and keep the Mac awake. Both runners share the same physical CPU, memory, and da
 `Docker runner verification` checks the same setup, QEMU, and Buildx actions on
 relevant same-repository PRs. It builds a minimal image for all three target
 architectures with read-only repository permissions and `push: false`. It does not
-publish an app image or create a release. Existing app-packaging CI retains its
-GitHub-hosted Ubuntu runner.
+publish an app image or create a release. App-packaging CI uses the same private
+Docker/Python setup on ARM64 and builds the full checked-out Edge image for
+`linux/amd64`, retaining the previous Ubuntu packaging target without publishing.
 
 
 The stable publication job and its read-only ARM64 verification share
