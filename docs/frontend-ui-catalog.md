@@ -67,3 +67,5 @@ Application views consume the package through `src/ui/index.ts`. The root `src/u
 
 
 Bootstrap progress marks an endpoint successful only after its response passes the matching runtime contract. Malformed payloads identify that endpoint as failed in the bootstrap error. Capability editing keeps its own profile and selection draft; opening, saving, or canceling an editor preserves the separate client-creation draft.
+
+Selected legacy grants that are now unavailable can be removed while editing an existing client. Once removed they cannot be granted again; select-all excludes unimplemented or globally disabled capabilities.

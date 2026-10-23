@@ -316,6 +316,8 @@ export class GatewayApp extends LitElement {
   capabilitySelector(editing = false) {
     const selected = () => editing ? this.editingCapabilities : this.selectedCapabilities;
     const profile = () => editing ? this.editingClientProfile : this.clientProfile;
+    const canGrant = (item: (typeof CAPABILITY_DEFINITIONS)[number]) => item.implemented !== false
+      && (item.group !== 'operator' || (this.operatorEnabled && profile() === 'operator'));
     const update = (next: Iterable<string>) => {
       if (editing) this.editingCapabilities = new Set(next); else this.selectedCapabilities = new Set(next);
     };
@@ -324,16 +326,16 @@ export class GatewayApp extends LitElement {
       selectedLabel: this.t('selectedCapabilities'),
       selectAllLabel: this.t('selectAllObserver'),
       clearLabel: this.t('clearSelection'),
-      onSelectAll: () => update(capabilitiesForProfile(profile(), CAPABILITY_DEFINITIONS)),
+      onSelectAll: () => update(CAPABILITY_DEFINITIONS.filter(canGrant).map((item) => item.name)),
       onClear: () => update([]),
       items: CAPABILITY_DEFINITIONS.map((item) => ({
         value: item.name,
         label: this.capabilityText(item.name, 'Label', item.label),
         description: `${this.capabilityText(item.name, 'Description', item.description)}${item.implemented === false ? ' · Not implemented' : ''}`,
         checked: selected().has(item.name),
-        disabled: item.implemented === false || (item.group === 'operator' && (!this.operatorEnabled || profile() !== 'operator')),
+        disabled: !canGrant(item) && !(editing && selected().has(item.name)),
         className: item.group === 'operator' ? 'operator' : '',
-        onChange: (event: Event) => update(applyCapabilityToggle(profile(), selected(), item.name, (event.target as HTMLInputElement).checked, item.implemented !== false)),
+        onChange: (event: Event) => update(applyCapabilityToggle(profile(), selected(), item.name, (event.target as HTMLInputElement).checked, canGrant(item))),
       })),
     });
   }
