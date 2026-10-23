@@ -4,7 +4,6 @@ import json
 import os
 import subprocess
 import sys
-import sysconfig
 from pathlib import Path
 
 import pytest
@@ -46,8 +45,8 @@ raise SystemExit(int(os.environ["CURL_EXIT"]))
            "CURL_STATUS": status, "CURL_EXIT": exit_code, name: credential}
     # setup-python CPython on Linux needs its own libpython directory even
     # when the fixture environment deliberately excludes agent/CI variables.
-    if sys.platform.startswith("linux") and (library_dir := sysconfig.get_config_var("LIBDIR")):
-        env["LD_LIBRARY_PATH"] = library_dir
+    if sys.platform.startswith("linux"):
+        env["LD_LIBRARY_PATH"] = str(Path(sys.base_prefix) / "lib")
     job = "verify-codex-api-key" if provider == "codex" else "verify-" + provider
     script = JOBS[job]["steps"][0]["run"]
     result = subprocess.run(["bash", "-c", script], env=env, capture_output=True, text=True, timeout=10)
