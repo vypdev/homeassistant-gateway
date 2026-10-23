@@ -8,6 +8,11 @@ on:
       - .github/workflows/release-app.yml
       - .github/workflows/edge-app.yml
       - .github/actions/prepare-docker/**
+      - .github/actions/setup-release-python/**
+      - pyproject.toml
+      - src/**
+      - tests/**
+      - scripts/release_metadata.py
   workflow_dispatch:
 
 permissions:
@@ -28,6 +33,19 @@ jobs:
       - name: Prepare private Docker client
         uses: ./.github/actions/prepare-docker
         timeout-minutes: 2
+
+      - name: Set up release Python
+        uses: ./.github/actions/setup-release-python
+        timeout-minutes: 5
+
+      - name: Install release test dependencies
+        run: python -m pip install --upgrade pip && python -m pip install ".[test]"
+
+      - name: Run release tests on the actual publication host
+        run: python -m pytest
+
+      - name: Read stable release metadata
+        run: python scripts/release_metadata.py addon/CHANGELOG.md --output version
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4

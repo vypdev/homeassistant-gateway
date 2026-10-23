@@ -101,3 +101,13 @@ relevant same-repository PRs. It builds a minimal image for all three target
 architectures with read-only repository permissions and `push: false`. It does not
 publish an app image or create a release. Existing app-packaging CI retains its
 GitHub-hosted Ubuntu runner.
+
+
+The stable publication job and its read-only ARM64 verification share
+`.github/actions/setup-release-python`. It uses uv to provision Python 3.11 and a
+pip-enabled virtual environment entirely under `RUNNER_TEMP`, so it does not need
+the GitHub-hosted macOS `/Users/runner` layout or privileged directory creation.
+The ARM64 check runs the same dependency installation and pytest command as the
+stable release job before exercising Docker/QEMU/Buildx. A Docker-only smoke is
+therefore insufficient to declare release prerequisites ready. These checks do
+not publish an image or create a release.
