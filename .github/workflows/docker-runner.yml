@@ -1,0 +1,50 @@
+name: Docker runner verification
+
+on:
+  pull_request:
+    branches: [main, master, develop]
+    paths:
+      - .github/workflows/docker-runner.yml
+      - .github/workflows/release-app.yml
+      - .github/workflows/edge-app.yml
+      - .github/actions/prepare-docker/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docker-runner:
+    name: Docker runner (three architectures, no publication)
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on:
+      group: vypdev
+      labels: [self-hosted, macOS, ARM64]
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Prepare private Docker client
+        uses: ./.github/actions/prepare-docker
+        timeout-minutes: 2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Create architecture smoke Dockerfile
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/docker-smoke"
+          printf 'FROM alpine:3.22\nRUN uname -m\n' > "$RUNNER_TEMP/docker-smoke/Dockerfile"
+
+      - name: Build all publication architectures without pushing
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ runner.temp }}/docker-smoke
+          platforms: linux/amd64,linux/arm64,linux/arm/v7
+          push: false
+          outputs: type=oci,dest=${{ runner.temp }}/docker-smoke.oci.tar
