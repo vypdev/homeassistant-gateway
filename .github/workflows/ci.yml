@@ -117,7 +117,15 @@ jobs:
         run: pnpm run check:storybook
       - name: Build Storybook component catalog
         run: pnpm run storybook:build
+      - name: Configure bounded Ubuntu package downloads
+        run: |
+          # Prefer Ubuntu's primary archive while the Azure mirror is degraded.
+          printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' 'http://azure.archive.ubuntu.com/ubuntu/' \
+            | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+          printf '%s\n' 'Acquire::Retries "1";' 'Acquire::http::Timeout "15";' 'Acquire::https::Timeout "15";' \
+            | sudo tee /etc/apt/apt.conf.d/zz-gateway-network >/dev/null
       - name: Install Playwright browsers
+        timeout-minutes: 10
         run: pnpm exec playwright install --with-deps chromium firefox webkit
       - name: Test Storybook component catalog
         run: pnpm run test:storybook

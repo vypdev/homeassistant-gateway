@@ -38,10 +38,18 @@ Development work is performed on `develop`. Every pull request targeting
 `develop` or `main` runs the required CI checks,
 including backend, frontend, browser and packaging validation.
 
-All CI, Edge, and release workflows run on the repository's labeled self-hosted
-Coolify runner (`self-hosted`, `X64`, `Linux`, `coolify`). Because this is a
-public repository, pull requests must be restricted to collaborators before
-they are allowed to execute on the persistent private runner.
+Backend CI and Copilot dependency verification use the `vypdev` group with
+`[self-hosted, codex, Linux]`. Frontend and app-packaging CI use GitHub-hosted
+Ubuntu; publication and its ARM64 prerequisite verification use the Docker-capable
+Mac described below. Because this is a public repository, pull requests must be
+restricted to collaborators before executing on persistent private runners.
+
+Frontend CI prefers Ubuntu's primary package archive, with the Azure mirror as a
+fallback, before installing Playwright's system dependencies. APT uses one retry
+and a 15-second connection/inactivity timeout, and browser installation has a
+10-minute step limit. A degraded mirror therefore cannot hold the job for hours.
+Chromium, Firefox, WebKit, and all browser tests remain required. This changes only
+the disposable GitHub-hosted runner's package-download configuration.
 
 Stable `main` is release-only. A release is prepared by opening a pull request
 from `develop` to `main` with the version, changelog and release metadata
