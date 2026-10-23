@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import io
+import http.server
+import threading
 import stat
 import subprocess
 import urllib.error
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 import yaml
@@ -40,7 +43,7 @@ def test_protected_health_probe_rejects_unexpected_status_and_closes_response(mo
             raise urllib.error.HTTPError(url, status, "fixture", {}, response)
         return response
 
-    monkeypatch.setattr(standalone_real_smoke.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(standalone_real_smoke.urllib.request, "build_opener", lambda *args: SimpleNamespace(open=urlopen))
     with pytest.raises(RuntimeError, match="gateway_protected_endpoint"):
         standalone_real_smoke.require_protected_health_details("http://127.0.0.1:49123")
     assert response.closed
@@ -52,7 +55,7 @@ def test_protected_health_probe_accepts_only_unauthorized_and_closes_error(monke
     def urlopen(url, timeout):
         raise urllib.error.HTTPError(url, 401, "fixture", {}, response)
 
-    monkeypatch.setattr(standalone_real_smoke.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(standalone_real_smoke.urllib.request, "build_opener", lambda *args: SimpleNamespace(open=urlopen))
     standalone_real_smoke.require_protected_health_details("http://127.0.0.1:49123")
     assert response.closed
 
@@ -61,7 +64,7 @@ def test_protected_health_probe_fails_closed_on_transport_error(monkeypatch):
     def urlopen(url, timeout):
         raise OSError("fixture-offline")
 
-    monkeypatch.setattr(standalone_real_smoke.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(standalone_real_smoke.urllib.request, "build_opener", lambda *args: SimpleNamespace(open=urlopen))
     with pytest.raises(OSError, match="fixture-offline"):
         standalone_real_smoke.require_protected_health_details("http://127.0.0.1:49123")
 
@@ -95,3 +98,38 @@ def test_smoke_keeps_fixture_token_private_and_removes_its_directory(monkeypatch
     monkeypatch.setattr(standalone_real_smoke.subprocess, "run", lambda *args, **kwargs: None)
     assert standalone_real_smoke.main() == 0
     assert len(files) == 1 and not files[0].parent.exists()
+
+
+@pytest.mark.parametrize("status", [301, 302, 303, 307, 308])
+def test_protected_probe_rejects_real_redirect_without_contacting_destination(status, monkeypatch):
+    requests = []
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            requests.append(self.path)
+            if self.path == "/api/health/details":
+                self.send_response(status)
+                self.send_header("Location", "/redirect-target")
+            else:
+                self.send_response(401)
+            self.end_headers()
+
+        def log_message(self, *args):
+            pass
+
+    with http.server.HTTPServer(("127.0.0.1", 0), Handler) as server:
+        proxy = f"http://127.0.0.1:{server.server_port}"
+        for name in ["http_proxy", "HTTP_PROXY"]:
+            monkeypatch.setenv(name, proxy)
+        for name in ["no_proxy", "NO_PROXY"]:
+            monkeypatch.setenv(name, "")
+        thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.01}, daemon=True)
+        thread.start()
+        try:
+            with pytest.raises(RuntimeError, match="gateway_protected_endpoint"):
+                standalone_real_smoke.require_protected_health_details(f"http://127.0.0.1:{server.server_port}")
+            assert requests == ["/api/health/details"]
+        finally:
+            server.shutdown()
+            thread.join(timeout=5)
+        assert not thread.is_alive()
