@@ -1,0 +1,25 @@
+name: Prepare release Python
+description: Install Python 3.11 and pip in a private environment on self-hosted runners.
+runs:
+  using: composite
+  steps:
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v7
+      with:
+        version: "0.13.5"
+        enable-cache: false
+
+    - name: Create private Python 3.11 environment
+      shell: bash
+      env:
+        UV_PYTHON_INSTALL_DIR: ${{ runner.temp }}/release-python
+        UV_CACHE_DIR: ${{ runner.temp }}/release-uv-cache
+      run: |
+        set -euo pipefail
+        uv python install 3.11
+        release_venv="$RUNNER_TEMP/release-venv"
+        uv venv --python 3.11 --seed "$release_venv"
+        "$release_venv/bin/python" -c 'import sys; assert sys.version_info[:2] == (3, 11); print(sys.version)'
+        "$release_venv/bin/python" -m pip --version
+        printf '%s\n' "$release_venv/bin" >> "$GITHUB_PATH"
+        printf 'VIRTUAL_ENV=%s\n' "$release_venv" >> "$GITHUB_ENV"

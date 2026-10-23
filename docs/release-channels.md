@@ -38,10 +38,18 @@ Development work is performed on `develop`. Every pull request targeting
 `develop` or `main` runs the required CI checks,
 including backend, frontend, browser and packaging validation.
 
-All CI, Edge, and release workflows run on the repository's labeled self-hosted
-Coolify runner (`self-hosted`, `X64`, `Linux`, `coolify`). Because this is a
-public repository, pull requests must be restricted to collaborators before
-they are allowed to execute on the persistent private runner.
+Backend CI and Copilot dependency verification use the `vypdev` group with
+`[self-hosted, codex, Linux]`. Frontend and app-packaging CI use GitHub-hosted
+Ubuntu; publication and its ARM64 prerequisite verification use the Docker-capable
+Mac described below. Because this is a public repository, pull requests must be
+restricted to collaborators before executing on persistent private runners.
+
+Frontend CI prefers Ubuntu's primary package archive, with the Azure mirror as a
+fallback, before installing Playwright's system dependencies. APT uses one retry
+and a 15-second connection/inactivity timeout, and browser installation has a
+10-minute step limit. A degraded mirror therefore cannot hold the job for hours.
+Chromium, Firefox, WebKit, and all browser tests remain required. This changes only
+the disposable GitHub-hosted runner's package-download configuration.
 
 Stable `main` is release-only. A release is prepared by opening a pull request
 from `develop` to `main` with the version, changelog and release metadata
@@ -101,3 +109,13 @@ relevant same-repository PRs. It builds a minimal image for all three target
 architectures with read-only repository permissions and `push: false`. It does not
 publish an app image or create a release. Existing app-packaging CI retains its
 GitHub-hosted Ubuntu runner.
+
+
+The stable publication job and its read-only ARM64 verification share
+`.github/actions/setup-release-python`. It uses uv to provision Python 3.11 and a
+pip-enabled virtual environment entirely under `RUNNER_TEMP`, so it does not need
+the GitHub-hosted macOS `/Users/runner` layout or privileged directory creation.
+The ARM64 check runs the same dependency installation and pytest command as the
+stable release job before exercising Docker/QEMU/Buildx. A Docker-only smoke is
+therefore insufficient to declare release prerequisites ready. These checks do
+not publish an image or create a release.
