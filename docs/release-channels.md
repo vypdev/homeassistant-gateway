@@ -77,3 +77,27 @@ Stable releases continue to be driven by `addon/CHANGELOG.md` and the release
 workflow. Edge publishes a separate GHCR image and does not create GitHub
 releases. The two channels share source, tests and runtime behavior, but their
 packaging and distribution paths remain separate.
+
+
+## Docker-capable publication runners
+
+`Release App` and `Edge App` run on `[self-hosted, macOS, ARM64]` in the `vypdev`
+group, using the Apple Silicon host's Docker daemon. The older Mac and the
+Linux/Windows VMs do not provide Docker. Output platforms remain `linux/amd64`,
+`linux/arm64`, and `linux/arm/v7`; the existing version/tag publication guards are
+unchanged. A stable run whose version already exists still checks the Docker
+daemon before skipping publication.
+
+The repository's `prepare-docker` action checks Docker and retains the host daemon
+endpoint while giving each job a private client configuration in `RUNNER_TEMP`.
+Edge performs the same preparation inline before its intentional `main` checkout,
+so it does not require a local action from a different source revision.
+Registry credentials and builder selection therefore do not share the host user's
+Docker configuration. Keep Docker available in both ARM64 runners' service PATH
+and keep the Mac awake. Both runners share the same physical CPU, memory, and daemon.
+
+`Docker runner verification` checks the same setup, QEMU, and Buildx actions on
+relevant same-repository PRs. It builds a minimal image for all three target
+architectures with read-only repository permissions and `push: false`. It does not
+publish an app image or create a release. Existing app-packaging CI retains its
+GitHub-hosted Ubuntu runner.

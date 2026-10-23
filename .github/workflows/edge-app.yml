@@ -26,9 +26,28 @@ permissions:
 jobs:
   build-and-publish:
     name: Build Edge (multi-architecture)
-    runs-on: [self-hosted, codex, Linux]
+    runs-on:
+      group: vypdev
+      labels: [self-hosted, macOS, ARM64]
 
     steps:
+      # Inline because the checkout below intentionally uses main, which may
+      # differ from the revision that provides this workflow and its local actions.
+      - name: Prepare private Docker client
+        timeout-minutes: 2
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker version --format 'Docker server: {{.Server.Os}}/{{.Server.Arch}}'
+          docker_host="$(docker context inspect --format '{{.Endpoints.docker.Host}}')"
+          docker_config="$(mktemp -d "$RUNNER_TEMP/docker-client.XXXXXX")"
+          chmod 700 "$docker_config"
+          {
+            printf 'DOCKER_HOST=%s\n' "$docker_host"
+            printf 'DOCKER_CONFIG=%s\n' "$docker_config"
+            printf 'DOCKER_CONTEXT=\n'
+          } >> "$GITHUB_ENV"
+
       - name: Check out main source
         uses: actions/checkout@v7
         with:
