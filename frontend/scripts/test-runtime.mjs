@@ -58,6 +58,9 @@ try {
   assert.deepEqual(policy.toggleCapability('observer', ['ha.read.states'], 'ha.write.services', true), ['ha.read.states']);
   assert.deepEqual(policy.toggleCapability('operator', ['ha.read.states'], 'ha.write.services', true), ['ha.read.states', 'ha.write.services']);
   assert.deepEqual(policy.toggleCapability('operator', ['ha.read.states', 'ha.write.services'], 'ha.write.services', false), ['ha.read.states']);
+  assert.deepEqual(policy.toggleCapability('operator', ['ha.read.states', 'ha.write.configuration'], 'ha.write.configuration', false, false), ['ha.read.states']);
+  assert.deepEqual(policy.toggleCapability('operator', ['ha.read.states'], 'ha.write.configuration', true, false), ['ha.read.states']);
+  assert.deepEqual(policy.toggleCapability('observer', ['ha.read.states', 'ha.write.services'], 'ha.write.services', false), ['ha.read.states']);
 
   const operatorPolicy = await import(pathToFileURL(join(tempDir, 'operator-policy.mjs')));
   assert.deepEqual(operatorPolicy.toggleOperatorServiceSelection(['light.turn_on'], 'switch.turn_on', true), ['light.turn_on', 'switch.turn_on']);

@@ -84,6 +84,42 @@ test.describe('clients permission flows', () => {
     await expect(creation.locator('.permission-disabled-note')).toHaveCount(0);
   });
 
+  test('legacy unavailable grants can be removed without allowing re-grant', async ({ page }) => {
+    const clients = structuredClone(POPULATED_STATE['/api/clients']) as Array<Record<string, unknown>>;
+    const operator = clients[1];
+    operator.capabilities = ['ha.read.diagnostics', 'ha.write.services', 'ha.write.configuration'];
+    await installGatewayMock(page, { ...POPULATED_STATE, '/api/clients': clients,
+      '/api/operator/status': { ...(POPULATED_STATE['/api/operator/status'] as Record<string, unknown>), operator_enabled: false } });
+    let patchPayload: unknown = null;
+    await page.route('**/api/clients/operator-1/capabilities', async (route) => {
+      patchPayload = route.request().postDataJSON();
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ...operator, ...(patchPayload as object) }) });
+    });
+    await openClients(page);
+    const editOperator = page.getByRole('button', { name: 'Edit capabilities', exact: true }).filter({ visible: true }).nth(1);
+    await editOperator.click();
+    const editor = page.locator('.client-capabilities-edit-card');
+    const reserved = editor.locator('input[value="ha.write.configuration"]');
+    const service = editor.locator('input[value="ha.write.services"]');
+    await expect(reserved).toBeChecked();
+    await expect(reserved).toBeEnabled();
+    await editor.getByRole('button', { name: 'Select all', exact: true }).click();
+    await expect(editor.locator('input[value^="ha.write."]:checked')).toHaveCount(0);
+    await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+    expect(patchPayload).toBeNull();
+    await editOperator.click();
+    await expect(reserved).toBeChecked();
+    await expect(service).toBeChecked();
+    await reserved.uncheck();
+    await service.uncheck();
+    await expect(reserved).toBeDisabled();
+    await expect(service).toBeDisabled();
+    await expect(editor.locator('input[value="ha.read.diagnostics"]')).toBeChecked();
+    await editor.getByRole('button', { name: 'Save capabilities', exact: true }).click();
+    await expect.poll(() => patchPayload).toEqual({ capabilities: ['ha.read.diagnostics'] });
+    await expect(page.locator('.client-form-card input[value="ha.write.configuration"]')).toBeDisabled();
+  });
+
   test('operator profile offers a generic select-all capabilities action', async ({ page }) => {
     await installGatewayMock(page, POPULATED_STATE);
     await openClients(page);
