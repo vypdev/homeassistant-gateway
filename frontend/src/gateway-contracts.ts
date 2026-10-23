@@ -1,5 +1,5 @@
 import { GatewayError } from './gateway-errors';
-import type { AuditEvent, CapabilityProbeReport, Client, GatewayBootstrap, HealthCheck, HealthDetails, OperatorPolicySaveResponse, OperatorService, OperatorServicePolicy, OperatorStatus, PolicyDecision, Ready } from './models';
+import type { AuditEvent, BootstrapCheckId, CapabilityProbeReport, Client, GatewayBootstrap, HealthCheck, HealthDetails, OperatorPolicySaveResponse, OperatorService, OperatorServicePolicy, OperatorStatus, PolicyDecision, Ready } from './models';
 
 const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object';
 const hasStrings = (value: Record<string, unknown>, keys: string[]): boolean => keys.every((key) => typeof value[key] === 'string');
@@ -43,23 +43,28 @@ const isOperatorPolicy = (value: unknown): value is OperatorServicePolicy => isR
 
 const invalid = (message: string): never => { throw new GatewayError('invalid_response', message); };
 
+const BOOTSTRAP_VALIDATORS: Record<BootstrapCheckId, (value: unknown) => boolean> = {
+  readiness: isReady,
+  clients: (value) => Array.isArray(value) && value.every(isClient),
+  audit: (value) => Array.isArray(value) && value.every(isAuditEvent),
+  catalog: (value) => isRecord(value) && Array.isArray(value.operations) && Array.isArray(value.packs),
+  development_reports: Array.isArray,
+  ui_context: (value) => isRecord(value) && typeof value.locale === 'string' && ['light', 'dark', 'auto'].includes(String(value.theme)),
+  health_details: isHealthDetails,
+  operator_status: isOperatorStatus,
+  operator_policy: isOperatorPolicy,
+};
+
+export function assertBootstrapResponse(id: BootstrapCheckId, value: unknown): void {
+  if (!BOOTSTRAP_VALIDATORS[id](value)) invalid(`Invalid gateway bootstrap response (${id})`);
+}
+
 export function assertGatewayBootstrap(value: unknown): asserts value is GatewayBootstrap {
-  if (!isRecord(value)
-    || !isReady(value.ready)
-    || !Array.isArray(value.clients)
-    || !value.clients.every(isClient)
-    || !Array.isArray(value.audit)
-    || !value.audit.every(isAuditEvent)
-    || !isRecord(value.development)
-    || !Array.isArray(value.development.operations)
-    || !Array.isArray(value.development.packs)
-    || !Array.isArray(value.developmentReports)
-    || !isRecord(value.uiContext)
-    || typeof value.uiContext.locale !== 'string'
-    || !['light', 'dark', 'auto'].includes(String(value.uiContext.theme))
-    || !isHealthDetails(value.healthDetails)
-    || !isOperatorStatus(value.operatorStatus)
-    || !isOperatorPolicy(value.operatorPolicy)) invalid('Invalid gateway bootstrap response');
+  const record = isRecord(value) ? value : invalid('Invalid gateway bootstrap response');
+  const fields = { readiness: 'ready', clients: 'clients', audit: 'audit', catalog: 'development',
+    development_reports: 'developmentReports', ui_context: 'uiContext', health_details: 'healthDetails',
+    operator_status: 'operatorStatus', operator_policy: 'operatorPolicy' } as const;
+  for (const id of Object.keys(fields) as BootstrapCheckId[]) assertBootstrapResponse(id, record[fields[id]]);
 }
 
 export function assertClients(value: unknown): asserts value is Client[] {

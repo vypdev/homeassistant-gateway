@@ -64,3 +64,6 @@ Stories are also presentation-only. They use fixed fixtures and callbacks; they 
 - Light and dark themes change tokens, not component geometry.
 
 Application views consume the package through `src/ui/index.ts`. The root `src/ui-primitives.ts` entry point remains a compatibility re-export during migration and contains no independent implementation.
+
+
+Bootstrap progress marks an endpoint successful only after its response passes the matching runtime contract. Malformed payloads identify that endpoint as failed in the bootstrap error. Capability editing keeps its own profile and selection draft; opening, saving, or canceling an editor preserves the separate client-creation draft.

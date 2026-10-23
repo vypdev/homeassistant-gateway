@@ -53,6 +53,7 @@ test.describe('clients permission flows', () => {
     await expect(page.getByRole('note')).toContainText(/write capabilities are unavailable/i);
     await expect(page.getByRole('tab', { name: 'Capabilities' })).toHaveAttribute('aria-selected', 'true');
     await expect(page.getByRole('tabpanel')).toBeVisible();
+    await expect(page.locator('.client-form-card input[value="ha.write.services"]')).toBeDisabled();
 
     await page.getByRole('tab', { name: 'Operator Services' }).click();
     await expect(page.getByRole('tab', { name: 'Operator Services' })).toHaveAttribute('aria-selected', 'true');
@@ -61,6 +62,26 @@ test.describe('clients permission flows', () => {
     await page.getByRole('combobox', { name: 'Profile' }).selectOption('operator');
     await expect(page.getByRole('tabpanel')).toContainText(/grant only the globally enabled services/i);
     await expect(page.locator('input[name="operator_services"]').first()).toBeEnabled();
+    await page.getByRole('tab', { name: 'Capabilities', exact: true }).click();
+    await expect(page.locator('.client-form-card input[value="ha.write.services"]')).toBeEnabled();
+  });
+
+  test('canceling a capability edit preserves the independent creation draft', async ({ page }) => {
+    await installGatewayMock(page, POPULATED_STATE);
+    await openClients(page);
+    const creation = page.locator('.client-form-card');
+    await creation.getByRole('combobox', { name: 'Profile' }).selectOption('operator');
+    await creation.locator('input[value="ha.read.states"]').check();
+    await creation.locator('input[value="ha.read.diagnostics"]').uncheck();
+    await page.getByRole('button', { name: 'Edit capabilities', exact: true }).filter({ visible: true }).first().click();
+    const editor = page.locator('.client-capabilities-edit-card');
+    await editor.getByRole('button', { name: 'Clear', exact: true }).click();
+    await expect(creation.locator('input[value="ha.read.states"]')).toBeChecked();
+    await expect(creation.locator('.permission-disabled-note')).toHaveCount(0);
+    await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+    await expect(creation.locator('input[value="ha.read.states"]')).toBeChecked();
+    await expect(creation.locator('input[value="ha.read.diagnostics"]')).not.toBeChecked();
+    await expect(creation.locator('.permission-disabled-note')).toHaveCount(0);
   });
 
   test('operator profile offers a generic select-all capabilities action', async ({ page }) => {

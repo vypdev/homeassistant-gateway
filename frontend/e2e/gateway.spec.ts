@@ -79,12 +79,17 @@ test('updates capabilities for an existing client without rotating its token', a
   });
   await page.goto('/');
   await page.getByRole('tab', { name: 'Clients', exact: true }).click();
+  const creation = page.locator('.client-form-card');
+  await expect(creation.locator('input[value="ha.read.diagnostics"]')).toBeChecked();
   await page.getByRole('button', { name: 'Edit capabilities' }).first().click();
+  await expect(creation.locator('input[value="ha.read.diagnostics"]')).toBeChecked();
   await page.locator('.client-capabilities-edit-card').getByRole('checkbox', { name: 'Automation configuration' }).check();
+  await expect(creation.locator('input[value="ha.read.automation_config"]')).not.toBeChecked();
   await page.getByRole('button', { name: 'Save capabilities' }).click();
 
   await expect.poll(() => patchPayload).toEqual({ capabilities: ['ha.read.automations', 'ha.read.automation_config'] });
   await expect(page.locator('.tag', { hasText: 'ha.read.automation_config' }).filter({ visible: true }).first()).toBeVisible();
+  await expect(creation.locator('input[value="ha.read.diagnostics"]')).toBeChecked();
 });
 
 test('matches the Home Assistant navigation states and uses MDI leading icons', async ({ page }) => {
