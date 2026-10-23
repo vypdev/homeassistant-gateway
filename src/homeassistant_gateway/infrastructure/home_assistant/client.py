@@ -119,7 +119,27 @@ class SupervisorApiClient:
         request_path = diagnostic_path or path
         try:
             with httpx.Client(headers=self._headers, timeout=self._timeout, trust_env=False, transport=self._transport) as client:
-                response = client.post(f"{self._base_url}{path}", params=params, json=payload)
+                if response_limit is None:
+                    response = client.post(f"{self._base_url}{path}", params=params, json=payload)
+                else:
+                    # Read raw identity bytes so decoding cannot inflate a bounded response.
+                    with client.stream("POST", f"{self._base_url}{path}", params=params,
+                                       json=payload, headers={"Accept-Encoding": "identity"}) as upstream:
+                        if upstream.status_code >= 400:
+                            raise HomeAssistantUnavailable(f"home_assistant_http_{upstream.status_code}", path=request_path, status=upstream.status_code)
+                        if upstream.headers.get("content-encoding", "identity").strip().lower() not in {"", "identity"}:
+                            raise HomeAssistantUnavailable("home_assistant_unsupported_response_encoding", path=request_path, status=upstream.status_code)
+                        body = bytearray()
+                        # Mock transports may supply an already buffered response.
+                        chunks = (upstream.content,) if upstream.is_stream_consumed else upstream.iter_raw(chunk_size=min(65536, response_limit + 1))
+                        for chunk in chunks:
+                            if len(body) + len(chunk) > response_limit:
+                                raise HomeAssistantUnavailable("home_assistant_response_too_large", path=request_path, status=upstream.status_code)
+                            body.extend(chunk)
+                        headers = {name: value for name, value in upstream.headers.items()
+                                   if name.lower() not in {"content-encoding", "content-length"}}
+                        response = httpx.Response(upstream.status_code, headers=headers,
+                                                  content=bytes(body), request=upstream.request)
         except httpx.ReadTimeout as error:
             raise HomeAssistantUnavailable("home_assistant_transport_timeout", path=request_path) from error
         except httpx.NetworkError as error:
@@ -128,8 +148,6 @@ class SupervisorApiClient:
             raise HomeAssistantUnavailable("home_assistant_transport_unavailable", path=request_path) from error
         if response.status_code >= 400:
             raise HomeAssistantUnavailable(f"home_assistant_http_{response.status_code}", path=request_path, status=response.status_code)
-        if response_limit is not None and len(response.content) > response_limit:
-            raise HomeAssistantUnavailable("home_assistant_response_too_large", path=request_path, status=response.status_code)
         return response
 
     def post_json(

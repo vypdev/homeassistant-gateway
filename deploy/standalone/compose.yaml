@@ -3,7 +3,7 @@ services:
     image: ${GATEWAY_IMAGE:?Set GATEWAY_IMAGE to an immutable gateway image tag or digest}
     restart: unless-stopped
     ports:
-      - "${GATEWAY_HOST_PORT:-8099}:8099"
+      - "127.0.0.1:${GATEWAY_HOST_PORT:-8099}:8099"
     environment:
       GATEWAY_HOME_ASSISTANT_MODE: standalone
       GATEWAY_HOME_ASSISTANT_URL: ${GATEWAY_HOME_ASSISTANT_URL:?Set the Home Assistant URL reachable from this network}

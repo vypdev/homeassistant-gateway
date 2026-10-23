@@ -94,3 +94,9 @@ Before enabling any operator capability:
 - the UI makes profile and capability boundaries visible;
 - a rollback path exists for automation changes;
 - documentation describes exactly what is enabled.
+
+## Standalone and diagnostic boundaries
+
+Standalone Compose publishes administrative HTTP only on host loopback. Remote UI and `/api/*` access requires a TLS/authenticated reverse proxy that strips incoming identity headers and sets them from its authenticated session. `X-Remote-User-ID` is trusted proxy metadata, not a credential supplied by a remote caller. MCP bearer authentication and capability checks remain required.
+
+Credential-health checks send authentication through curl's stdin configuration, remove that credential from the curl environment, and discard response bodies. Keys do not enter command arguments or Google query URLs. Probes ignore host curlrc configuration, reject redirects, enforce a 20-second request limit, and report sanitized failures. OpenRouter checks the authenticated current-key endpoint instead of the public model catalog.

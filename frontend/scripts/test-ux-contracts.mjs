@@ -47,7 +47,7 @@ assert.match(styles, /\.operator-policy-summary/);
 assert.match(styles, /\.permission-tabs/);
 assert.match(styles, /\.operator-service-list \{ display: grid; gap: 13px; \}/);
 assert.match(styles, /\.operator-service-group \{ display: grid; gap: 13px; padding: 16px/);
-assert.match(main, /clientProfile !== 'operator'/);
+// Profile-based write permissions are exercised by the clients browser tests.
 assert.match(styles, /button\.primary:hover:not\(:disabled\)/);
 assert.match(styles, /button\.secondary:hover:not\(:disabled\)/);
 assert.match(styles, /--ha-primary/);

@@ -21,6 +21,7 @@ export type ClientsViewContext = {
   probeReport: CapabilityProbeReport | null;
   probeBusy: boolean;
   capabilitySelector: () => TemplateResult;
+  editCapabilitySelector: () => TemplateResult;
   operatorEnabled: boolean;
   operatorServices: OperatorService[];
   selectedOperatorServices: readonly string[];
@@ -71,7 +72,7 @@ export function clientsView(ctx: ClientsViewContext): TemplateResult {
       ${ctx.editingClientId ? gatewayCard(html`
         <h2>${ctx.t('editCapabilities')}</h2>
         <p class="client-form-description">${ctx.t('capabilitiesUpdateWithoutRotation')}</p>
-        ${ctx.capabilitySelector()}
+        ${ctx.editCapabilitySelector()}
         ${gatewayFormActions(html`${gatewayButton({ label: ctx.t('saveCapabilities'), variant: 'primary', disabled: ctx.busy, onClick: ctx.saveCapabilities })}${gatewayButton({ label: ctx.t('cancel'), variant: 'secondary', disabled: ctx.busy, onClick: ctx.cancelCapabilityEdit })}`)}
       `, 'client-capabilities-edit-card') : ''}
       ${gatewayCard(html`

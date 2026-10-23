@@ -3,6 +3,13 @@ description: Install Python tests and the pnpm frontend for the candidate checko
 runs:
   using: composite
   steps:
+    - name: Resolve private profile paths
+      id: private-paths
+      shell: bash
+      run: |
+        printf 'python=%s/verification-python\n' "$HOME" >> "$GITHUB_OUTPUT"
+        printf 'cache=%s/uv-cache\n' "$HOME" >> "$GITHUB_OUTPUT"
+        printf 'pnpm=%s/pnpm\n' "$HOME" >> "$GITHUB_OUTPUT"
     - name: Set up uv for a self-contained Python installation
       uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
       with:
@@ -12,8 +19,8 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}
       env:
-        UV_PYTHON_INSTALL_DIR: ${{ env.HOME }}/verification-python
-        UV_CACHE_DIR: ${{ env.HOME }}/uv-cache
+        UV_PYTHON_INSTALL_DIR: ${{ steps.private-paths.outputs.python }}
+        UV_CACHE_DIR: ${{ steps.private-paths.outputs.cache }}
       run: |
         uv python install 3.11
         uv venv --managed-python --python 3.11 "$HOME/verification-venv"
@@ -30,7 +37,7 @@ runs:
       with:
         version: 11.15.1
         package_json_file: frontend/package.json
-        dest: ${{ env.HOME }}/pnpm
+        dest: ${{ steps.private-paths.outputs.pnpm }}
         standalone: false
     - name: Install frontend dependencies from the candidate lockfile
       shell: bash
