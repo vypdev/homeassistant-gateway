@@ -19,7 +19,9 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on:
+      group: vypdev
+      labels: [self-hosted, macOS, ARM64]
     timeout-minutes: 60
     steps:
       - name: Validate release version
@@ -32,6 +34,9 @@ jobs:
         with:
           ref: refs/tags/v${{ inputs.version }}
           persist-credentials: false
+      - name: Prepare private Docker client
+        uses: ./.github/actions/prepare-docker
+        timeout-minutes: 2
       - name: Prepare gateway verification
         uses: ./.github/actions/setup-verification
       - name: Verify accepted release metadata

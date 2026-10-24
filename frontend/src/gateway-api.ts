@@ -1,6 +1,6 @@
 import { api } from './api';
 import { BootstrapError, GatewayError, gatewayErrorFromUnknown } from './gateway-errors';
-import { assertCapabilityProbeReport, assertClient, assertClients, assertGatewayBootstrap, assertIssuedClient, assertOperatorPolicy, assertOperatorPolicySaveResponse, assertPolicyEvaluation } from './gateway-contracts';
+import { assertBootstrapResponse, assertCapabilityProbeReport, assertClient, assertClients, assertGatewayBootstrap, assertIssuedClient, assertOperatorPolicySaveResponse, assertPolicyEvaluation } from './gateway-contracts';
 import type { BootstrapProgress, CreateClientInput, GatewayPort, PolicyEvaluationInput } from './gateway-port';
 import type { AuditEvent, BootstrapCheck, BootstrapCheckId, CapabilityProbeReport, Client, DevelopmentCatalog, DevelopmentReport, Discovery, GatewayBootstrap, HealthDetails, OperatorServicePolicy, OperatorStatus, Ready, UiContext } from './models';
 
@@ -39,7 +39,7 @@ export const createGatewayApi = (request: Request = api): GatewayApi => ({
       report(id, { status: 'running', error: null });
       try {
         const value = await load();
-        if (id === 'operator_policy') assertOperatorPolicy(value);
+        assertBootstrapResponse(id, value);
         values.set(id, value);
         report(id, { status: 'ok', duration_ms: Math.round(performance.now() - started) });
       } catch (error) {

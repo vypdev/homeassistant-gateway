@@ -39,7 +39,7 @@
       "status": "proposed",
       "scope": "Copilot-managed issue branches, reproducible checks, SDD ownership and coordinated stable images",
       "owner": "Gateway maintainers",
-      "lastVerified": "2026-10-21",
+      "lastVerified": "2026-10-25",
       "specs": [
         "specs/repository-automation.md"
       ],

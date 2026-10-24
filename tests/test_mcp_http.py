@@ -2,6 +2,7 @@ import asyncio
 from datetime import UTC, datetime
 
 import httpx
+import pytest
 from fastapi import FastAPI
 
 from homeassistant_gateway.application.authorization import PolicyDecision
@@ -312,24 +313,30 @@ def test_mcp_public_path_exposes_authorized_todo_get_items_response() -> None:
     asyncio.run(run())
 
 
-def test_mcp_public_path_maps_todo_upstream_unavailability_without_leaking_details() -> None:
+@pytest.mark.parametrize("automation", [False, True])
+def test_mcp_public_path_maps_mutation_upstream_unavailability_without_leaking_details(automation) -> None:
     async def run() -> None:
+        service = "automation.trigger" if automation else "todo.get_items"
+        upstream_path = "/services/automation/trigger" if automation else "/services/todo/get_items"
         class UnavailableOperator(TodoOperator):
             def execute(self, *args, **kwargs):
                 raise HomeAssistantUnavailable(
                     "home_assistant_invalid_service_response",
-                    path="/services/todo/get_items",
+                    path=upstream_path,
                     status=200,
                 )
 
         client_record = todo_client()
+        if automation:
+            client_record.capabilities = frozenset({"ha.write.automations"})
+            client_record.operator_services = frozenset({service})
         bundle = create_mcp_app(
             TodoDiagnostics(),
             lambda token: client_record if token == "operator-token" else None,
             lambda client_id, capability, mutation: PolicyDecision(Decision.APPROVAL_REQUIRED, "approval_required"),
             home_assistant=object(),
             operator_mutations=UnavailableOperator(),
-            operator_services_ceiling=lambda: ("todo.get_items",),
+            operator_services_ceiling=lambda: (service,),
         )
         app = FastAPI(lifespan=bundle.lifespan)
         app.mount("/mcp", bundle.application)
@@ -349,10 +356,11 @@ def test_mcp_public_path_maps_todo_upstream_unavailability_without_leaking_detai
                     "id": 1,
                     "method": "tools/call",
                     "params": {
-                        "name": "ha_execute_service_call",
+                        "name": "ha_execute_automation" if automation else "ha_execute_service_call",
                         "arguments": {
-                            "target": "todo.get_items",
-                            "proposed": {"entity_id": "todo.tareas"},
+                            **({"entity_id": "automation.test", "action": "trigger"} if automation else {
+                                "target": "todo.get_items", "proposed": {"entity_id": "todo.tareas"},
+                            }),
                             "approval_id": "approval-1",
                             "approval_token": "approval-token",
                             "idempotency_key": "todo-read-2",
@@ -366,7 +374,7 @@ def test_mcp_public_path_maps_todo_upstream_unavailability_without_leaking_detai
                 "reason": "home_assistant_unavailable",
                 "code": "home_assistant_invalid_service_response",
             }
-            assert "/services/todo/get_items" not in str(structured)
+            assert upstream_path not in str(structured)
 
     asyncio.run(run())
 

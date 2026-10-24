@@ -16,10 +16,14 @@ ref, not a publication source.
    current approval policy is `recommend`; it does not approve or merge the PR.
 
 `CI` produces the exact required jobs `test`, `frontend` and `app-packaging` for
-PRs/pushes to `master` and `develop`, and for merge groups. Ordinary CI and
-RepoWise use disposable `ubuntu-latest` runners. Agent jobs keep the reviewed
-`vypdev` group with `self-hosted`, `codex`, `Linux`; they never silently fall
-back to another route. Runner capacity and runtime authentication are separate.
+PRs/pushes to `master` and `develop`, and for merge groups. Backend checks,
+Copilot dependency verification, RepoWise and automation use the reviewed
+`vypdev` group with `self-hosted`, `codex`, `Linux`. Docker-dependent frontend,
+packaging and image publication use `self-hosted`, `macOS`, `ARM64` in that group.
+Browser suites retain their Linux snapshots inside the pinned Playwright image,
+and same-repository guards exclude fork PR code from persistent runners.
+No job silently falls back to a hosted route. Runner capacity and runtime
+authentication are separate.
 
 The local [verification setup action](../.github/actions/setup-verification/action.yml)
 prepares Python 3.11, Node 22, an isolated Python test environment and frozen

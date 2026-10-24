@@ -38,8 +38,25 @@ Development work is performed on `develop`. Every pull request targeting
 `develop` or `master` runs the required CI checks,
 including backend, frontend, browser and packaging validation.
 
-CI, Edge, image publication and RepoWise run on disposable GitHub-hosted Ubuntu
-runners. Agent jobs keep the separately reviewed self-hosted `vypdev` route.
+Backend CI, Copilot dependency verification, and auxiliary Copilot jobs
+(approval, merge queue, credential health, release/hotfix orchestration) use the
+`vypdev` group with `[self-hosted, codex, Linux]`. Frontend and app-packaging CI,
+publication, and ARM64 prerequisite verification use `[self-hosted, macOS, ARM64]` in the same
+group. No Gateway workflow requests a GitHub-hosted runner.
+
+Frontend CI runs inside the official Playwright Ubuntu image on the Docker-capable
+Mac, retaining Linux visual snapshots and all Chromium, Firefox, and WebKit tests.
+The image supplies browser libraries; no VM sudo permission or host APT change is
+needed. Its digest and Playwright 1.62.1 version are pinned in
+`.github/docker/frontend-ci.Dockerfile` and must be updated together with the
+frontend lockfile. The container retains Node 22 and pnpm 11.15.1.
+
+Browser containers have private networks (no published host ports), two CPUs,
+4 GiB of memory, and 1 GiB of shared memory. Each suite uses two workers. The
+production preview, container, and job-specific image are cleaned up after use.
+Failed browser diagnostics are uploaded for seven days. Same-repository PR guards
+protect the newly migrated persistent-runner CI jobs; public fork code does not
+run in those jobs.
 
 Stable `master` is the production branch. Release and Hotfix issues use the
 installed Copilot lifecycle and require an explicit `deploy` launch plus protected
@@ -81,3 +98,40 @@ Stable releases continue to be driven by `addon/CHANGELOG.md` and the release
 workflow. Edge publishes a separate GHCR image and does not create GitHub
 releases. The two channels share source, tests and runtime behavior, but their
 packaging and distribution paths remain separate.
+
+
+## Docker-capable publication runners
+
+`Release App` and `Edge App` run on `[self-hosted, macOS, ARM64]` in the `vypdev`
+group, using the Apple Silicon host's Docker daemon. The older Mac and the
+Linux/Windows VMs do not provide Docker. Output platforms remain `linux/amd64`,
+`linux/arm64`, and `linux/arm/v7`; the existing version/tag publication guards are
+unchanged. A stable run whose version already exists still checks the Docker
+daemon before skipping publication.
+
+The repository's `prepare-docker` action checks Docker and retains the host daemon
+endpoint while giving each job a private client configuration in `RUNNER_TEMP`.
+Edge performs the same preparation inline before its intentional `main` checkout,
+so it does not require a local action from a different source revision.
+Registry credentials and builder selection therefore do not share the host user's
+Docker configuration. Keep Docker available in both ARM64 runners' service PATH
+and keep the Mac awake. Both runners share the same physical CPU, memory, and daemon.
+
+`Docker runner verification` checks the same setup, QEMU, and Buildx actions on
+relevant same-repository PRs. It builds a minimal image for all three target
+architectures with read-only repository permissions and `push: false`. It does not
+publish an app image or create a release. App-packaging CI uses the same private
+Docker/Python setup on ARM64 and builds the full checked-out Edge image for
+`linux/amd64`, retaining the previous Ubuntu packaging target without publishing.
+
+
+The stable publication job and its read-only ARM64 verification share
+`.github/actions/setup-release-python`. It uses uv to provision Python 3.11 and a
+pip-enabled virtual environment entirely under `RUNNER_TEMP`, so it does not need
+the GitHub-hosted macOS `/Users/runner` layout or privileged directory creation.
+The ARM64 check runs the same dependency installation and pytest command as the
+stable release job before exercising Docker/QEMU/Buildx. A Docker-only smoke is
+therefore insufficient to declare release prerequisites ready. These checks do
+not publish an image or create a release.
+
+Edge SHA tags and the OCI revision label identify the checked-out `main` commit, including manual runs dispatched from another branch. For fork contributions, maintainers bring reviewed changes into a same-repository branch and run full CI there; skipped fork jobs are not validation evidence.

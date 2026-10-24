@@ -88,6 +88,8 @@ The gateway sends `return_response=true` and accepts only this exact envelope, w
 
 The response contains no extra entity or data keys. Each item must be a mapping containing only the known nullable-string fields `summary`, `uid`, `status`, `due`, `description` and `completed`; non-null values must be strings. The gateway rejects malformed, missing, ambiguous, wrong-entity, wrong-domain and oversized responses rather than truncating them: at most 10,000 items, 2 MiB serialized response data, and 100,000 characters per string field. These failures use the sanitized `home_assistant_invalid_service_response` upstream code and are exposed publicly as `status=unavailable`; authorization denials remain `status=denied`.
 
+The bounded HTTP transport requests identity encoding and reads incrementally before JSON decoding. It stops at the response limit and closes the upstream connection. A server that ignores identity negotiation and sends compressed content is reported as unavailable, preventing decompression from defeating the memory bound; status and transport failures remain sanitized.
+
 The `shopping_list.*` services intentionally retain their no-entity behavior. They use the native shopping-list service payload (for example `{ "name": "Milk" }`) and must still pass the global operator ceiling, the individual credential's service grant, operator capability, approval, idempotency and audit checks.
 
 ## Safe examples

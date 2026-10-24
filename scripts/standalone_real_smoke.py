@@ -18,6 +18,7 @@ import json
 import os
 import secrets
 import subprocess
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -32,6 +33,31 @@ DEFAULT_HA_IMAGE = (
 
 def docker(command: list[str]) -> subprocess.CompletedProcess[str]:
     return subprocess.run(command, check=True, capture_output=True, text=True, timeout=90)
+
+
+def published_local_url(container: str, container_port: int) -> str:
+    address = docker(["docker", "port", container, f"{container_port}/tcp"]).stdout.strip()
+    parsed = urllib.parse.urlsplit(f"http://{address}")
+    if parsed.hostname != "127.0.0.1" or parsed.port is None:
+        raise RuntimeError("smoke_port_must_be_loopback")
+    return f"http://127.0.0.1:{parsed.port}"
+
+
+class _RejectRedirects(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def require_protected_health_details(base: str) -> None:
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _RejectRedirects())
+    try:
+        with opener.open(base + "/api/health/details", timeout=10) as response:
+            status = response.status
+    except urllib.error.HTTPError as error:
+        status = error.code
+        error.close()
+    if status != 401:
+        raise RuntimeError("gateway_protected_endpoint")
 
 
 def http_json(base: str, path: str, data: dict[str, str] | None = None, headers: dict[str, str] | None = None) -> tuple[int, dict]:
@@ -113,12 +139,13 @@ def main() -> int:
     gateway_name = f"gateway-smoke-gateway-{suffix}"
     network = f"gateway-smoke-network-{suffix}"
     volume = f"gateway-smoke-volume-{suffix}"
-    secret_file = Path(f"/tmp/gateway-smoke-{suffix}.env")
+    secret_directory = Path(tempfile.mkdtemp(prefix=f"gateway-smoke-{suffix}-"))
+    secret_file = secret_directory / "gateway.env"
     try:
         docker(["docker", "network", "create", network])
         docker(["docker", "volume", "create", volume])
-        docker(["docker", "run", "-d", "--rm", "--name", ha_name, "--network", network, "-p", "18123:8123", "-v", f"{volume}:/config", ha_image])
-        ha_base = "http://127.0.0.1:18123"
+        docker(["docker", "run", "-d", "--rm", "--name", ha_name, "--network", network, "-p", "127.0.0.1::8123", "-v", f"{volume}:/config", ha_image])
+        ha_base = published_local_url(ha_name, 8123)
         wait_for_onboarding(ha_base)
         token = create_long_lived_token(ha_base)
         secret_file.write_text(
@@ -126,23 +153,20 @@ def main() -> int:
             encoding="utf-8",
         )
         secret_file.chmod(0o600)
-        docker(["docker", "run", "-d", "--rm", "--name", gateway_name, "--network", network, "-p", "18099:8099", "--env-file", str(secret_file), image])
+        docker(["docker", "run", "-d", "--rm", "--name", gateway_name, "--network", network, "-p", "127.0.0.1::8099", "--env-file", str(secret_file), image])
+        gateway_base = published_local_url(gateway_name, 8099)
         for _ in range(60):
             try:
-                if urllib.request.urlopen("http://127.0.0.1:18099/ready", timeout=10).status == 200:
+                if urllib.request.urlopen(gateway_base + "/ready", timeout=10).status == 200:
                     break
             except OSError:
                 time.sleep(1)
         else:
             raise RuntimeError("gateway_ready_timeout")
-        ready = http_json("http://127.0.0.1:18099", "/ready")[1]
+        ready = http_json(gateway_base, "/ready")[1]
         if ready.get("home_assistant") != "ready":
             raise RuntimeError("gateway_home_assistant_not_ready")
-        try:
-            urllib.request.urlopen("http://127.0.0.1:18099/api/health/details", timeout=10)
-        except urllib.error.HTTPError as error:
-            if error.code != 401:
-                raise RuntimeError("gateway_protected_endpoint") from error
+        require_protected_health_details(gateway_base)
         logs = docker(["docker", "logs", gateway_name]).stdout
         if token in logs:
             raise RuntimeError("gateway_secret_log_leak")
@@ -158,6 +182,7 @@ def main() -> int:
         subprocess.run(["docker", "network", "rm", network], check=False, capture_output=True)
         subprocess.run(["docker", "volume", "rm", volume], check=False, capture_output=True)
         secret_file.unlink(missing_ok=True)
+        secret_directory.rmdir()
 
 
 if __name__ == "__main__":

@@ -99,6 +99,70 @@ def test_post_json_enforces_the_caller_response_size_limit_before_decoding() -> 
         )
 
 
+class TrackedResponseStream(httpx.SyncByteStream):
+    def __init__(self, chunks: list[bytes], error: Exception | None = None) -> None:
+        self.chunks = chunks
+        self.error = error
+        self.consumed = 0
+        self.closed = False
+
+    def __iter__(self):
+        for chunk in self.chunks:
+            self.consumed += 1
+            yield chunk
+        if self.error:
+            raise self.error
+
+    def close(self) -> None:
+        self.closed = True
+
+
+def test_bounded_post_stops_reading_oversized_stream_and_closes_it() -> None:
+    stream = TrackedResponseStream([b"a" * 8, b"b" * 8, b"never-read"])
+    client = make_client(lambda request: httpx.Response(200, stream=stream))
+    with pytest.raises(HomeAssistantUnavailable, match="home_assistant_response_too_large"):
+        client.post_json("/services/todo/get_items", {}, response_limit=10)
+    assert stream.consumed == 2
+    assert stream.closed
+
+
+def test_bounded_post_preserves_small_chunked_json_and_requests_identity_encoding() -> None:
+    stream = TrackedResponseStream([b'{"items":', b"[]}"])
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.headers["accept-encoding"] == "identity"
+        return httpx.Response(200, stream=stream)
+
+    assert make_client(handler).post_json("/services/todo/get_items", {}, response_limit=100) == (200, {"items": []})
+    assert stream.closed
+
+
+def test_bounded_post_rejects_error_status_without_reading_its_body() -> None:
+    stream = TrackedResponseStream([b"sensitive-upstream-body"])
+    client = make_client(lambda request: httpx.Response(503, stream=stream))
+    with pytest.raises(HomeAssistantUnavailable, match="home_assistant_http_503") as error:
+        client.post_json("/services/todo/get_items", {}, response_limit=100)
+    assert "sensitive-upstream-body" not in str(error.value)
+    assert stream.consumed == 0 and stream.closed
+
+
+def test_bounded_post_rejects_compression_before_decoding_or_reading() -> None:
+    stream = TrackedResponseStream([b"compressed-body"])
+    client = make_client(lambda request: httpx.Response(200, headers={"content-encoding": "gzip"}, stream=stream))
+    with pytest.raises(HomeAssistantUnavailable, match="home_assistant_unsupported_response_encoding"):
+        client.post_json("/services/todo/get_items", {}, response_limit=100)
+    assert stream.consumed == 0 and stream.closed
+
+
+def test_bounded_post_sanitizes_midstream_timeout_and_closes_response() -> None:
+    stream = TrackedResponseStream([b"{"], httpx.ReadTimeout("supervisor-secret"))
+    client = make_client(lambda request: httpx.Response(200, stream=stream))
+    with pytest.raises(HomeAssistantUnavailable, match="home_assistant_transport_timeout") as error:
+        client.post_json("/services/todo/get_items", {}, response_limit=100)
+    assert "supervisor-secret" not in str(error.value)
+    assert stream.closed
+
+
 def test_missing_optional_configuration_endpoint_is_reported_as_unavailable() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         if request.url.path.endswith("/config"):

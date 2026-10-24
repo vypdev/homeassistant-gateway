@@ -3,7 +3,7 @@
 - Status: Draft
 - Date: 2026-10-21
 - Catalog capability ID: repository-automation
-- Last verified: 2026-10-21
+- Last verified: 2026-10-25
 - Owners: Gateway maintainers
 - Scope: Gateway repository automation
 - Related issues/PRs: https://github.com/vypdev/homeassistant-gateway/issues/19
@@ -62,7 +62,7 @@ Failed checks MUST prevent trusted automated commit/push. Publication failure re
 
 ## 11. Security, permissions, and privacy
 
-Never pass PAT or model keys to dependency installation or verification. Use bounded calls and sanitized errors. Hosted ephemeral runners execute ordinary PR/merge-group checks; agent jobs retain the reviewed self-hosted route and same-repository guards.
+Never pass PAT or model keys to dependency installation or verification. Use bounded calls and sanitized errors. The reviewed self-hosted vypdev routes execute CI: Linux for backend/automation, ARM64 macOS for Docker-dependent packaging and browser jobs. Same-repository PR guards reject fork code before allocation. Linux browser snapshots and every browser/suite remain inside the pinned Playwright Docker image; persistent trusted writers remain within the operator trust boundary.
 
 ## 12. Observability and operational UX
 
@@ -112,3 +112,5 @@ All focused tests, the full suite, coverage, frontend/browser/packaging checks, 
 ## 20. References and decisions
 
 Related issue: https://github.com/vypdev/homeassistant-gateway/issues/19. Follow the installed Copilot contributor guide and its official verification, SDD and release/hotfix documentation. Keep existing recommend approval; native guarded approval is outside this maintenance change.
+
+The 25 October reconciliation preserves the reviewed Linux/ARM64 macOS routes, private Docker client and pinned Linux browser container from current master. Local validation passed 315 backend cases at 85.78% coverage, all 75 automation cases, frontend tooling/types/runtime/architecture/UX/build and actionlint. The new head still requires its complete GitHub CI, browser, packaging and native review gates; no application release was launched.

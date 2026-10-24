@@ -58,6 +58,9 @@ try {
   assert.deepEqual(policy.toggleCapability('observer', ['ha.read.states'], 'ha.write.services', true), ['ha.read.states']);
   assert.deepEqual(policy.toggleCapability('operator', ['ha.read.states'], 'ha.write.services', true), ['ha.read.states', 'ha.write.services']);
   assert.deepEqual(policy.toggleCapability('operator', ['ha.read.states', 'ha.write.services'], 'ha.write.services', false), ['ha.read.states']);
+  assert.deepEqual(policy.toggleCapability('operator', ['ha.read.states', 'ha.write.configuration'], 'ha.write.configuration', false, false), ['ha.read.states']);
+  assert.deepEqual(policy.toggleCapability('operator', ['ha.read.states'], 'ha.write.configuration', true, false), ['ha.read.states']);
+  assert.deepEqual(policy.toggleCapability('observer', ['ha.read.states', 'ha.write.services'], 'ha.write.services', false), ['ha.read.states']);
 
   const operatorPolicy = await import(pathToFileURL(join(tempDir, 'operator-policy.mjs')));
   assert.deepEqual(operatorPolicy.toggleOperatorServiceSelection(['light.turn_on'], 'switch.turn_on', true), ['light.turn_on', 'switch.turn_on']);
@@ -120,6 +123,25 @@ try {
   };
   const gatewayApi = gatewayApiModule.createGatewayApi(fakeRequest);
   const bootstrap = await gatewayApi.loadBootstrap();
+  for (const [id, path, malformed] of [
+    ['readiness', '/../ready', {}], ['clients', '/clients', {}], ['audit', '/audit', {}],
+    ['catalog', '/development/catalog', {}], ['development_reports', '/development/reports', {}],
+    ['ui_context', '/ui/context', { locale: 'en', theme: 'invalid' }],
+    ['health_details', '/health/details', {}], ['operator_status', '/operator/status', {}],
+    ['operator_policy', '/operator/service-policy', {}],
+  ]) {
+    const updates = [];
+    const invalidApi = gatewayApiModule.createGatewayApi(async (url, init) => url === path ? malformed : fakeRequest(url, init));
+    await assert.rejects(() => invalidApi.loadBootstrap(undefined, (check) => updates.push(check)), (error) => {
+      assert.ok(error instanceof errors.BootstrapError);
+      assert.deepEqual(error.checks.filter((check) => check.status === 'failed').map((check) => check.id), [id]);
+      assert.equal(error.checks.find((check) => check.id === id).error.code, 'invalid_response');
+      return true;
+    });
+    assert.ok(!updates.some((check) => check.id === id && check.status === 'ok'));
+  }
+  calls.length = 0;
+  await gatewayApi.loadBootstrap();
   assert.equal(bootstrap.operatorStatus.operator_enabled, true);
   assert.equal(calls.length, 9);
   calls.length = 0;

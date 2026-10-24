@@ -206,7 +206,9 @@ jobs:
   publish:
     name: Verify operation and create production tag
     if: ${{ inputs.mode == 'publish' }}
-    runs-on: ubuntu-latest
+    runs-on:
+      group: vypdev
+      labels: [self-hosted, codex, Linux]
     needs: validate
     timeout-minutes: 10
     permissions:
@@ -241,7 +243,9 @@ jobs:
   complete-publication:
     name: Record verified publication and reconcile
     needs: [publish, publish-image]
-    runs-on: ubuntu-latest
+    runs-on:
+      group: vypdev
+      labels: [self-hosted, codex, Linux]
     timeout-minutes: 15
     permissions:
       contents: read

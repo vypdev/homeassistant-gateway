@@ -30,7 +30,7 @@ def test_ci_produces_required_checks_for_merge_groups() -> None:
 def test_edge_builds_the_triggering_supported_branch() -> None:
     edge = workflow('edge-app.yml')
     assert {'master', 'develop'} <= set(edge['on']['push']['branches'])
-    checkout = edge['jobs']['build-and-publish']['steps'][0]
+    checkout = next(step for step in edge['jobs']['build-and-publish']['steps'] if step.get('uses', '').startswith('actions/checkout@'))
     assert checkout['with'].get('ref') in (None, '${{ github.sha }}')
 
 
@@ -63,9 +63,16 @@ def test_deployment_prepares_tools_before_metadata_changes(filename: str) -> Non
     assert 'env' not in steps[bootstrap]
 
 
-def test_required_checks_use_ephemeral_runners() -> None:
-    assert all(job['runs-on'] == 'ubuntu-latest' for job in workflow('ci.yml')['jobs'].values())
-    assert workflow('repowise.yml')['jobs']['code-health']['runs-on'] == 'ubuntu-latest'
+def test_required_checks_preserve_reviewed_self_hosted_routes() -> None:
+    for job in workflow('ci.yml')['jobs'].values():
+        assert job['runs-on']['group'] == 'vypdev'
+        assert 'self-hosted' in job['runs-on']['labels']
+        assert 'github.event.pull_request.head.repo.full_name == github.repository' in job['if']
+    for filename in ['release_workflow.yml', 'hotfix_workflow.yml', 'release-app.yml', 'repowise.yml']:
+        for job in workflow(filename)['jobs'].values():
+            if 'runs-on' in job:
+                assert job['runs-on']['group'] == 'vypdev'
+                assert 'self-hosted' in job['runs-on']['labels']
 
 
 def test_release_preparation_keeps_inputs_out_of_shell_source() -> None:

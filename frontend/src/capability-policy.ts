@@ -23,7 +23,7 @@ export const toggleCapability = (
   checked: boolean,
   implemented = true,
 ) => {
-  if (!canSelectCapability(profile, name, implemented)) return [...selected];
+  if (checked && !canSelectCapability(profile, name, implemented)) return [...selected];
   const next = new Set(selected);
   if (checked) next.add(name); else next.delete(name);
   return [...next];

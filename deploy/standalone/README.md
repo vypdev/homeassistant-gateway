@@ -34,10 +34,10 @@ The hostname in `GATEWAY_HOME_ASSISTANT_URL` must be resolvable from the gateway
 
 ## Start
 
-Validate the resolved Compose configuration first:
+Validate the resolved Compose configuration without displaying its interpolated token:
 
 ```bash
-docker compose -f compose.yaml config
+docker compose -f compose.yaml config --quiet
 ```
 
 Start the gateway:
@@ -74,7 +74,9 @@ If Home Assistant belongs to another Compose project, attach both projects to a 
 
 ## Security
 
-Standalone mode does not provide Home Assistant Ingress. Protect the gateway administrative UI and MCP endpoint with a private network, VPN, firewall, or an appropriately configured TLS/authenticated reverse proxy before exposing it beyond a trusted LAN.
+Standalone mode does not provide Home Assistant Ingress. Compose publishes the gateway on host loopback (`127.0.0.1`) only. Keep that binding and place a TLS/authenticated reverse proxy in front of it for any remote administrative access, including access from the LAN. The proxy must authenticate requests to the UI and `/api/*`, remove caller-supplied `X-Remote-User-ID` headers, and set the identity from its authenticated session. That header carries identity from the trusted proxy; it is not an authentication credential. MCP clients still require their gateway bearer tokens and capability policy.
+
+Do not publish this administrative listener directly on `0.0.0.0`, route an unauthenticated proxy to it, or treat a nonempty identity header as proof of authentication. Local host processes and other containers attached to the gateway's private network are part of this trusted deployment boundary.
 
 The Compose file intentionally does not use:
 
@@ -95,7 +97,7 @@ GATEWAY_SMOKE_IMAGE=homeassistant-gateway:standalone-<sha> \
   python scripts/standalone_real_smoke.py
 ```
 
-Run it from a session with Docker socket access. The script uses an immutable Home Assistant image digest by default; set `HOME_ASSISTANT_IMAGE` explicitly when validating another approved digest. It is intentionally not a CI test: CI must use a fake REST/WebSocket target and must never receive a real Home Assistant credential.
+Run it from a session with Docker socket access. Temporary services bind only to loopback and receive unique host ports assigned by Docker, so concurrent runs do not share fixed ports. The token file stays inside a fresh private directory (mode 0700) until cleanup. The protected-route probe requires HTTP 401; an unexpected success fails the smoke. The script uses an immutable Home Assistant image digest by default; set `HOME_ASSISTANT_IMAGE` explicitly when validating another approved digest. It is intentionally not a CI test: CI must use a fake REST/WebSocket target and must never receive a real Home Assistant credential.
 
 ## Stop and remove
 
