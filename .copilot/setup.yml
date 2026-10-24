@@ -1,0 +1,69 @@
+# Reviewed expected installation; contains no credentials.
+runners:
+  mode: manual-self-hosted
+  profileId: ''
+  group: vypdev
+  labels:
+  - self-hosted
+  - codex
+  - Linux
+  validation: agent
+repository:
+  mainBranch: master
+  developmentBranch: develop
+  issueManagedBranches: true
+  preBranchSdd: true
+  releaseReconciliationStrategy: production-lineage
+  hotfixReconciliationStrategy: production-lineage
+  reconciliationPullRequestMode: auto
+  mergeQueueCheckAttestations: []
+  reconciliationBackmergeMode: auto
+  hotfixActiveReleasePolicy: prefer-release
+  reconciliationTree: sync
+  reconciliationCleanup: all
+  reconciliationIssueCompletion: close
+  orchestrationPresentationMode: guided
+  orchestrationDiagrams: true
+  orchestrationCommentMode: update
+ai:
+  ignoreFiles: build/*,specs/CATALOG.md
+  bugbotFixVerifyCommands: python3 -m pytest -m 'not live' --cov=homeassistant_gateway
+    --cov-report=term-missing --cov-fail-under=85,pnpm --dir frontend run test:runtime,pnpm
+    --dir frontend run test:architecture,pnpm --dir frontend run test:ux,pnpm --dir
+    frontend run check,pnpm --dir frontend run build,git diff --check
+pullRequestApproval:
+  version: 1
+  mode: recommend
+  targetRoles:
+  - development
+  branchKinds:
+  - feature
+  - bugfix
+  - documentation
+  - chore
+  requireLinkedIssue: true
+  additionalExcludedPaths: []
+  testChecks:
+  - name: frontend
+    sourceAppId: 15368
+    workflowName: CI
+  - name: test
+    sourceAppId: 15368
+    workflowName: CI
+  producerAttested: true
+  coverage:
+    mode: check
+    checkName: test
+  allowHumanDismissed: false
+  skipWhenHumanApproved: true
+issueWorkflows:
+  enabled:
+  - feature
+  - bugfix
+  - documentation
+  - chore
+  - help
+  - hotfix
+  - release
+features:
+  inactiveIssueClosure: true

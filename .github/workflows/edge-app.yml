@@ -3,7 +3,8 @@ name: Edge App
 on:
   push:
     branches:
-      - main
+      - master
+      - develop
     paths:
       - addon-edge/**
       - frontend/**
@@ -31,8 +32,7 @@ jobs:
       labels: [self-hosted, macOS, ARM64]
 
     steps:
-      # Inline because the checkout below intentionally uses main, which may
-      # differ from the revision that provides this workflow and its local actions.
+      # Isolate Docker credentials before checkout without loading candidate actions.
       - name: Prepare private Docker client
         timeout-minutes: 2
         shell: bash
@@ -48,10 +48,9 @@ jobs:
             printf 'DOCKER_CONTEXT=\n'
           } >> "$GITHUB_ENV"
 
-      - name: Check out main source
+      - name: Check out the triggering source
         uses: actions/checkout@v7
         with:
-          ref: main
           fetch-depth: 1
 
       - name: Read Edge development version

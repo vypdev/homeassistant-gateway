@@ -93,16 +93,63 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          persist-credentials: true
-      # Add project-specific version, build, validation, smoke-test and generated-file steps here.
+          persist-credentials: false
+      - name: Prepare gateway verification
+        uses: ./.github/actions/setup-verification
+      - name: Prepare gateway release metadata
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_CHANGELOG: ${{ inputs.changelog }}
+          RELEASE_BRANCH_PREFIX: ${{ vars.RELEASE_TREE || 'release' }}
+        run: python -m scripts.prepare_release
+      - name: Verify prepared gateway
+        run: |
+          python -m pytest -m "not live" --cov=homeassistant_gateway --cov-fail-under=85
+          python scripts/check_app_channels.py
+          python -m scripts.check_specifications
+          pnpm --dir frontend run check
+          pnpm --dir frontend run test:runtime
+          pnpm --dir frontend run test:architecture
+          pnpm --dir frontend run test:ux
+          pnpm --dir frontend run build
       - name: Commit prepared release files
         uses: EndBug/add-and-commit@v9
+        env:
+          GIT_CONFIG_COUNT: '1'
+          GIT_CONFIG_KEY_0: core.hooksPath
+          GIT_CONFIG_VALUE_0: /dev/null
         with:
-          add: './'
+          add: 'addon/config.yaml addon-edge/config.yaml pyproject.toml addon/CHANGELOG.md README.md addon-edge/README.md deploy/standalone/.env.example deploy/standalone/README.md docs/consumer/home-assistant-container.md docs/release-channels.md'
+          fetch: 'false'
+          push: 'false'
           committer_name: GitHub Actions
           committer_email: actions@github.com
           default_author: user_info
           message: 'gh-action: prepare release ${{ inputs.version }}'
+
+      - name: Push verified preparation with scoped authentication
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          python - <<'PUSH'
+          import os
+          import subprocess
+          import sys
+          try:
+              result = subprocess.run(
+                  ['git', '-c', 'core.hooksPath=/dev/null', '-c', 'credential.helper=',
+                   '-c', 'credential.helper=!gh auth git-credential', 'push', 'origin',
+                   'HEAD:' + os.environ['GITHUB_REF_NAME']],
+                  capture_output=True, timeout=60,
+              )
+          except subprocess.TimeoutExpired:
+              print('Preparation push is unverified; inspect the managed remote revision before retrying.')
+              sys.exit(1)
+          if result.returncode:
+              print('Preparation push failed; inspect the managed branch and retry the same operation.')
+              sys.exit(1)
+          print('Verified preparation pushed.')
+          PUSH
 
   promote:
     name: Open production promotion
@@ -157,23 +204,23 @@ jobs:
           token: ${{ secrets.PAT }}
 
   publish:
-    name: Publish accepted production commit
+    name: Verify operation and create production tag
     if: ${{ inputs.mode == 'publish' }}
     runs-on:
       group: vypdev
       labels: [self-hosted, codex, Linux]
     needs: validate
-    timeout-minutes: 30
+    timeout-minutes: 10
     permissions:
-      contents: write
-      issues: write
-      pull-requests: write
+      contents: read
+      issues: read
     steps:
-      - uses: actions/checkout@v5
+      - name: Checkout trusted production branch
+        uses: actions/checkout@v5
         with:
           persist-credentials: false
           ref: ${{ vars.MAIN_BRANCH || 'master' }}
-      - name: Create or verify production tag
+      - name: Create or verify accepted production tag
         uses: vypdev/copilot@v3
         with:
           single-action: create_tag
@@ -182,9 +229,34 @@ jobs:
           single-action-operation-id: ${{ inputs.operation-id }}
           single-action-version: ${{ inputs.version }}
           token: ${{ secrets.PAT }}
-      # Add project-specific deployment here. It runs only after production promotion merged.
-      - name: Create or verify GitHub Release
-        uses: vypdev/copilot@v3
+
+  publish-image:
+    name: Publish accepted gateway image
+    needs: publish
+    uses: ./.github/workflows/release-app.yml
+    permissions:
+      contents: read
+      packages: write
+    with:
+      version: ${{ inputs.version }}
+
+  complete-publication:
+    name: Record verified publication and reconcile
+    needs: [publish, publish-image]
+    runs-on:
+      group: vypdev
+      labels: [self-hosted, codex, Linux]
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: read
+    steps:
+      - name: Checkout accepted production tag
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          ref: refs/tags/v${{ inputs.version }}
+      - uses: vypdev/copilot@v3
         with:
           single-action: create_release
           single-action-issue: ${{ inputs.issue }}
@@ -192,8 +264,7 @@ jobs:
           single-action-operation-id: ${{ inputs.operation-id }}
           single-action-version: ${{ inputs.version }}
           token: ${{ secrets.PAT }}
-      - name: Start configured reconciliation
-        uses: vypdev/copilot@v3
+      - uses: vypdev/copilot@v3
         with:
           single-action: published_deployment_action
           merge-queue-check-attestations: ${{ vars.MERGE_QUEUE_CHECK_ATTESTATIONS || '[]' }}
@@ -266,7 +337,7 @@ jobs:
         - codex
         - Linux
     timeout-minutes: 5
-    needs: [validate, prepare-version-files, promote, publish, resume-reconciliation]
+    needs: [validate, prepare-version-files, promote, publish, publish-image, complete-publication, resume-reconciliation]
     if: ${{ failure() && needs.validate.result == 'success' }}
     permissions:
       issues: write

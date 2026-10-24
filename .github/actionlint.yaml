@@ -1,0 +1,11 @@
+self-hosted-runner:
+  labels:
+    - codex
+
+paths:
+  .github/workflows/**:
+    ignore:
+      # GitHub supports queue:max; actionlint 1.7.12 has not added this key yet.
+      # https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency
+      # The workflow contract tests validate its value and cancellation combination.
+      - 'unexpected key "queue" for "concurrency" section'

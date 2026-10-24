@@ -116,6 +116,11 @@ The effective list is always verified with `tools/list`; connectivity does not p
 - [Release 0.5.0](docs/release-0.5.0.md) — historical architecture-hardening checklist.
 - [ADR: Home Assistant as the primary target](docs/adr/0001-home-assistant-native.md) — product and deployment decision.
 
+## Repository automation
+
+Follow [the managed contribution, verification and publication flow](docs/repository-automation.md).
+Production is `master`; development is `develop`.
+
 ## Local development
 
 ```bash
