@@ -49,10 +49,26 @@ pnpm --dir frontend exec design.md lint ../DESIGN.md
 git diff --check
 ```
 
+The ordinary backend suite validates the actual checked-out package, Stable,
+Edge and changelog versions, using the current changelog as the expected version.
+It also copies the real release metadata and pinned examples into a temporary
+directory, prepares the next patch version and verifies replay without modifying
+the source checkout. Independent package, Stable, Edge or changelog drift must
+fail before preparation writes files. Run these regressions directly with:
+
+```bash
+.venv/bin/python -m pytest tests/test_prepare_release.py -k repository
+```
+
 The existing configured autofix commands retain backend coverage at 85% and
 frontend runtime/architecture/UX, type and build gates. Focused tests additionally
 protect workflow ordering, the SDD catalog and release preparation. Installation
 of a separate CI environment does not prepare a comment or autofix job.
+
+Copilot approval recommendations use `info` review severity and declare all three
+required `CI` producers: `test`, `frontend` and `app-packaging`, each bound to
+GitHub Actions (15368). The `Develop` ruleset dismisses stale approvals on a new
+push. The observer retains `recommend` mode, so a human decides approval.
 
 Generated Copilot workflows remain unchanged, except for the two documented
 release/hotfix extension points. Their operator-managed self-hosted environment
@@ -130,6 +146,11 @@ check is bypassed and this PR does not launch or merge a deployment. Repository
 settings were applied on 2026-10-21 under explicit maintainer authorization; the
 `Develop` ruleset is 25537542. Runtime provisioning still requires access to and verification on the actual
 self-hosted pool; it is not certified by these repository settings.
+
+On 2026-10-25, the maintainer authorized aligning stale-review dismissal, the
+missing `app-packaging` producer and `BUGBOT_SEVERITY=info` with the observer's
+prerequisites. The tracked setup policy records the same recommendation mode,
+producer identities and review severity as the repository Variables.
 
 For hotfixes originating at a tag older than this installation, backport the
 reviewed tooling commit onto the exact Action-managed hotfix branch before its

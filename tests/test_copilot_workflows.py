@@ -27,6 +27,20 @@ def test_ci_produces_required_checks_for_merge_groups() -> None:
     assert {'test', 'frontend', 'app-packaging'} <= set(ci['jobs'])
 
 
+def test_approval_setup_covers_required_ci_producers_and_complete_review() -> None:
+    setup = yaml.safe_load((ROOT / '.copilot/setup.yml').read_text())
+    policy = setup['pullRequestApproval']
+    producers = {
+        (entry['name'], entry['sourceAppId'], entry['workflowName'])
+        for entry in policy['testChecks']
+    }
+    required = {'test', 'frontend', 'app-packaging'}
+    assert required <= set(workflow('ci.yml')['jobs'])
+    assert {(name, 15368, 'CI') for name in required} <= producers
+    assert setup['ai'].get('bugbotSeverity') == 'info'
+    assert policy['mode'] == 'recommend'
+
+
 def test_edge_builds_the_triggering_supported_branch() -> None:
     edge = workflow('edge-app.yml')
     assert {'master', 'develop'} <= set(edge['on']['push']['branches'])
