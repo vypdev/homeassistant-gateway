@@ -2,6 +2,7 @@
 set -euo pipefail
 cd /workspace/frontend
 
+pnpm run test:tooling
 pnpm run test:runtime
 pnpm run test:architecture
 pnpm run test:ux

@@ -6,7 +6,7 @@ This repository exposes two Home Assistant apps from the same app repository.
 
 `Home Assistant Gateway` (`homeassistant_gateway`) is the production channel.
 It consumes the multi-architecture image published to GHCR by the release
-workflow. Stable follows `main` and is updated through tagged releases.
+workflow. Stable follows `master` and is updated through tagged releases.
 
 - Image: `ghcr.io/vypdev/homeassistant-gateway:<version>`
 - Host MCP port: `18099`
@@ -17,10 +17,10 @@ workflow. Stable follows `main` and is updated through tagged releases.
 
 `Home Assistant Gateway Edge` (`homeassistant_gateway_edge`) is the development
 channel. Supervisor consumes the versioned multi-architecture image published
-to GHCR by GitHub Actions from `main`.
+to GHCR by GitHub Actions from the triggering `master` or `develop` commit.
 
 - Image: `ghcr.io/vypdev/homeassistant-gateway-edge:0.5.35-edge-1`
-- Source ref: `main`
+- Source refs: `master` and `develop`
 - Supervisor stage: `experimental`
 - Host MCP port: `18100`
 - Default log level: `debug`
@@ -35,7 +35,7 @@ channels.
 ## Branch and workflow policy
 
 Development work is performed on `develop`. Every pull request targeting
-`develop` or `main` runs the required CI checks,
+`develop` or `master` runs the required CI checks,
 including backend, frontend, browser and packaging validation.
 
 Backend CI, Copilot dependency verification, and auxiliary Copilot jobs
@@ -58,23 +58,29 @@ Failed browser diagnostics are uploaded for seven days. Same-repository PR guard
 protect the newly migrated persistent-runner CI jobs; public fork code does not
 run in those jobs.
 
-Stable `main` is release-only. A release is prepared by opening a pull request
-from `develop` to `main` with the version, changelog and release metadata
-updated. After that pull request is merged, the `Release App` workflow runs on
-`main`, publishes the stable multi-architecture image and creates the GitHub
-release. The `Edge App` workflow also runs only on pushes to `main` and
-publishes the versioned Edge image from that exact source branch. Stable `main`
-does not run the development CI workflow on direct pushes.
+Stable `master` is the production branch. Release and Hotfix issues use the
+installed Copilot lifecycle and require an explicit `deploy` launch plus protected
+production promotion. `release_workflow.yml` and `hotfix_workflow.yml` prepare
+version metadata and call the single reusable `Release App` image publisher only
+after Copilot verifies the accepted production tag. Image build, scan and smoke
+must succeed before Copilot creates the GitHub Release and records completion.
+There is no competing publisher on ordinary pushes.
 
-The same policy applies if the default branch is named `master` instead of
-`main`.
+`Edge App` builds the exact triggering commit on `master` or `develop`; it never
+checks out the retained legacy `main` branch. Commit image tags identify immutable
+source revisions. Maintainers advance the app's Edge version when Supervisor
+should offer an update; the `edge` alias tracks the latest published build.
+
+See [repository automation](repository-automation.md) for verification, initial
+default-branch rollout, development backmerge and failure recovery.
 
 ## Updating Edge
 
-Edge images are built and published by the `Edge App` workflow on every push to
-`main`. Each release uses an immutable `<stable>-edge-<iteration>` version tag,
-alongside the moving `edge` and commit aliases, so Supervisor can detect a new
-versioned Edge image.
+Edge images are built and published by the `Edge App` workflow on supported source changes pushed to
+`master` or `develop`. The workflow publishes the configured `<stable>-edge-<iteration>` version tag,
+alongside the moving `edge` alias and exact-commit tag. Advance the configured
+iteration before requesting a Supervisor update; pushes with the same app version
+can replace its version tag. Only the exact-commit tag identifies that build.
 
 To update Edge, follow the same procedure documented by Zigbee2MQTT:
 
