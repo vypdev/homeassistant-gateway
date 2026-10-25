@@ -1,10 +1,33 @@
 """Release preparation must be bounded, repeatable and safe before publication."""
 
 from pathlib import Path
+import shutil
+import tomllib
 
 import pytest
+import yaml
 
-from scripts.prepare_release import VERSION_DOCUMENTS, prepare_release, validate_release, validate_preparation_ref
+from scripts.prepare_release import (
+    METADATA,
+    VERSION_DOCUMENTS,
+    prepare_release,
+    validate_release,
+    validate_preparation_ref,
+    version_tuple,
+)
+from scripts.release_metadata import extract_release
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+@pytest.fixture
+def repository_release_root(tmp_path: Path) -> Path:
+    for name in METADATA + VERSION_DOCUMENTS:
+        target = tmp_path / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(ROOT / name, target)
+    return tmp_path
 
 
 @pytest.fixture
@@ -25,6 +48,60 @@ def release_root(tmp_path: Path) -> Path:
 
 def snapshot(root: Path) -> dict[str, bytes]:
     return {str(p.relative_to(root)): p.read_bytes() for p in root.rglob('*') if p.is_file()}
+
+
+def test_repository_release_metadata_matches_current_changelog() -> None:
+    current, _ = extract_release((ROOT / 'addon/CHANGELOG.md').read_text())
+    validate_release(ROOT, current)
+
+
+def test_repository_copy_prepares_next_patch_and_replays_without_changing_checkout(
+    repository_release_root: Path,
+) -> None:
+    source_before = {name: (ROOT / name).read_bytes() for name in METADATA + VERSION_DOCUMENTS}
+    current, current_notes = extract_release((repository_release_root / 'addon/CHANGELOG.md').read_text())
+    major, minor, patch = version_tuple(current)
+    next_version = f'{major}.{minor}.{patch + 1}'
+    notes = '- Verify release preparation against the checked-out repository.'
+
+    changed = prepare_release(repository_release_root, next_version, notes)
+
+    assert set(METADATA) <= set(changed)
+    validate_release(repository_release_root, next_version)
+    changelog = (repository_release_root / 'addon/CHANGELOG.md').read_text()
+    assert extract_release(changelog) == (next_version, notes)
+    assert extract_release(changelog, current) == (current, current_notes)
+    prepared = snapshot(repository_release_root)
+    assert prepare_release(repository_release_root, next_version, notes) == []
+    assert snapshot(repository_release_root) == prepared
+    assert {name: (ROOT / name).read_bytes() for name in source_before} == source_before
+
+
+@pytest.mark.parametrize('name', METADATA)
+def test_repository_copy_rejects_metadata_drift_without_partial_preparation(
+    repository_release_root: Path, name: str,
+) -> None:
+    current, _ = extract_release((repository_release_root / 'addon/CHANGELOG.md').read_text())
+    major, minor, patch = version_tuple(current)
+    next_version = f'{major}.{minor}.{patch + 1}'
+    path = repository_release_root / name
+    original = path.read_text()
+    if name == 'pyproject.toml':
+        old_version = tomllib.loads(original)['project']['version']
+    elif name.endswith('config.yaml'):
+        old_version = str(yaml.safe_load(original)['version'])
+    else:
+        old_version = current
+    replacement = f'{next_version}-edge-1' if name == 'addon-edge/config.yaml' else next_version
+    corrupted = original.replace(old_version, replacement, 1)
+    assert corrupted != original
+    path.write_text(corrupted)
+    before = snapshot(repository_release_root)
+
+    with pytest.raises(ValueError):
+        prepare_release(repository_release_root, next_version, '- Must reject inconsistent metadata.')
+
+    assert snapshot(repository_release_root) == before
 
 
 def test_prepare_updates_stable_edge_package_changelog_and_pinned_examples(release_root: Path) -> None:

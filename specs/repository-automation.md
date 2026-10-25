@@ -44,6 +44,8 @@ Text equivalent: issue, branch, checks, review, authorized accepted tag, image v
 
 CI produces test, frontend and app-packaging on production/development PRs and merge groups. Generated comment workflows retain their operator-provisioned runtime contract; their YAML is unchanged. Release/hotfix preparation updates metadata and validates it. Publication completion MUST depend on successful image build, scan and smoke checks.
 
+The ordinary backend suite checks the real package, Stable, Edge and changelog metadata against the current changelog version. A temporary copy of the checked-out metadata and pinned examples exercises the next patch preparation and matching replay while preserving the source checkout.
+
 ## 7. User-facing configuration
 
 Use inherited master/develop branch roles and the installed issue profile. Declare Python 3.11, Node 22 and pnpm 11.15.1 in verification-prerequisites.json. Resolve pnpm through the frontend packageManager using Corepack. Keep approval mode recommend.
@@ -92,12 +94,15 @@ Document normal contribution, verification preparation, default-branch rollout, 
 
 Given a PR targeting master or develop, all required jobs run. Given enabled SDD, catalog/standard/template validate. Given a missing runtime, verification fails before publish. Given invalid or older metadata, preparation writes nothing. Given conflicting replay notes, preparation rejects them. Given a failed image scan/smoke, release completion does not run. Given a normal PR, no stable image publisher runs.
 
+Given inconsistent checked-out release versions, the backend gate fails even when synthetic preparation fixtures are valid. Given a consistent checkout, its temporary copy prepares and validates the next patch and replays unchanged; independent package, Stable, Edge and changelog drift is rejected without partial preparation.
+
 ## 17. Requirements traceability
 
 | Requirement | Evidence | Documentation |
 |---|---|---|
 | Required CI | tests/test_copilot_workflows.py | docs/repository-automation.md |
 | Safe preparation/replay | tests/test_prepare_release.py | docs/release-channels.md |
+| Real repository metadata consistency and preparation | tests/test_prepare_release.py | docs/repository-automation.md |
 | Catalog boundaries | tests/test_specifications.py | specs/README.md |
 | Verified publication ordering | tests/test_copilot_workflows.py | docs/repository-automation.md |
 

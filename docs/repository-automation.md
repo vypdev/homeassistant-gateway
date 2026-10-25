@@ -49,6 +49,17 @@ pnpm --dir frontend exec design.md lint ../DESIGN.md
 git diff --check
 ```
 
+The ordinary backend suite validates the actual checked-out package, Stable,
+Edge and changelog versions, using the current changelog as the expected version.
+It also copies the real release metadata and pinned examples into a temporary
+directory, prepares the next patch version and verifies replay without modifying
+the source checkout. Independent package, Stable, Edge or changelog drift must
+fail before preparation writes files. Run these regressions directly with:
+
+```bash
+.venv/bin/python -m pytest tests/test_prepare_release.py -k repository
+```
+
 The existing configured autofix commands retain backend coverage at 85% and
 frontend runtime/architecture/UX, type and build gates. Focused tests additionally
 protect workflow ordering, the SDD catalog and release preparation. Installation
