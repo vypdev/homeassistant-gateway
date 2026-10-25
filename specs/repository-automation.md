@@ -50,6 +50,8 @@ The ordinary backend suite checks the real package, Stable, Edge and changelog m
 
 Use inherited master/develop branch roles and the installed issue profile. Declare Python 3.11, Node 22 and pnpm 11.15.1 in verification-prerequisites.json. Resolve pnpm through the frontend packageManager using Corepack. Keep approval mode recommend.
 
+Recommendation prerequisites include `info` Bugbot severity, trusted `CI` producers for test/frontend/app-packaging from GitHub Actions (15368), and stale-approval dismissal on develop. The tracked setup policy and live repository settings must agree.
+
 ## 8. Clean Architecture design
 
 Repository-only scripts adapt fixed metadata files and existing application tests; application/domain code is unchanged. The local setup action owns tool preparation in release/hotfix and image jobs only. Copilot owns authorization, durable deployment state and accepted tag creation. The reusable publisher owns GHCR images only.

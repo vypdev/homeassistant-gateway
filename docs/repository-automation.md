@@ -65,6 +65,11 @@ frontend runtime/architecture/UX, type and build gates. Focused tests additional
 protect workflow ordering, the SDD catalog and release preparation. Installation
 of a separate CI environment does not prepare a comment or autofix job.
 
+Copilot approval recommendations use `info` review severity and declare all three
+required `CI` producers: `test`, `frontend` and `app-packaging`, each bound to
+GitHub Actions (15368). The `Develop` ruleset dismisses stale approvals on a new
+push. The observer retains `recommend` mode, so a human decides approval.
+
 Generated Copilot workflows remain unchanged, except for the two documented
 release/hotfix extension points. Their operator-managed self-hosted environment
 must already expose the declared Python/Node/pnpm versions and project test
@@ -141,6 +146,11 @@ check is bypassed and this PR does not launch or merge a deployment. Repository
 settings were applied on 2026-10-21 under explicit maintainer authorization; the
 `Develop` ruleset is 25537542. Runtime provisioning still requires access to and verification on the actual
 self-hosted pool; it is not certified by these repository settings.
+
+On 2026-10-25, the maintainer authorized aligning stale-review dismissal, the
+missing `app-packaging` producer and `BUGBOT_SEVERITY=info` with the observer's
+prerequisites. The tracked setup policy records the same recommendation mode,
+producer identities and review severity as the repository Variables.
 
 For hotfixes originating at a tag older than this installation, backport the
 reviewed tooling commit onto the exact Action-managed hotfix branch before its

@@ -27,6 +27,7 @@ repository:
   orchestrationCommentMode: update
 ai:
   ignoreFiles: build/*,specs/CATALOG.md
+  bugbotSeverity: info
   bugbotFixVerifyCommands: python3 -m pytest -m 'not live' --cov=homeassistant_gateway
     --cov-report=term-missing --cov-fail-under=85,pnpm --dir frontend run test:runtime,pnpm
     --dir frontend run test:architecture,pnpm --dir frontend run test:ux,pnpm --dir
@@ -48,6 +49,9 @@ pullRequestApproval:
     sourceAppId: 15368
     workflowName: CI
   - name: test
+    sourceAppId: 15368
+    workflowName: CI
+  - name: app-packaging
     sourceAppId: 15368
     workflowName: CI
   producerAttested: true
